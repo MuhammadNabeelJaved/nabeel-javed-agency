@@ -65,6 +65,11 @@ const userSchema = new mongoose.Schema(
             default: null,
         },
 
+        emailVerificationExpires: {
+            type: Date,
+            default: null,
+        },
+
         // =====================
         // SECURITY FIELDS
         // =====================
