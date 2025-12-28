@@ -5,22 +5,52 @@ import User from "../models/User.model.js";
 
 // @desc    Register a new user
 export const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
+    try {
+        const { name, email, password } = req.body;
 
-    console.log(name, email, password);
+        console.log(name, email, password);
 
-    if (!name || !email || !password) {
-        throw new AppError("Name, email and password are required", 400);
+        if (!name || !email || !password) {
+            throw new AppError("Name, email and password are required", 400);
+        }
+
+        const userExists = await User.findOne({
+            $or: [{ email }, { name }],
+        });
+        if (userExists) {
+            throw new AppError("User already exists", 409);
+        }
+
+        const user = await User.create({ name, email, password });
+
+        successResponse(res, "User registered successfully", user, 201);
+    } catch (error) {
+        console.error("Error in registerUser:", error);
+       throw new AppError(`Registration failed: ${error.message}`, 500);
+
+    }
+});
+
+
+export const loginUser = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        throw new AppError("Email and password are required", 400);
+    }
+    const user = await User.findOne({ email }).select("+password");
+
+    if (!user || !(await user.comparePassword(password))) {
+        throw new AppError("Invalid email or password", 401);
     }
 
-    const userExists = await User.findOne({
-        $or: [{ email }, { name }],
-    });
-if (userExists) {
-    throw new AppError("User already exists", 409);
-}
+    // Skip password field in response
+    user.password = undefined;
 
-const user = await User.create({ name, email, password });
 
-successResponse(res, "User registered successfully", user, 201);
+    successResponse(res, "User logged in successfully", user, 200);
 });
+
+
+// Additional user controller functions can be added here
+
