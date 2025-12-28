@@ -7,8 +7,10 @@ import User from "../models/User.model.js";
 export const registerUser = asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
 
-    if (!email || !password) {
-        throw new AppError("Email and password are required", 400);
+    console.log(name, email, password);
+
+    if (!name || !email || !password) {
+        throw new AppError("Name, email and password are required", 400);
     }
 
     const userExists = await User.findOne(

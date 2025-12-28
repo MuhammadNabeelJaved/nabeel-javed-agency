@@ -36,11 +36,17 @@ app.use(cookieParser())
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+
+// Routes
+import userRoutes from "./routes/user.route.js"
+import errorHandler from "./middlewares/errorHandler.js";
+app.use("/api/v1/users", userRoutes);
+
 // app.use(ApiError)
 
 
 // 404
-app.use(notFound);
+// app.use(notFound);
 
 // Global Error
 app.use(errorHandler);
