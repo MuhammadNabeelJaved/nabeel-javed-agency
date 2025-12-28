@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import validator from "validator";
+import crypto from "crypto";
 
 const userSchema = new mongoose.Schema(
     {
@@ -29,16 +30,17 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: [true, "Password is required"],
             minlength: [8, "Password must be at least 8 characters"],
-            select: false, // 🔐 never send password in queries
+            select: false, // 🔐 never return password
         },
 
         // =====================
-        // ROLE BASED ACCESS
+        // ROLE & PERMISSIONS
         // =====================
         role: {
             type: String,
             enum: ["admin", "team", "user"],
             default: "user",
+            index: true,
         },
 
         permissions: {
@@ -60,26 +62,42 @@ const userSchema = new mongoose.Schema(
             default: false,
         },
 
-        emailVerificationCode: {
+        // =====================
+        // EMAIL VERIFICATION
+        // =====================
+        emailVerificationToken: {
             type: String,
-            default: null,
+            select: false,
         },
 
         emailVerificationExpires: {
             type: Date,
-            default: null,
+            select: false,
         },
 
         // =====================
-        // SECURITY FIELDS
+        // PASSWORD RESET
         // =====================
+        passwordResetToken: {
+            type: String,
+            select: false,
+        },
+
+        passwordResetExpires: {
+            type: Date,
+            select: false,
+        },
+
         passwordChangedAt: Date,
 
-        passwordResetToken: String,
-        passwordResetExpires: Date,
-
         // =====================
-
+        // SOFT DELETE (PRO)
+        // =====================
+        deletedAt: {
+            type: Date,
+            default: null,
+            index: true,
+        },
     },
     {
         timestamps: true,
@@ -95,24 +113,59 @@ userSchema.pre("save", async function (next) {
     next();
 });
 
-userSchema.methods.comparePassword = async function (
-    enteredPassword
-) {
+userSchema.methods.comparePassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
+
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
     if (this.passwordChangedAt) {
-        const changedTime = parseInt(
-            this.passwordChangedAt.getTime() / 1000,
-            10
+        const changedTime = Math.floor(
+            this.passwordChangedAt.getTime() / 1000
         );
         return JWTTimestamp < changedTime;
     }
     return false;
 };
 
+
+userSchema.methods.createEmailVerificationToken = function () {
+    const token = crypto.randomBytes(32).toString("hex");
+
+    this.emailVerificationToken = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+    this.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // 10 min
+
+    return token; // send via email
+};
+
+
+userSchema.methods.createPasswordResetToken = function () {
+    const token = crypto.randomBytes(32).toString("hex");
+
+    this.passwordResetToken = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+    this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 min
+
+    return token;
+};
+
+
+
+userSchema.pre(/^find/, function (next) {
+    this.find({
+        isActive: { $ne: false },
+        deletedAt: null,
+    });
+    next();
+});
+
+
 const User = mongoose.model("User", userSchema);
-
 export default User;
-
