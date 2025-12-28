@@ -1,0 +1,48 @@
+import dotenv, { parse } from "dotenv";
+import express from "express"
+import cors from "cors"
+import cookieParser from "cookie-parser"
+import bodyParser from "body-parser";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+
+
+dotenv.config();
+const app = express()
+
+
+
+app.use(cors({
+    origin: process.env.CORS_ORIGIN,
+    credentials: true
+}))
+app.use(helmet());
+
+// Apply rate limiting to all requests
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+app.use(limiter);
+
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded())
+// parse application/json
+app.use(bodyParser.json({ limit: '50mb' }))
+app.use(cookieParser())
+// Increase the payload size limit (e.g., to 50MB)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// app.use(ApiError)
+
+
+// 404
+app.use(notFound);
+
+// Global Error
+app.use(errorHandler);
+
+export default app
