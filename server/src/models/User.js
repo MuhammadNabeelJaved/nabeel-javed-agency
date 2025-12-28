@@ -108,53 +108,53 @@ const userSchema = new mongoose.Schema(
 userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) return next();
 
-    this.password = await bcrypt.hash(this.password, 12);
-    this.passwordChangedAt = Date.now() - 1000;
+    this.password = await bcrypt.hash(this.password, 10);
     next();
 });
 
 userSchema.methods.comparePassword = async function (enteredPassword) {
+    if (!enteredPassword) return false;
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
 
-userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
-    if (this.passwordChangedAt) {
-        const changedTime = Math.floor(
-            this.passwordChangedAt.getTime() / 1000
-        );
-        return JWTTimestamp < changedTime;
-    }
-    return false;
-};
+// userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+//     if (this.passwordChangedAt) {
+//         const changedTime = Math.floor(
+//             this.passwordChangedAt.getTime() / 1000
+//         );
+//         return JWTTimestamp < changedTime;
+//     }
+//     return false;
+// };
 
 
-userSchema.methods.createEmailVerificationToken = function () {
-    const token = crypto.randomBytes(32).toString("hex");
+// userSchema.methods.createEmailVerificationToken = function () {
+//     const token = crypto.randomBytes(32).toString("hex");
 
-    this.emailVerificationToken = crypto
-        .createHash("sha256")
-        .update(token)
-        .digest("hex");
+//     this.emailVerificationToken = crypto
+//         .createHash("sha256")
+//         .update(token)
+//         .digest("hex");
 
-    this.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // 10 min
+//     this.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // 10 min
 
-    return token; // send via email
-};
+//     return token; // send via email
+// };
 
 
-userSchema.methods.createPasswordResetToken = function () {
-    const token = crypto.randomBytes(32).toString("hex");
+// userSchema.methods.createPasswordResetToken = function () {
+//     const token = crypto.randomBytes(32).toString("hex");
 
-    this.passwordResetToken = crypto
-        .createHash("sha256")
-        .update(token)
-        .digest("hex");
+//     this.passwordResetToken = crypto
+//         .createHash("sha256")
+//         .update(token)
+//         .digest("hex");
 
-    this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 min
+//     this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 min
 
-    return token;
-};
+//     return token;
+// };
 
 
 
