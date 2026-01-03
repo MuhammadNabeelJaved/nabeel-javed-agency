@@ -87,6 +87,27 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
 });
 
+export const verifyUserEmail = asyncHandler(async (req, res) => {
+    const code = req.body;
+    if (!code) {
+        throw new AppError("Verification code are required", 400);
+    }
+    const user = await User.findById(req?.user?._id);
+    if (!user) {
+        throw new AppError("User not found", 404);
+    }
+    if (user.isVerified) {
+        throw new AppError("User is already verified", 400);
+    }
+    if (user.verificationCode !== code) {
+        throw new AppError("Invalid verification code", 400);
+    }
+    user.isVerified = true;
+    user.verificationCode = undefined;
+    await user.save({ validateBeforeSave: false });
+    successResponse(res, "User email verified successfully", null, 200);
+});
+
 
 export const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
