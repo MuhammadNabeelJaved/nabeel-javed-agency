@@ -7,19 +7,27 @@ import AppError from "../utils/AppError.js";
 // User Authentication Middleware
 // ========================
 export const userAuthenticated = asyncHandler(async (req, res, next) => {
-    const authHeader = req.headers.authorization;
+    const token = req.cookies?.accessToken || (req.headers.authorization && req.headers.authorization.startsWith("Bearer") && req.headers.authorization.split(" ")[1]);
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.log("Token header:", token); // Debugging line
+
+    if (!token) {
         throw new AppError("Unauthorized: No token provided", 401);
     }
 
-    const token = authHeader.split(" ")[1];
+    // const decodedToken = token.split(" ")[1];
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+        console.log("Decoded token:", decoded);
+
+        if (!decoded) {
+            throw new AppError("Unauthorized: Invalid token", 401);
+        }
 
         // Fetch full user info from DB
-        const user = await User.findById(decoded.id).select("-password");
+        const user = await User.findById(decoded?.id).select("-password");
+        console.log("Authenticated user:", user);
         if (!user) {
             throw new AppError("Unauthorized: User not found", 401);
         }
@@ -31,9 +39,10 @@ export const userAuthenticated = asyncHandler(async (req, res, next) => {
 
         // Attach user to request
         req.user = user;
+        await user.save({ validateBeforeSave: false });
         next();
     } catch (err) {
-        throw new AppError("Unauthorized: Invalid token", 401);
+        throw new AppError(`Unauthorized: Invalid token or ${err.message}`, 401);
     }
 });
 
