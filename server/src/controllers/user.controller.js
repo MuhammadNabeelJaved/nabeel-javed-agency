@@ -26,7 +26,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         successResponse(res, "User registered successfully", user, 201);
     } catch (error) {
         console.error("Error in registerUser:", error);
-       throw new AppError(`Registration failed: ${error.message}`, 500);
+        throw new AppError(`Registration failed: ${error.message}`, 500);
 
     }
 });
@@ -53,4 +53,21 @@ export const loginUser = asyncHandler(async (req, res) => {
 
 
 // Additional user controller functions can be added here
+
+
+export const getUserProfile = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await User.findById(userId).select("-password");
+
+        if (!user) {
+            throw new AppError("User not found", 404);
+        }
+
+        successResponse(res, "User profile retrieved successfully", user, 200);
+    } catch (error) {
+        console.error("Error in getUserProfile:", error);
+        throw new AppError(`Failed to retrieve user profile: ${error.message}`, 500);
+    }
+});
 
