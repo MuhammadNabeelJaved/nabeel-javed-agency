@@ -8,7 +8,7 @@ import { userAuthenticated, authorizeRoles } from '../middlewares/Auth.js';
 const router = Router();
 
 router.route('/register').post(registerUser);
-router.route('/verify/:token').get(verifyUserEmail);
+router.route('/verify').post(verifyUserEmail);
 router.route('/login').post(loginUser);
 router.route('/profile/:id').get(getUserProfile);
 router.route('/:id').delete(deleteUser);
