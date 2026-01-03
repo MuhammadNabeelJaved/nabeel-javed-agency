@@ -111,51 +111,41 @@ export const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        throw new AppError("Email and password are required", 400);
+        throw new AppError("Email aur password required hain", 400);
     }
 
-    console.log("Password:", password);
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-        throw new AppError("User not found", 404);
+        throw new AppError("Invalid email ya password", 401);
     }
-
-    // Check if password matches
 
     const isPasswordValid = await user.comparePassword(password);
 
     if (!isPasswordValid) {
-        throw new AppError("Invalid password", 401);
+        throw new AppError("Invalid email ya password", 401);
     }
 
-    // Skip password field in response
-    user.password = undefined;
-
-    // Generate JWT tokens
     const { accessToken, refreshToken } = await jwtTokens(user);
 
-    if (!accessToken || !refreshToken) {
-        throw new AppError("Token generation failed", 500);
-    }
-    // Set tokens in HTTP-only cookies
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "Strict",
-        maxAge: 15 * 60 * 1000, // 15 minutes
+        maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "Strict",
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-
-    successResponse(res, "User logged in successfully", user, 200);
+    successResponse(res, "User successfully login successfully", userResponse, 200);
 });
 
 
