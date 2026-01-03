@@ -235,13 +235,46 @@ export const forgotPassword = asyncHandler(async (req, res) => {
             throw new AppError("User not found", 404);
         }
         const resetToken = await user.forgetPasswordToken();
+        await user.save({ validateBeforeSave: false });
         const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/reset-password/${resetToken}`;
         console.log("Password reset URL:", resetUrl);
 
         // Send password reset email
-        successResponse(res, "Password reset email sent successfully", null, 200);
+        successResponse(res, "Password reset email sent successfully", resetUrl, 200);
     } catch (error) {
         console.error("Error in forgotPassword:", error);
         throw new AppError(`Failed to send password reset email: ${error.message}`, 500);
+    }
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { newPassword, confirmPassword } = req.body;
+        if (!token) {
+            throw new AppError("Reset token is required", 400);
+        }
+        if (!newPassword || !confirmPassword) {
+            throw new AppError("New password and confirm password are required", 400);
+        }
+        if (newPassword !== confirmPassword) {
+            throw new AppError("New password and confirm password do not match", 400);
+        }
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+        const user = await User.findOne({
+            passwordResetToken: hashedToken,
+            passwordResetExpires: { $gt: Date.now() },
+        });
+        if (!user) {
+            throw new AppError("Invalid or expired reset token", 400);
+        }
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+        await user.save();
+        successResponse(res, "Password reset successfully", null, 200);
+    } catch (error) {
+        console.error("Error in resetPassword:", error);
+        throw new AppError(`Failed to reset password: ${error.message}`, 500);
     }
 });
