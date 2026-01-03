@@ -69,12 +69,12 @@ const userSchema = new mongoose.Schema(
         // =====================
         emailVerificationToken: {
             type: String,
-            select: false,
+            // select: false,
         },
 
         emailVerificationExpires: {
             type: Date,
-            select: false,
+            // select: false,
         },
 
         // =====================
@@ -109,11 +109,11 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) {
-        return next();
+        return
     }
 
     this.password = await bcrypt.hash(this.password, 10);
-    next();
+    // next();
 });
 
 
@@ -129,7 +129,7 @@ userSchema.methods.genrateVerificationCode = async function () {
 
 
 userSchema.methods.comparePassword = async function (enteredPassword) {
-    if (!enteredPassword) return false;
+    // if (!enteredPassword) return false;
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
