@@ -32,6 +32,10 @@ export const registerUser = asyncHandler(async (req, res) => {
         const code = await createdUser.genrateVerificationCode();
         console.log("Verification code:", code);
 
+        // Send verification email
+
+        
+
         // Generate JWT tokens
         const accessToken = await createdUser.genrateAccessToken();
         const refreshToken = await createdUser.genrateRefreshToken();

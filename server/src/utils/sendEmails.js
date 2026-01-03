@@ -1,18 +1,17 @@
 import { Resend } from 'resend';
 
-const resend = new Resend('re_xxxxxxxxx');
+const resend = new Resend('re_AFhWDk7h_MWyTzEYjFzH1dkc2DdQdggHa');
 
-(async function () {
-    const { data, error } = await resend.emails.send({
-        from: 'Acme <onboarding@resend.dev>',
-        to: ['delivered@resend.dev'],
-        subject: 'Hello World',
-        html: '<strong>It works!</strong>',
-    });
+// Api key = re_AFhWDk7h_MWyTzEYjFzH1dkc2DdQdggHa
 
-    if (error) {
-        return console.error({ error });
-    }
+const from = process.env.FROM_EMAIL || 'graphicsanimation786@gmail.com';
 
-    console.log({ data });
-})();
+const { data } = await resend.emails.send({
+    from: from,
+    to: 'user@gmail.com',
+    replyTo: 'you@example.com',
+    subject: 'hello world',
+    text: 'it works!',
+});
+
+console.log(`Email ${data.id} has been sent`);
