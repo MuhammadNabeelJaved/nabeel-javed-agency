@@ -31,7 +31,6 @@ export const registerUser = asyncHandler(async (req, res) => {
 
         const code = await createdUser.genrateVerificationCode();
         console.log("Verification code:", code);
-        await createdUser.save();
 
         // Generate JWT tokens
         const accessToken = await createdUser.genrateAccessToken();
@@ -76,7 +75,11 @@ export const loginUser = asyncHandler(async (req, res) => {
         throw new AppError("User not found", 404);
     }
 
-    if (!(await user.comparePassword(password))) {
+    // Check if password matches
+
+    const isPasswordValid = await user.comparePassword(password);
+
+    if (!isPasswordValid) {
         throw new AppError("Invalid password", 401);
     }
 
@@ -108,6 +111,24 @@ export const loginUser = asyncHandler(async (req, res) => {
 
 
 // Additional user controller functions can be added here
+
+
+// All user profile retrieval logic can be added here
+
+export const getAllUserProfile = asyncHandler(async (req, res) => {
+    try {
+        const allUser = await User.find().select("-password");
+
+        if (!allUser) {
+            throw new AppError("User not found", 404);
+        }
+
+        successResponse(res, "User profile retrieved successfully", allUser, 200);
+    } catch (error) {
+        console.error("Error in getAllUserProfile:", error);
+        throw new AppError(`Failed to retrieve user profile: ${error.message}`, 500);
+    }
+});
 
 
 export const getUserProfile = asyncHandler(async (req, res) => {
