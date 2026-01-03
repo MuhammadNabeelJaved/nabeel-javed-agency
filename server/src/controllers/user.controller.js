@@ -34,7 +34,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
         // Send verification email
 
-        
+
 
         // Generate JWT tokens
         const accessToken = await createdUser.genrateAccessToken();
@@ -161,5 +161,59 @@ export const deleteUser = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error("Error in deleteUser:", error);
         throw new AppError(`Failed to delete user: ${error.message}`, 500);
+    }
+});
+
+
+// Update user profile logic can be added here
+
+export const updateUserProfile = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const updates = req.body;
+
+        if (!userId) {
+            throw new AppError("User ID is required", 400);
+        }
+
+        if (!req.body || Object.keys(req.body).length === 0) {
+            throw new AppError("No data provided for update", 400);
+        }
+        const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
+        if (!updatedUser) {
+            throw new AppError("User not found", 404);
+        }
+        successResponse(res, "User profile updated successfully", updatedUser, 200);
+    } catch (error) {
+        console.error("Error in updateUserProfile:", error);
+        throw new AppError(`Failed to update user profile: ${error.message}`, 500);
+    }
+});
+
+// Update user password logic can be added here
+export const updateUserPassword = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { oldPassword, newPassword } = req.body;
+        if (!userId) {
+            throw new AppError("User ID is required", 400);
+        }
+        if (!oldPassword || !newPassword) {
+            throw new AppError("Old password and new password are required", 400);
+        }
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new AppError("User not found", 404);
+        }
+        const isPasswordValid = await user.comparePassword(oldPassword);
+        if (!isPasswordValid) {
+            throw new AppError("Invalid old password", 401);
+        }
+        user.password = newPassword;
+        await user.save();
+        successResponse(res, "Password updated successfully", null, 200);
+    } catch (error) {
+        console.error("Error in updateUserPassword:", error);
+        throw new AppError(`Failed to update password: ${error.message}`, 500);
     }
 });
