@@ -204,7 +204,10 @@ export const updateUserPassword = asyncHandler(async (req, res) => {
         if (!oldPassword || !newPassword) {
             throw new AppError("Old password and new password are required", 400);
         }
-        const user = await User.findById(userId);
+        console.log("oldPassword:", oldPassword, "newPassword:", newPassword);
+        const user = await User.findById(userId).select("+password");
+        console.log("DB password:", user?.password);
+
         if (!user) {
             throw new AppError("User not found", 404);
         }
