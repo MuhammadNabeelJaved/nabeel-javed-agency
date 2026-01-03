@@ -99,11 +99,9 @@ export const verifyUserEmail = asyncHandler(async (req, res) => {
     if (user.isVerified) {
         throw new AppError("User is already verified", 400);
     }
-    if (user.verificationCode !== code) {
-        throw new AppError("Invalid verification code", 400);
-    }
+
     user.isVerified = true;
-    user.verificationCode = undefined;
+    user.emailVerificationToken = undefined;
     await user.save({ validateBeforeSave: false });
     successResponse(res, "User email verified successfully", null, 200);
 });
