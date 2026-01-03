@@ -3,6 +3,7 @@ import {
     registerUser, loginUser, getUserProfile, deleteUser, getAllUserProfile,
     updateUserProfile, updateUserPassword, forgotPassword, resetPassword
 } from '../controllers/user.controller.js';
+import { userAuthenticated, authorizeRoles } from '../middlewares/Auth.js';
 
 const router = Router();
 
