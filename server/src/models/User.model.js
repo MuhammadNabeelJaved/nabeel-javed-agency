@@ -150,54 +150,6 @@ userSchema.methods.genrateRefreshToken = async function () {
     return jwt.sign({ id: this._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN })
 }
 
-// userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
-//     if (this.passwordChangedAt) {
-//         const changedTime = Math.floor(
-//             this.passwordChangedAt.getTime() / 1000
-//         );
-//         return JWTTimestamp < changedTime;
-//     }
-//     return false;
-// };
-
-
-// userSchema.methods.createEmailVerificationToken = function () {
-//     const token = crypto.randomBytes(32).toString("hex");
-
-//     this.emailVerificationToken = crypto
-//         .createHash("sha256")
-//         .update(token)
-//         .digest("hex");
-
-//     this.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // 10 min
-
-//     return token; // send via email
-// };
-
-
-// userSchema.methods.createPasswordResetToken = function () {
-//     const token = crypto.randomBytes(32).toString("hex");
-
-//     this.passwordResetToken = crypto
-//         .createHash("sha256")
-//         .update(token)
-//         .digest("hex");
-
-//     this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 min
-
-//     return token;
-// };
-
-
-
-// userSchema.pre(/^find/, function (next) {
-//     this.find({
-//         isActive: { $ne: false },
-//         deletedAt: null,
-//     });
-//     next();
-// });
-
 
 const User = mongoose.model("User", userSchema);
 export default User;
