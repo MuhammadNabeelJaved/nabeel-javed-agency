@@ -1,18 +1,18 @@
-import multer from "multer";
-import path from "path";
+import multer from "multer"
+import path from "path"
 
-const __dirname = path.resolve();
+const pathDirectory = path.resolve("./public/uploads")
 
-// Set up multer storage configuration
-
-export const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, __dirname + '/uploads');
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, pathDirectory)
     },
-    filename: function (req, file, cb) {
-        cb(null, file.originalname);
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`)
     }
-});
+})
 
-// Create a Multer instance
-export const upload = multer({ storage });
+const upload = multer({ storage })
+
+export default upload
+
