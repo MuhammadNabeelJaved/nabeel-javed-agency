@@ -48,4 +48,4 @@ const deleteImage = async (imageUrl) => {
     }
 }
 
-export default { uploadImage, deleteImage }
+export { uploadImage, deleteImage }

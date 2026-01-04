@@ -1,5 +1,6 @@
 import dotenv, { parse } from "dotenv";
 import express from "express"
+import path from "path";
 import cors from "cors"
 import cookieParser from "cookie-parser"
 import bodyParser from "body-parser";
@@ -35,6 +36,7 @@ app.use(cookieParser())
 // Increase the payload size limit (e.g., to 50MB)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use("/uploads", express.static(path.join(process.cwd(), "src/public/uploads")));
 
 
 // Routes

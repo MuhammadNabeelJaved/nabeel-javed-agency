@@ -24,7 +24,11 @@ const jwtTokens = async (user) => {
 // @desc    Register a new user
 export const registerUser = asyncHandler(async (req, res) => {
     try {
-        const { name, email, password, avatar } = req.body;
+        const { name, email, password } = req.body;
+        const avatar = req.file?.path;
+
+        console.log("Received file:", avatar);
+
 
         console.log(name, email, password);
 
