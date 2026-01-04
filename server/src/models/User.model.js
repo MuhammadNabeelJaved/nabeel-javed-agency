@@ -35,6 +35,11 @@ const userSchema = new mongoose.Schema(
             select: false,
         },
 
+        photo: {
+            type: String,
+            default: "default.jpg",
+        },
+
         // =====================
         // ROLE & PERMISSIONS
         // =====================
