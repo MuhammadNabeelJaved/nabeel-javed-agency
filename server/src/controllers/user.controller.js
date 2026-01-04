@@ -56,7 +56,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
         console.log("Avatar URL:", avatarUrl);
 
-        const createdUser = await User.create({ name, email, password, avatarUrl: avatarUrl?.secure_url || avatarUrl });
+        const createdUser = await User.create({ name, email, password, photo: avatarUrl?.secure_url || avatarUrl });
 
         if (!createdUser) {
             throw new AppError("User registration failed", 500);
@@ -224,30 +224,61 @@ export const deleteUser = asyncHandler(async (req, res) => {
 // Update user profile logic can be added here
 
 export const updateUserProfile = asyncHandler(async (req, res) => {
-    try {
-        const userId = req.params.id;
-        const updates = req.body;
+    const userId = req.params.id;
+    const updates = req.body || {};
+    const avatar = req.file?.path;
 
-        if (!userId) {
-            throw new AppError("User ID is required", 400);
-        }
+    if (!userId) {
+        throw new AppError("User ID is required", 400);
+    }
 
-        if (!req.body || Object.keys(req.body).length === 0) {
-            throw new AppError("No data provided for update", 400);
-        }
-        if (updates.password || updates.email) {
-            throw new AppError("Cannot update password or email through this route", 400);
-        }
-        const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true });
-        if (!updatedUser) {
+    // ❗ No body fields AND no avatar
+    if (Object.keys(updates).length === 0 && !avatar) {
+        throw new AppError("No data provided for update", 400);
+    }
+
+    // ❌ Sensitive fields block
+    if (updates.password || updates.email) {
+        throw new AppError(
+            "Cannot update password or email through this route",
+            400
+        );
+    }
+
+    // ✅ Avatar update logic
+    if (avatar) {
+        const user = await User.findById(userId);
+
+        if (!user) {
             throw new AppError("User not found", 404);
         }
-        successResponse(res, "User profile updated successfully", updatedUser, 200);
-    } catch (error) {
-        console.error("Error in updateUserProfile:", error);
-        throw new AppError(`Failed to update user profile: ${error.message}`, 500);
+
+        // delete old avatar
+        if (user.photo) {
+            await deleteImage(user.photo);
+        }
+
+        const avatarUpload = await uploadImage(avatar);
+        updates.photo = avatarUpload.secure_url;
     }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+        new: true,
+        runValidators: true,
+    });
+
+    if (!updatedUser) {
+        throw new AppError("User not found", 404);
+    }
+
+    successResponse(
+        res,
+        "User profile updated successfully",
+        updatedUser,
+        200
+    );
 });
+
 
 // Update user password and forgot password logic can be added here
 export const updateUserPassword = asyncHandler(async (req, res) => {
