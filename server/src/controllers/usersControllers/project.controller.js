@@ -11,32 +11,49 @@ import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
 // =========================
 export const createProject = asyncHandler(async (req, res) => {
     try {
-        const { projectName, projectDetails, totalCost, deadline } = req.body;
-        const file = req.file?.path;
+        const {
+            projectName,
+            projectType,
+            budgetRange,
+            projectDetails,
+            // deadline,
+            // totalCost
+        } = req.body;
+        const files = req.file?.path;
 
 
-        if (!projectName || !projectDetails || !totalCost || !deadline) {
+        if (!projectName || !projectDetails, !projectType || !budgetRange) {
             throw new AppError("All fields are required", 400);
         }
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req?.user?.id);
         if (!user) {
             throw new AppError("User not found", 404);
         }
 
-        // Upload file handling can be added here if needed
+        // Handle file uploads
+        let attachments = [];
+        if (files && files.length > 0) {
+            for (const file of files) {
+                try {
+                    const uploadResult = await uploadImage(file.path, "projects");
+                    if (uploadResult && uploadResult.secure_url) {
+                        // Determine file type
+                        const fileType = file.mimetype.startsWith('image/') ? 'image'
+                            : file.mimetype === 'application/pdf' ? 'pdf'
+                                : file.mimetype.includes('document') ? 'doc'
+                                    : 'other';
 
-        let uploadedFileUrl = null;
-
-        if (file) {
-            // Upload file on cloudinary or any other service
-            console.log("File uploaded at:", file);
-
-            const uploadResult = await uploadImage(file, "projects");
-            if (!uploadResult || !uploadResult.secure_url) {
-                throw new AppError("File upload failed", 500);
+                        attachments.push({
+                            fileName: file.originalname,
+                            fileUrl: uploadResult.secure_url,
+                            fileType: fileType
+                        });
+                    }
+                } catch (error) {
+                    console.error("File upload error:", error);
+                    // Continue with other files even if one fails
+                }
             }
-            uploadedFileUrl = uploadResult.secure_url;
-
         }
 
 
@@ -47,7 +64,7 @@ export const createProject = asyncHandler(async (req, res) => {
             totalCost,
             deadline,
             user: req.user.id,
-            file: file,
+            file: uploadedFileUrl,
         });
         successResponse(res, "Project created successfully", project, 201);
     } catch (error) {
