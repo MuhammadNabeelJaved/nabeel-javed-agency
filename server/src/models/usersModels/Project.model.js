@@ -171,9 +171,9 @@ projectRequestSchema.index({ projectName: "text", projectDetails: "text" });
 // =========================
 // EXPORT MODEL
 // =========================
-const ProjectRequest = mongoose.model(
-  "ProjectRequest",
+const Project = mongoose.model(
+  "Project",
   projectRequestSchema
 );
 
-export default ProjectRequest;
+export default Project;
