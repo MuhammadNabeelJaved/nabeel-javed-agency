@@ -63,16 +63,6 @@ reviewSchema.methods.getFullReview = async function () {
     return this;
 };
 
-// Static method to get featured reviews
-reviewSchema.statics.getFeaturedReviews = function (limit = 10) {
-    return this.find({
-        isFeatured: true,
-        status: 'approved'
-    })
-        .populate('project')
-        .sort({ displayOrder: 1, createdAt: -1 })
-        .limit(limit);
-};
 
 // Static method to get reviews by rating
 reviewSchema.statics.getByRating = function (rating) {
@@ -104,18 +94,6 @@ reviewSchema.statics.getProjectAverageRating = async function (projectId) {
 
     return result.length > 0 ? result[0] : { averageRating: 0, totalReviews: 0 };
 };
-
-// Pre-save middleware to generate initials if not provided
-reviewSchema.pre('save', function (next) {
-    if (!this.clientInitials && this.clientName) {
-        const names = this.clientName.split(' ');
-        this.clientInitials = names.length > 1
-            ? names[0][0] + names[names.length - 1][0]
-            : names[0][0];
-        this.clientInitials = this.clientInitials.toUpperCase();
-    }
-    next();
-});
 
 
 const Review = mongoose.model('Review', reviewSchema);
