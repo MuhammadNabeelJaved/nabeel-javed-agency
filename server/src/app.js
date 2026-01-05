@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser"
 import bodyParser from "body-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import errorHandler from "./middlewares/errorHandler.js";
 
 
 dotenv.config();
@@ -41,8 +42,9 @@ app.use("/uploads", express.static(path.join(process.cwd(), "src/public/uploads"
 
 // Routes
 import userRoutes from "./routes/userRoutes/user.route.js"
-import errorHandler from "./middlewares/errorHandler.js";
+import projectRoutes from "./routes/userRoutes/project.route.js";
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/projects", projectRoutes);
 
 // app.use(ApiError)
 
