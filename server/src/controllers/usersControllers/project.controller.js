@@ -66,6 +66,13 @@ export const createProject = asyncHandler(async (req, res) => {
             projectDetails,
             attachments: attachments,
         });
+
+        if (!project) {
+            throw new AppError("Project creation failed", 500);
+        }
+
+        // Also send project creation email to user (optional)
+
         successResponse(res, "Project created successfully", project, 201);
     } catch (error) {
         console.error("Error in createProject:", error);
