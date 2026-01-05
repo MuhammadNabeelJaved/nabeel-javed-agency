@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import asyncHandler from "./asyncHandler.js";
-import User from "../models/User.model.js"; // Your Mongoose User model
+import User from "../models/usersModels/User.model.js"; // Your Mongoose User model
 import AppError from "../utils/AppError.js";
 
 // ========================
