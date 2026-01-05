@@ -36,16 +36,7 @@ const reviewSchema = new mongoose.Schema({
         ref: 'Project',
         required: [true, 'Project reference is required']
     },
-
-    // Additional Metadata
-    isFeatured: {
-        type: Boolean,
-        default: false
-    },
-    displayOrder: {
-        type: Number,
-        default: 0
-    },
+    // Display Options
     status: {
         type: String,
         enum: ['pending', 'approved', 'rejected'],
