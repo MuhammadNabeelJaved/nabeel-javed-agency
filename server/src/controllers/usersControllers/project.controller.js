@@ -441,3 +441,16 @@ export const getProjectStats = asyncHandler(async (req, res) => {
         throw new AppError(`Failed to fetch project statistics: ${error.message}`, 500);
     }
 });
+
+
+// =========================
+
+export {
+    createProject,
+    getAllProjects,
+    updateProject,
+    getProjectById,
+    updateProjectStatus,
+    deleteProject,
+    getProjectStats
+};
