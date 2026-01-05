@@ -124,6 +124,45 @@ export const verifyUserEmail = asyncHandler(async (req, res) => {
     successResponse(res, "User email verified successfully", null, 200);
 });
 
+// Resend verification email logic can be added here
+
+export const resendVerificationEmail = asyncHandler(async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            throw new AppError("Email is required", 400);
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            throw new AppError("User not found", 404);
+        }
+        if (user.isVerified) {
+            throw new AppError("User is already verified", 400);
+        }
+
+        // Remove previous verification token if any
+        user.emailVerificationToken = undefined;
+
+        // Generate a new verification code
+        const code = await user.generateVerificationCode();
+
+        if (!code) {
+            throw new AppError("Failed to generate verification code", 500);
+        }
+
+        await user.save({ validateBeforeSave: false });
+        console.log("Resent verification code:", code);
+
+        successResponse(res, "Verification email resent successfully", null, 200);
+    } catch (error) {
+        console.error("Error in resendVerificationEmail:", error);
+        throw new AppError(`Failed to resend verification email: ${error.message}`, 500);
+    }
+});
+
+
 
 export const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
@@ -165,6 +204,18 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     successResponse(res, "User successfully login successfully", userResponse, 200);
 });
+
+export const logoutUser = asyncHandler(async (req, res) => {
+    try {
+        res.clearCookie("accessToken");
+        res.clearCookie("refreshToken");
+        successResponse(res, "User logged out successfully", null, 200);
+    } catch (error) {
+        console.error("Error in logoutUser:", error);
+        throw new AppError(`Failed to logout user: ${error.message}`, 500);
+    }
+})
+
 
 
 // Additional user controller functions can be added here
