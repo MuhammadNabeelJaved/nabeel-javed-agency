@@ -11,13 +11,13 @@ const router = Router();
 router.route('/register').post(upload.single('avatar'), registerUser);
 router.route('/verify').post(verifyUserEmail);
 router.route('/login').post(loginUser);
-router.route('/profile/:id').get(userAuthenticated, getUserProfile);
-router.route('/:id').delete(userAuthenticated, deleteUser);
+router.route('/profile/:id').get(userAuthenticated, authorizeRoles('admin', 'user', "team"), getUserProfile);
+router.route('/:id').delete(userAuthenticated, authorizeRoles('admin', 'user', "team"), deleteUser);
 router.route('/').get(userAuthenticated, authorizeRoles('admin'), getAllUserProfile);
-router.route('/update/:id').put(userAuthenticated, upload.single('avatar'), updateUserProfile);
-router.route('/update-password/:id').put(userAuthenticated, updateUserPassword);
-router.route('/forgot-password').post(userAuthenticated, forgotPassword);
-router.route('/reset-password/:token').post(userAuthenticated, resetPassword);
+router.route('/update/:id').put(userAuthenticated, authorizeRoles('admin', 'user', "team"), upload.single('avatar'), updateUserProfile);
+router.route('/update-password/:id').put(userAuthenticated, authorizeRoles('admin', 'user', "team"), updateUserPassword);
+router.route('/forgot-password').post(userAuthenticated, authorizeRoles('admin', 'user', "team"), forgotPassword);
+router.route('/reset-password/:token').post(userAuthenticated, authorizeRoles('admin', 'user', "team"), resetPassword);
 
 
 export default router;
