@@ -386,3 +386,58 @@ export const deleteProject = asyncHandler(async (req, res) => {
         throw new AppError(`Failed to delete project: ${error.message}`, 500);
     }
 });
+
+
+// =========================
+// GET PROJECT STATISTICS
+// =========================
+export const getProjectStats = asyncHandler(async (req, res) => {
+    try {
+        const filter = req?.user?.role === 'admin'
+            ? {}
+            : { requestedBy: req?.user?.id };
+
+        const stats = await Project.aggregate([
+            { $match: filter },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    pending: {
+                        $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+                    },
+                    inReview: {
+                        $sum: { $cond: [{ $eq: ['$status', 'in_review'] }, 1, 0] }
+                    },
+                    approved: {
+                        $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
+                    },
+                    completed: {
+                        $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                    },
+                    rejected: {
+                        $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] }
+                    },
+                    totalRevenue: { $sum: '$totalCost' },
+                    totalPaid: { $sum: '$paidAmount' },
+                    avgProgress: { $avg: '$progress' }
+                }
+            }
+        ]);
+
+        successResponse(res, "Statistics fetched successfully", stats[0] || {
+            total: 0,
+            pending: 0,
+            inReview: 0,
+            approved: 0,
+            completed: 0,
+            rejected: 0,
+            totalRevenue: 0,
+            totalPaid: 0,
+            avgProgress: 0
+        });
+    } catch (error) {
+        console.error("Error in getProjectStats:", error);
+        throw new AppError(`Failed to fetch project statistics: ${error.message}`, 500);
+    }
+});
