@@ -52,6 +52,7 @@ export const createProject = asyncHandler(async (req, res) => {
                 } catch (error) {
                     console.error("File upload error:", error);
                     // Continue with other files even if one fails
+                    throw new AppError("Failed to upload one of the files", error.message, 500);
                 }
             }
         }
@@ -60,11 +61,10 @@ export const createProject = asyncHandler(async (req, res) => {
 
         const project = await Project.create({
             projectName,
+            projectType,
+            budgetRange,
             projectDetails,
-            totalCost,
-            deadline,
-            user: req.user.id,
-            file: uploadedFileUrl,
+            attachments: attachments,
         });
         successResponse(res, "Project created successfully", project, 201);
     } catch (error) {
