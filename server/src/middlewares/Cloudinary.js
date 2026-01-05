@@ -9,8 +9,6 @@ cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
-    //   secure_distribution: 'mydomain.com',
-    //   upload_prefix: 'https://api-eu.cloudinary.com'
 });
 
 console.log("Cloudinary Configured:", {
@@ -19,15 +17,15 @@ console.log("Cloudinary Configured:", {
     api_secret: process.env.CLOUDINARY_API_SECRET ? '***' : null,
 });
 
-const uploadImage = async (image) => {
+const uploadImage = async (image, folderName = "avatars") => {
     try {
         if (!image) {
             throw new AppError(400, "Image is required")
         }
 
-        console.log("Uploading image:", image)
+        console.log("Uploading image:", image, "to folder:", folderName)
         const result = await cloudinary.uploader.upload(image, {
-            folder: "avatars"
+            folder: folderName
         })
 
         if (!result) {
@@ -41,14 +39,13 @@ const uploadImage = async (image) => {
     }
 }
 
-const deleteImage = async (imageUrl) => {
+const deleteImage = async (imageUrl, folderName = "avatars") => {
     console.log("Image URL", imageUrl)
     try {
         if (!imageUrl) {
             throw new AppError(400, "Image URL is required")
         }
-        const publicId = "avatars/" + imageUrl.split("/").pop().split(".")[0]
-        //avatars/ko4rumwqpcgvl4r8bri5
+        const publicId = folderName + "/" + imageUrl.split("/").pop().split(".")[0]
         console.log("publicId", publicId)
         const result = await cloudinary.uploader.destroy(publicId)
         if (!result) {
