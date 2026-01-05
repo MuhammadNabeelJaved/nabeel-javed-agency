@@ -1,10 +1,10 @@
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import asyncHandler from "../middlewares/asyncHandler.js";
-import AppError from "../utils/AppError.js";
-import { successResponse } from "../utils/apiResponse.js";
-import User from "../models/usersModels/User.model.js";
-import { uploadImage, deleteImage } from "../middlewares/Cloudinary.js";
+import asyncHandler from "../../middlewares/asyncHandler.js";
+import AppError from "../../utils/AppError.js";
+import { successResponse } from "../../utils/apiResponse.js";
+import User from "../../models/usersModels/User.model.js";
+import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
 
 
 
