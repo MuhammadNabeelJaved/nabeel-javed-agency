@@ -346,3 +346,43 @@ export const updateProjectStatus = asyncHandler(async (req, res) => {
         throw new AppError(`Failed to update project status: ${error.message}`, 500);
     }
 });
+
+
+// =========================
+// DELETE PROJECT
+// =========================
+export const deleteProject = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            throw new AppError("Project ID is required", 400);
+        }
+
+        const project = await Project.findById(id);
+        if (!project) {
+            throw new AppError("Project not found", 404);
+        }
+
+        // Check authorization
+        if (req?.user?.role !== 'admin' && project.requestedBy.toString() !== req?.user?.id) {
+            throw new AppError("You are not authorized to delete this project", 403);
+        }
+
+        // Delete all attachments from cloudinary
+        for (const attachment of project.attachments) {
+            try {
+                await deleteImage(attachment.fileUrl, "projects");
+            } catch (error) {
+                console.error("Error deleting attachment:", error);
+            }
+        }
+
+        await project.deleteOne();
+
+        successResponse(res, "Project deleted successfully", null);
+    } catch (error) {
+        console.error("Error in deleteProject:", error);
+        throw new AppError(`Failed to delete project: ${error.message}`, 500);
+    }
+});
