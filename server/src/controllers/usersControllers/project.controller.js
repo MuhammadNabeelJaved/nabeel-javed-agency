@@ -155,3 +155,34 @@ export const getAllProjects = asyncHandler(async (req, res) => {
         throw new AppError(`Failed to fetch projects: ${error.message}`, 500);
     }
 });
+
+
+// =========================
+// GET PROJECT BY ID
+// =========================
+export const getProjectById = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            throw new AppError("Project ID is required", 400);
+        }
+
+        const project = await Project.findById(id)
+            .populate('requestedBy', 'name email avatar');
+
+        if (!project) {
+            throw new AppError("Project not found", 404);
+        }
+
+        // Check authorization
+        if (req.user.role !== 'admin' && project.requestedBy._id.toString() !== req.user.id) {
+            throw new AppError("You are not authorized to view this project", 403);
+        }
+
+        successResponse(res, "Project fetched successfully", project);
+    } catch (error) {
+        console.error("Error in getProjectById:", error);
+        throw new AppError(`Failed to fetch project: ${error.message}`, 500);
+    }
+});
