@@ -40,7 +40,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "src/public/uploads"
 
 
 // Routes
-import userRoutes from "./routes/user.route.js"
+import userRoutes from "./routes/userRoutes/user.route.js"
 import errorHandler from "./middlewares/errorHandler.js";
 app.use("/api/v1/users", userRoutes);
 
