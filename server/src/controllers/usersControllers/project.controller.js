@@ -176,7 +176,7 @@ export const getProjectById = asyncHandler(async (req, res) => {
         }
 
         // Check authorization
-        if (req.user.role !== 'admin' && project.requestedBy._id.toString() !== req.user.id) {
+        if (req?.user?.role !== 'admin' && project.requestedBy._id.toString() !== req.user.id) {
             throw new AppError("You are not authorized to view this project", 403);
         }
 
@@ -184,5 +184,85 @@ export const getProjectById = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error("Error in getProjectById:", error);
         throw new AppError(`Failed to fetch project: ${error.message}`, 500);
+    }
+});
+
+
+// =========================
+// UPDATE PROJECT
+// =========================
+export const updateProject = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            projectName,
+            projectType,
+            budgetRange,
+            projectDetails,
+            deadline,
+            totalCost,
+            paidAmount,
+            progress,
+            status
+        } = req.body;
+
+        const files = req?.files?.path;
+
+        // Find project
+        const project = await Project.findById(id);
+        if (!project) {
+            throw new AppError("Project not found", 404);
+        }
+
+        // Check authorization
+        if (req?.user?.role !== 'admin' && project.requestedBy.toString() !== req.user.id) {
+            throw new AppError("You are not authorized to update this project", 403);
+        }
+
+        // Update fields
+        if (projectName) project.projectName = projectName;
+        if (projectType) project.projectType = projectType;
+        if (budgetRange) project.budgetRange = budgetRange;
+        if (projectDetails) project.projectDetails = projectDetails;
+        if (deadline) project.deadline = new Date(deadline);
+        if (totalCost !== undefined) project.totalCost = parseFloat(totalCost);
+        if (paidAmount !== undefined) project.paidAmount = parseFloat(paidAmount);
+        if (progress !== undefined) project.progress = parseInt(progress);
+
+        // Only admin can update status
+        if (status && req?.user?.role === 'admin') {
+            project.status = status;
+        }
+
+        // Handle new file uploads
+        if (files && files.length > 0) {
+            for (const file of files) {
+                try {
+                    const uploadResult = await uploadImage(file.path, "projects");
+                    if (uploadResult && uploadResult.secure_url) {
+                        const fileType = file.mimetype.startsWith('image/') ? 'image'
+                            : file.mimetype === 'application/pdf' ? 'pdf'
+                                : file.mimetype.includes('document') ? 'doc'
+                                    : 'other';
+
+                        project.attachments.push({
+                            fileName: file.originalname,
+                            fileUrl: uploadResult.secure_url,
+                            fileType: fileType
+                        });
+                    }
+                } catch (error) {
+                    console.error("File upload error:", error);
+                }
+            }
+        }
+
+        await project.save();
+        await project.populate('requestedBy', 'name email');
+
+        successResponse(res, "Project updated successfully", project);
+    } catch (error) {
+        console.error("Error in updateProject:", error);
+        throw new AppError(`Failed to update project: ${error.message}`, 500);
     }
 });
