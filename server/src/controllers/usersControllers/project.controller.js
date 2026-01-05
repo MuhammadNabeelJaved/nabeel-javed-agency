@@ -266,3 +266,83 @@ export const updateProject = asyncHandler(async (req, res) => {
         throw new AppError(`Failed to update project: ${error.message}`, 500);
     }
 });
+
+
+
+// =========================
+// DELETE ATTACHMENT
+// =========================
+export const deleteAttachment = asyncHandler(async (req, res) => {
+    try {
+        const { id, attachmentId } = req.params;
+
+        if (!id || !attachmentId) {
+            throw new AppError("Project ID and attachment ID are required", 400);
+        }
+
+        const project = await Project.findById(id);
+        if (!project) {
+            throw new AppError("Project not found", 404);
+        }
+
+        // Check authorization
+        if (req.user.role !== 'admin' && project.requestedBy.toString() !== req.user.id) {
+            throw new AppError("You are not authorized to delete attachments", 403);
+        }
+
+        const attachment = project.attachments.id(attachmentId);
+        if (!attachment) {
+            throw new AppError("Attachment not found", 404);
+        }
+
+        // Delete from cloudinary
+        try {
+            await deleteImage(attachment.fileUrl, "projects");
+        } catch (error) {
+            console.error("Error deleting from cloudinary:", error);
+        }
+
+        // Remove from array
+        project.attachments.pull(attachmentId);
+        await project.save();
+
+        successResponse(res, "Attachment deleted successfully", project);
+    } catch (error) {
+        console.error("Error in deleteAttachment:", error);
+        throw new AppError(`Failed to delete attachment: ${error.message}`, 500);
+    }
+});
+
+
+// =========================
+// UPDATE PROJECT STATUS (ADMIN ONLY)
+// =========================
+export const updateProjectStatus = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!id) {
+            throw new AppError("Project ID is required", 400);
+        }
+
+        if (!status) {
+            throw new AppError("Status is required", 400);
+        }
+
+        const project = await Project.findByIdAndUpdate(
+            id,
+            { status },
+            { new: true, runValidators: true }
+        ).populate('requestedBy', 'name email');
+
+        if (!project) {
+            throw new AppError("Project not found", 404);
+        }
+
+        successResponse(res, "Project status updated successfully", project);
+    } catch (error) {
+        console.error("Error in updateProjectStatus:", error);
+        throw new AppError(`Failed to update project status: ${error.message}`, 500);
+    }
+});
