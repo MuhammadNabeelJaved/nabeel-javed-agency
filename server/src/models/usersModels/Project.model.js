@@ -160,7 +160,7 @@ projectRequestSchema.pre("save", function (next) {
   } else {
     this.paymentStatus = "paid";
   }
-  next();
+  // next();
 });
 
 // =========================
