@@ -2,9 +2,9 @@ import { Router } from 'express';
 import {
     registerUser, loginUser, getUserProfile, deleteUser, getAllUserProfile,
     updateUserProfile, updateUserPassword, forgotPassword, resetPassword, verifyUserEmail
-} from '../controllers/usersControllers/user.controller.js';
-import { userAuthenticated, authorizeRoles } from '../middlewares/Auth.js';
-import upload from '../middlewares/multer.js';
+} from '../../controllers/usersControllers/user.controller.js';
+import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
+import upload from '../../middlewares/multer.js';
 
 const router = Router();
 
