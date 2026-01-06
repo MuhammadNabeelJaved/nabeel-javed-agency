@@ -436,61 +436,79 @@ export const updateReviewStatus = asyncHandler(async (req, res) => {
 // DELETE REVIEW
 // =========================
 export const deleteReview = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const userId = req.user._id;
+    try {
+        const { id } = req.params;
+        const userId = req?.user?._id;
 
-    if (!id) {
-        throw new AppError("Review ID is required", 400);
+        if (!id) {
+            throw new AppError("Review ID is required", 400);
+        }
+
+        const review = await Review.findById(id);
+
+        if (!review) {
+            throw new AppError("Review not found", 404);
+        }
+
+        // Check authorization
+        if (review.client.toString() !== userId.toString() && req?.user?.role !== "admin") {
+            throw new AppError("You are not authorized to delete this review", 403);
+        }
+
+        await review.deleteOne();
+
+        successResponse(res, "Review deleted successfully", null);
+    } catch (error) {
+        console.error("Error deleting review:", error.message);
+        throw new AppError("Failed to delete review", 500);
     }
-
-    const review = await Review.findById(id);
-
-    if (!review) {
-        throw new AppError("Review not found", 404);
-    }
-
-    // Check authorization
-    if (review.client.toString() !== userId.toString() && req.user.role !== "admin") {
-        throw new AppError("You are not authorized to delete this review", 403);
-    }
-
-    await review.deleteOne();
-
-    successResponse(res, "Review deleted successfully", null);
 });
 
 // =========================
 // GET REVIEWS BY RATING
 // =========================
 export const getReviewsByRating = asyncHandler(async (req, res) => {
-    const { rating } = req.params;
-    const { page = 1, limit = 10 } = req.query;
+    try {
+        const { rating } = req.params;
+        const { page = 1, limit = 10 } = req.query;
 
-    if (!rating || rating < 1 || rating > 5) {
-        throw new AppError("Valid rating (1-5) is required", 400);
+        if (!rating || rating < 1 || rating > 5) {
+            throw new AppError("Valid rating (1-5) is required", 400);
+        }
+
+        const skip = (page - 1) * limit;
+
+        const reviews = await Review.find({ rating: parseInt(rating), status: "approved" })
+            .populate("client", "name email avatar")
+            .populate("project", "projectName projectType")
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit))
+            .lean();
+
+        if (!reviews) {
+            throw new AppError("Failed to retrieve reviews by rating", 500);
+        }
+
+        const totalReviews = await Review.countDocuments({ rating: parseInt(rating), status: "approved" });
+
+        if (!totalReviews) {
+            throw new AppError("Failed to retrieve total reviews by rating", 500);
+        }
+
+        successResponse(res, `${rating}-star reviews retrieved successfully`, {
+            reviews,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(totalReviews / limit),
+                totalReviews,
+                limit: parseInt(limit),
+            },
+        });
+    } catch (error) {
+        console.error("Error retrieving reviews by rating:", error.message);
+        throw new AppError("Failed to retrieve reviews by rating", 500);
     }
-
-    const skip = (page - 1) * limit;
-
-    const reviews = await Review.find({ rating: parseInt(rating), status: "approved" })
-        .populate("client", "name email avatar")
-        .populate("project", "projectName projectType")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean();
-
-    const totalReviews = await Review.countDocuments({ rating: parseInt(rating), status: "approved" });
-
-    successResponse(res, `${rating}-star reviews retrieved successfully`, {
-        reviews,
-        pagination: {
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(totalReviews / limit),
-            totalReviews,
-            limit: parseInt(limit),
-        },
-    });
 });
 
 // =========================
@@ -498,99 +516,113 @@ export const getReviewsByRating = asyncHandler(async (req, res) => {
 // =========================
 export const getReviewStatistics = asyncHandler(async (req, res) => {
     // Overall statistics
-    const overallStats = await Review.aggregate([
-        {
-            $group: {
-                _id: null,
-                totalReviews: { $sum: 1 },
-                averageRating: { $avg: "$rating" },
-                approved: {
-                    $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] }
-                },
-                pending: {
-                    $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] }
-                },
-                rejected: {
-                    $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] }
+    try {
+        const overallStats = await Review.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalReviews: { $sum: 1 },
+                    averageRating: { $avg: "$rating" },
+                    approved: {
+                        $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] }
+                    },
+                    pending: {
+                        $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] }
+                    },
+                    rejected: {
+                        $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] }
+                    },
                 },
             },
-        },
-    ]);
+        ]);
 
-    // Rating distribution
-    const ratingDistribution = await Review.aggregate([
-        { $match: { status: "approved" } },
-        {
-            $group: {
-                _id: "$rating",
-                count: { $sum: 1 },
-            },
-        },
-        { $sort: { _id: -1 } },
-    ]);
-
-    // Recent reviews
-    const recentReviews = await Review.find()
-        .populate("client", "name email")
-        .populate("project", "projectName")
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .select("rating reviewText status createdAt");
-
-    // Reviews by month (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    const reviewsByMonth = await Review.aggregate([
-        {
-            $match: {
-                createdAt: { $gte: sixMonthsAgo },
-                status: "approved"
-            },
-        },
-        {
-            $group: {
-                _id: {
-                    year: { $year: "$createdAt" },
-                    month: { $month: "$createdAt" },
+        // Rating distribution
+        const ratingDistribution = await Review.aggregate([
+            { $match: { status: "approved" } },
+            {
+                $group: {
+                    _id: "$rating",
+                    count: { $sum: 1 },
                 },
-                count: { $sum: 1 },
-                averageRating: { $avg: "$rating" },
             },
-        },
-        {
-            $sort: { "_id.year": 1, "_id.month": 1 },
-        },
-    ]);
+            { $sort: { _id: -1 } },
+        ]);
 
-    successResponse(res, "Review statistics retrieved successfully", {
-        overall: overallStats[0] || { totalReviews: 0, averageRating: 0, approved: 0, pending: 0, rejected: 0 },
-        ratingDistribution: ratingDistribution.reduce((acc, curr) => {
-            acc[curr._id] = curr.count;
-            return acc;
-        }, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }),
-        recentReviews,
-        reviewsByMonth,
-    });
+        // Recent reviews
+        const recentReviews = await Review.find()
+            .populate("client", "name email")
+            .populate("project", "projectName")
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .select("rating reviewText status createdAt");
+
+        // Reviews by month (last 6 months)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        const reviewsByMonth = await Review.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: sixMonthsAgo },
+                    status: "approved"
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: "$createdAt" },
+                        month: { $month: "$createdAt" },
+                    },
+                    count: { $sum: 1 },
+                    averageRating: { $avg: "$rating" },
+                },
+            },
+            {
+                $sort: { "_id.year": 1, "_id.month": 1 },
+            },
+        ]);
+
+        successResponse(res, "Review statistics retrieved successfully", {
+            overall: overallStats[0] || { totalReviews: 0, averageRating: 0, approved: 0, pending: 0, rejected: 0 },
+            ratingDistribution: ratingDistribution.reduce((acc, curr) => {
+                acc[curr._id] = curr.count;
+                return acc;
+            }, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }),
+            recentReviews,
+            reviewsByMonth,
+        });
+    } catch (error) {
+        console.error("Error retrieving review statistics:", error.message);
+        throw new AppError("Failed to retrieve review statistics", 500);
+    }
 });
 
 // =========================
 // BULK DELETE REVIEWS (Admin only)
 // =========================
 export const bulkDeleteReviews = asyncHandler(async (req, res) => {
-    const { ids } = req.body;
+    try {
+        const { ids } = req.body;
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        throw new AppError("Review IDs array is required", 400);
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            throw new AppError("Review IDs array is required", 400);
+        }
+
+        const result = await Review.deleteMany({ _id: { $in: ids } });
+
+        if (!result) {
+            throw new AppError("Failed to delete reviews", 500);
+        }
+
+        if (result.deletedCount === 0) {
+            throw new AppError("No reviews found to delete", 404);
+        }
+
+        successResponse(res, `${result.deletedCount} review(s) deleted successfully`, {
+            deletedCount: result.deletedCount,
+        });
+    } catch (error) {
+        console.error("Error deleting reviews:", error.message);
+        throw new AppError("Failed to delete reviews", 500);
     }
-
-    const result = await Review.deleteMany({ _id: { $in: ids } });
-
-    if (result.deletedCount === 0) {
-        throw new AppError("No reviews found to delete", 404);
-    }
-
-    successResponse(res, `${result.deletedCount} review(s) deleted successfully`, {
-        deletedCount: result.deletedCount,
-    });
 });
