@@ -21,11 +21,13 @@ export const createProject = asyncHandler(async (req, res) => {
         } = req.body;
         const files = req.file?.path;
 
+        console.log("User creating project:", req?.user);
 
-        if (!projectName || !projectDetails, !projectType || !budgetRange) {
+
+        if (!projectName || !projectDetails || !projectType || !budgetRange) {
             throw new AppError("All fields are required", 400);
         }
-        const user = await User.findById(req?.user?.id);
+        const user = await User.findById(req?.user?._id);
         if (!user) {
             throw new AppError("User not found", 404);
         }
@@ -67,7 +69,8 @@ export const createProject = asyncHandler(async (req, res) => {
             attachments,
             status: 'pending',
             progress: 0,
-            paidAmount: 0
+            paidAmount: 0,
+            requestedBy: user._id
         });
 
         if (!project) {
