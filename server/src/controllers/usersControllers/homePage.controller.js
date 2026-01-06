@@ -3,6 +3,23 @@ import asyncHandler from "../../middlewares/asyncHandler.js";
 import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 
+
+
+// =========================
+// GET HOME PAGE CONTENT
+export const getHomePage = asyncHandler(async (req, res) => {
+    try {
+        const homePageContent = await HomePage.getActiveContent();
+        if (!homePageContent) {
+            throw new AppError("Home page content not found", 404);
+        }
+        successResponse(res, "Home page content retrieved successfully", homePageContent);
+    } catch (error) {
+        console.error("Error retrieving home page content:", error.message);
+        throw new AppError("Failed to retrieve home page content", 500);
+    }
+});
+
 // Create or Update Home Page Content
 
 // =========================
