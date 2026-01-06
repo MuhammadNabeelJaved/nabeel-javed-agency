@@ -31,7 +31,6 @@ export const createProject = asyncHandler(async (req, res) => {
         } = req.body;
         const files = req?.files;
 
-        console.log("User creating project:", req?.user);
 
 
         if (!projectName || !projectDetails || !projectType || !budgetRange) {
@@ -61,7 +60,6 @@ export const createProject = asyncHandler(async (req, res) => {
             }
         }
 
-        console.log("Uploaded files:", uploadedFiles);
 
 
 
@@ -380,22 +378,12 @@ export const deleteProject = asyncHandler(async (req, res) => {
 
         // Delete all attachments from cloudinary
         if (project.attachments && project.attachments.length > 0) {
-            console.log(`Deleting ${project.attachments.length} attachments...`);
 
-            const deletionResults = await Promise.allSettled(
-                project.attachments.map(attachment => {
-                    if (attachment.publicId) {
-                        return deleteImage(attachment.publicId);
-                    }
-                })
-            );
+            project?.attachments.forEach(attachment => {
+                const deletedImages = deleteImage(attachment?.fileUrl, "projects");
 
-            // Log results
-            deletionResults.forEach((result, index) => {
-                if (result.status === 'fulfilled') {
-                    console.log(`✓ Deleted attachment ${index + 1}`);
-                } else {
-                    console.error(`✗ Failed to delete attachment ${index + 1}:`, result.reason);
+                if (!deletedImages) {
+                    console.error("Failed to delete attachment from Cloudinary:", attachment?.fileUrl);
                 }
             });
         }
