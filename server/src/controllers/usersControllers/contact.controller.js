@@ -1,6 +1,6 @@
-import Contact from "../models/contactModel.js";
-import { asyncHandler } from "../../middlewares/asyncHandler.js"
-import { AppError } from "../../utils/AppError.js";
+import Contact from "../../models/usersModels/Contact.model.js";
+import asyncHandler from "../../middlewares/asyncHandler.js"
+import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 
 // =========================
