@@ -8,7 +8,8 @@ import {
     getProjectById,
     updateProjectStatus,
     deleteProject,
-    getProjectStats
+    getProjectStats,
+    deleteAttachment
 } from '../../controllers/usersControllers/project.controller.js';
 
 
