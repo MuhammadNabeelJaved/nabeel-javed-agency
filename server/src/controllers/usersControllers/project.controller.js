@@ -9,6 +9,16 @@ import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
 // =========================
 // CREATE PROJECT
 // =========================
+
+// Helper function to determine file type
+function getFileType(mimetype) {
+    if (mimetype.startsWith('image/')) return 'image';
+    if (mimetype === 'application/pdf') return 'pdf';
+    if (mimetype.includes('word') || mimetype.includes('document')) return 'doc';
+    return 'other';
+}
+
+
 export const createProject = asyncHandler(async (req, res) => {
     try {
         const {
@@ -19,7 +29,7 @@ export const createProject = asyncHandler(async (req, res) => {
             // deadline,
             // totalCost
         } = req.body;
-        const files = req.file?.path;
+        const files = req?.files;
 
         console.log("User creating project:", req?.user);
 
@@ -32,32 +42,28 @@ export const createProject = asyncHandler(async (req, res) => {
             throw new AppError("User not found", 404);
         }
 
-        // Handle file uploads
-        let attachments = [];
+        // Handle multiple file uploads
+        let uploadedFiles = [];
+
+        // In createProject controller
         if (files && files.length > 0) {
             for (const file of files) {
-                try {
-                    const uploadResult = await uploadImage(file.path, "projects");
-                    if (uploadResult && uploadResult.secure_url) {
-                        // Determine file type
-                        const fileType = file.mimetype.startsWith('image/') ? 'image'
-                            : file.mimetype === 'application/pdf' ? 'pdf'
-                                : file.mimetype.includes('document') ? 'doc'
-                                    : 'other';
+                const uploaded = await uploadImage(file.path, "projects");
 
-                        attachments.push({
-                            fileName: file.originalname,
-                            fileUrl: uploadResult.secure_url,
-                            fileType: fileType
-                        });
-                    }
-                } catch (error) {
-                    console.error("File upload error:", error);
-                    // Continue with other files even if one fails
-                    throw new AppError("Failed to upload one of the files", error.message, 500);
+                if (uploaded) {
+                    uploadedFiles.push({
+                        fileName: file.originalname,
+                        fileUrl: uploaded.secure_url || uploaded.url,
+                        publicId: uploaded.public_id, // Store public_id
+                        fileType: getFileType(file.mimetype)
+                    });
                 }
             }
         }
+
+        console.log("Uploaded files:", uploadedFiles);
+
+
 
 
 
@@ -66,7 +72,7 @@ export const createProject = asyncHandler(async (req, res) => {
             projectType,
             budgetRange,
             projectDetails,
-            attachments,
+            attachments: uploadedFiles,
             status: 'pending',
             progress: 0,
             paidAmount: 0,
@@ -368,22 +374,36 @@ export const deleteProject = asyncHandler(async (req, res) => {
         }
 
         // Check authorization
-        if (req?.user?.role !== 'admin' && project.requestedBy.toString() !== req?.user?.id) {
+        if (req?.user?.role !== 'admin' && project.requestedBy.toString() !== req?.user?._id.toString()) {
             throw new AppError("You are not authorized to delete this project", 403);
         }
 
         // Delete all attachments from cloudinary
-        for (const attachment of project.attachments) {
-            try {
-                await deleteImage(attachment.fileUrl, "projects");
-            } catch (error) {
-                console.error("Error deleting attachment:", error);
-            }
+        if (project.attachments && project.attachments.length > 0) {
+            console.log(`Deleting ${project.attachments.length} attachments...`);
+
+            const deletionResults = await Promise.allSettled(
+                project.attachments.map(attachment => {
+                    if (attachment.publicId) {
+                        return deleteImage(attachment.publicId);
+                    }
+                })
+            );
+
+            // Log results
+            deletionResults.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    console.log(`✓ Deleted attachment ${index + 1}`);
+                } else {
+                    console.error(`✗ Failed to delete attachment ${index + 1}:`, result.reason);
+                }
+            });
         }
 
+        // Delete the project
         await project.deleteOne();
 
-        successResponse(res, "Project deleted successfully", null);
+        successResponse(res, "Project and all attachments deleted successfully", null);
     } catch (error) {
         console.error("Error in deleteProject:", error);
         throw new AppError(`Failed to delete project: ${error.message}`, 500);
