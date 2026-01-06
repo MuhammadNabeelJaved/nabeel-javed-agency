@@ -17,7 +17,7 @@ import {
 const router = express.Router();
 
 
-router.route('/create').post(userAuthenticated, authorizeRoles("admin", "user"), upload.array('files', 10), createProject);
+router.route('/create').post(userAuthenticated, authorizeRoles("admin", "user"), upload.array('files', 5), createProject);
 router.route('/').get(userAuthenticated, authorizeRoles('admin'), getAllProjects);
 router.route('/stats').get(userAuthenticated, authorizeRoles('admin'), getProjectStats);
 router.route('/:id').get(userAuthenticated, authorizeRoles("admin", "user"), getProjectById);
