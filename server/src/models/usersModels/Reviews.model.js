@@ -96,6 +96,6 @@ reviewSchema.statics.getProjectAverageRating = async function (projectId) {
 };
 
 
-const Review = mongoose.model('Review', reviewSchema);
+const Review = mongoose.models.Review || mongoose.model('Review', reviewSchema);
 
-module.exports = { Project, Review };
+export default Review;
