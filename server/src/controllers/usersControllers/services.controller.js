@@ -108,6 +108,31 @@ export const getServiceBySlug = asyncHandler(async (req, res) => {
     }
 });
 
+
+// =========================
+// GET SERVICE BY ID
+// =========================
+export const getServiceById = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            throw new AppError("Service ID is required", 400);
+        }
+
+        const service = await Service.findById(id);
+
+        if (!service) {
+            throw new AppError("Service not found", 404);
+        }
+
+        successResponse(res, "Service retrieved successfully", service);
+    } catch (error) {
+        console.error("Error in getServiceById:", error);
+        throw new AppError(`Failed to retrieve service: ${error.message}`, 500);
+    }
+});
+
 // =========================
 // DELETE SERVICE
 // =========================
