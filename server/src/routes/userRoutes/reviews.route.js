@@ -10,7 +10,7 @@ router.route("/").get(userAuthenticated, authorizeRoles("admin"), getAllReviewsA
 router.route("/all").get(userAuthenticated, authorizeRoles("admin"), getAllReviews);
 router.route("/statistics").get(userAuthenticated, authorizeRoles("admin"), getReviewStatistics);
 router.route("/rating/:rating").get(userAuthenticated, authorizeRoles("user", "admin"), getReviewsByRating);
-router.route("/my-reviews").get(userAuthenticated, authorizeRoles("user"), getMyReviews);
+router.route("/my-reviews").get(userAuthenticated, authorizeRoles("user", "admin"), getMyReviews);
 router.route("/project/:projectId").get(userAuthenticated, authorizeRoles("user", "admin"), getReviewsByProject);
 router.route("/bulk-delete").delete(userAuthenticated, authorizeRoles("admin"), bulkDeleteReviews);
 router.route("/:id").get(userAuthenticated, authorizeRoles("user", "admin"), getReviewById);

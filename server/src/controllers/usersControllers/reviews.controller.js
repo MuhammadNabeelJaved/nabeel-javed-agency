@@ -14,6 +14,8 @@ export const createReview = asyncHandler(async (req, res) => {
         const { rating, reviewText, project } = req.body;
         const userId = req?.user?._id;
 
+        console.log("Create Review Request Body:", req.body);
+
         // Validate required fields
         if (!rating || !reviewText || !project) {
             throw new AppError("Rating, review text, and project are required", 400);
@@ -31,7 +33,7 @@ export const createReview = asyncHandler(async (req, res) => {
         }
 
         // Check if project is completed
-        if (projectExists.status !== "completed") {
+        if (projectExists.status !== "approved") {
             throw new AppError("You can only review completed projects", 400);
         }
 
@@ -55,14 +57,14 @@ export const createReview = asyncHandler(async (req, res) => {
         });
 
         await review.populate([
-            { path: "client", select: "name email avatar" },
+            { path: "client", select: "name email photo" },
             { path: "project", select: "projectName projectType" },
         ]);
 
         successResponse(res, "Review submitted successfully. Waiting for admin approval.", review, 201);
     } catch (error) {
         console.error("Error creating review:", error.message);
-        throw new AppError("Failed to create review", 500);
+        throw new AppError("Failed to create review: " + error.message, 500);
     }
 });
 
@@ -602,7 +604,7 @@ export const getReviewStatistics = asyncHandler(async (req, res) => {
 // =========================
 export const bulkDeleteReviews = asyncHandler(async (req, res) => {
     try {
-        const { ids } = req.body;
+        const { ids } = req.body || {};
 
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             throw new AppError("Review IDs array is required", 400);
