@@ -2,6 +2,7 @@ import Contact from "../../models/usersModels/Contact.model.js";
 import asyncHandler from "../../middlewares/asyncHandler.js"
 import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
+import validator from "validator";
 
 // =========================
 // CREATE CONTACT
@@ -14,6 +15,13 @@ export const createContact = asyncHandler(async (req, res) => {
         if (!firstName || !lastName || !email || !subject || !message) {
             throw new AppError("All fields are required", 400);
         }
+
+        // Validate email format
+        if (!validator.isEmail(email)) {
+            throw new AppError("Please provide a valid email", 400);
+        }
+
+        console.log("Creating contact with data:", { firstName, lastName, email, subject, message });
 
         // Create contact
         const contact = await Contact.create({
@@ -143,7 +151,7 @@ export const updateContact = asyncHandler(async (req, res) => {
         }
 
         // Validate required fields
-        if (!firstName || !lastName || !email || !subject || !message) {
+        if (!firstName && !lastName && !email && !subject && !message) {
             throw new AppError("All fields are required", 400);
         }
 
@@ -286,7 +294,7 @@ export const getContactStats = asyncHandler(async (req, res) => {
 // =========================
 export const searchContactByEmail = asyncHandler(async (req, res) => {
     try {
-        const { email } = req.query;
+        const { email } = req.query || req.body;
 
         if (!email) {
             throw new AppError("Email is required", 400);
