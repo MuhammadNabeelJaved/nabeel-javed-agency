@@ -11,14 +11,19 @@ import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
 // Generate JWT tokens 
 
 const jwtTokens = async (user) => {
-    if (!user) {
-        throw new AppError("User not found", 404);
-    }
+    try {
+        if (!user) {
+            throw new AppError("User not found", 404);
+        }
 
-    const accessToken = await user.genrateAccessToken();
-    const refreshToken = await user.genrateRefreshToken();
-    await user.save({ validateBeforeSave: false });
-    return { accessToken, refreshToken };
+        const accessToken = await user.genrateAccessToken();
+        const refreshToken = await user.genrateRefreshToken();
+        await user.save({ validateBeforeSave: false });
+        return { accessToken, refreshToken };
+    } catch (error) {
+        console.error("Error in jwtTokens:", error);
+        throw new AppError(`Token generation failed: ${error.message}`, 500);
+    }
 }
 
 // @desc    Register a new user
@@ -107,22 +112,27 @@ export const registerUser = asyncHandler(async (req, res) => {
 });
 
 export const verifyUserEmail = asyncHandler(async (req, res) => {
-    const { code, email } = req.body;
-    if (!code) {
-        throw new AppError("Verification code are required", 400);
-    }
-    const user = await User.findOne({ email });
-    if (!user) {
-        throw new AppError("User not found", 404);
-    }
-    if (user.isVerified) {
-        throw new AppError("User is already verified", 400);
-    }
+    try {
+        const { code, email } = req.body;
+        if (!code) {
+            throw new AppError("Verification code are required", 400);
+        }
+        const user = await User.findOne({ email });
+        if (!user) {
+            throw new AppError("User not found", 404);
+        }
+        if (user.isVerified) {
+            throw new AppError("User is already verified", 400);
+        }
 
-    user.isVerified = true;
-    user.emailVerificationToken = undefined;
-    await user.save({ validateBeforeSave: false });
-    successResponse(res, "User email verified successfully", null, 200);
+        user.isVerified = true;
+        user.emailVerificationToken = undefined;
+        await user.save({ validateBeforeSave: false });
+        successResponse(res, "User email verified successfully", null, 200);
+    } catch (error) {
+        console.error("Error in verifyUserEmail:", error);
+        throw new AppError(`Failed to verify user email: ${error.message}`, 500);
+    }
 });
 
 // Resend verification email logic can be added here
@@ -276,59 +286,64 @@ export const deleteUser = asyncHandler(async (req, res) => {
 // Update user profile logic can be added here
 
 export const updateUserProfile = asyncHandler(async (req, res) => {
-    const userId = req.params.id;
-    const updates = req.body || {};
-    const avatar = req.file?.path;
+    try {
+        const userId = req.params.id;
+        const updates = req.body || {};
+        const avatar = req.file?.path;
 
-    if (!userId) {
-        throw new AppError("User ID is required", 400);
-    }
+        if (!userId) {
+            throw new AppError("User ID is required", 400);
+        }
 
-    // ❗ No body fields AND no avatar
-    if (Object.keys(updates).length === 0 && !avatar) {
-        throw new AppError("No data provided for update", 400);
-    }
+        // ❗ No body fields AND no avatar
+        if (Object.keys(updates).length === 0 && !avatar) {
+            throw new AppError("No data provided for update", 400);
+        }
 
-    // ❌ Sensitive fields block
-    if (updates.password || updates.email) {
-        throw new AppError(
-            "Cannot update password or email through this route",
-            400
-        );
-    }
+        // ❌ Sensitive fields block
+        if (updates.password || updates.email) {
+            throw new AppError(
+                "Cannot update password or email through this route",
+                400
+            );
+        }
 
-    // ✅ Avatar update logic
-    if (avatar) {
-        const user = await User.findById(userId);
+        // ✅ Avatar update logic
+        if (avatar) {
+            const user = await User.findById(userId);
 
-        if (!user) {
+            if (!user) {
+                throw new AppError("User not found", 404);
+            }
+
+            // delete old avatar
+            if (user.photo) {
+                await deleteImage(user.photo);
+            }
+
+            const avatarUpload = await uploadImage(avatar, "avatars"); // Creates "user-avatars" folder
+            updates.photo = avatarUpload.secure_url;
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+            new: true,
+            runValidators: true,
+        });
+
+        if (!updatedUser) {
             throw new AppError("User not found", 404);
         }
 
-        // delete old avatar
-        if (user.photo) {
-            await deleteImage(user.photo);
-        }
-
-        const avatarUpload = await uploadImage(avatar, "avatars"); // Creates "user-avatars" folder
-        updates.photo = avatarUpload.secure_url;
+        successResponse(
+            res,
+            "User profile updated successfully",
+            updatedUser,
+            200
+        );
+    } catch (error) {
+        console.error("Error in updateUserProfile:", error);
+        throw new AppError(`Failed to update user profile: ${error.message}`, 500);
     }
-
-    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
-        new: true,
-        runValidators: true,
-    });
-
-    if (!updatedUser) {
-        throw new AppError("User not found", 404);
-    }
-
-    successResponse(
-        res,
-        "User profile updated successfully",
-        updatedUser,
-        200
-    );
 });
 
 
