@@ -108,13 +108,6 @@ const ServiceSchema = new mongoose.Schema(
             contactEmail: String,
         },
 
-        // SEO
-        seo: {
-            metaTitle: String,
-            metaDescription: String,
-            keywords: [String],
-            ogImage: String,
-        },
 
         // Status and Visibility
         isActive: {
