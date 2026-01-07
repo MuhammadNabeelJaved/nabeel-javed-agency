@@ -111,3 +111,37 @@ export const updateHomePage = asyncHandler(async (req, res) => {
         throw new AppError(`Failed to update home page content: ${error.message}`, 500);
     }
 });
+
+
+export const deleteHomePage = asyncHandler(async (req, res) => {
+    try {
+        const homePage = await HomePage.findOne({});
+        if (!homePage) {
+            throw new AppError("Home page content not found", 404);
+        }
+        await homePage.remove();
+        successResponse(res, "Home page content deleted successfully", null, 200);
+    } catch (error) {
+        console.error("Error deleting home page content:", error.message);
+        throw new AppError(`Failed to delete home page content: ${error.message}`, 500);
+    }
+});
+
+export const deleteSpecificField = asyncHandler(async (req, res) => {
+    try {
+        const { fieldName } = req.params;
+        const homePage = await HomePage.findOne({});
+        if (!homePage) {
+            throw new AppError("Home page content not found", 404);
+        }
+        if (!['statusBadge', 'titleLine1', 'titleLine2', 'subtitle'].includes(fieldName)) {
+            throw new AppError("Invalid field name", 400);
+        }
+        homePage[fieldName] = undefined;
+        await homePage.save();
+        successResponse(res, `Field ${fieldName} deleted successfully`, homePage, 200);
+    } catch (error) {
+        console.error("Error deleting specific field from home page content:", error.message);
+        throw new AppError(`Failed to delete specific field: ${error.message}`, 500);
+    }
+});
