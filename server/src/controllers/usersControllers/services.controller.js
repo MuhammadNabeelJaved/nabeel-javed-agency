@@ -23,6 +23,7 @@ export const createService = asyncHandler(async (req, res) => {
             technologies,
             metrics,
             ctaSection,
+            category
         } = req.body;
 
         if (!title || !slug || !description) {
@@ -33,7 +34,7 @@ export const createService = asyncHandler(async (req, res) => {
             throw new AppError("Slug must be URL friendly", 400);
         }
 
-        if (!subtitle && !heroSection && !relatedProjects && !pricingPlans && !faqs && !features && !technologies && !metrics && !ctaSection) {
+        if (!subtitle && !heroSection && !relatedProjects && !pricingPlans && !faqs && !features && !technologies && !metrics && !ctaSection && !category) {
             throw new AppError("At least one optional field must be provided", 400);
         }
 
@@ -50,6 +51,7 @@ export const createService = asyncHandler(async (req, res) => {
             technologies,
             metrics,
             ctaSection,
+            category
         });
 
         if (!service) {
