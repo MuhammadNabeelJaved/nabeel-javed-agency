@@ -2,10 +2,9 @@ import mongoose from 'mongoose';
 // Team Member Schema
 const teamMemberSchema = new mongoose.Schema({
     name: {
-        type: String,
-        required: [true, 'Name is required'],
-        trim: true,
-        maxlength: [100, 'Name cannot exceed 100 characters']
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     },
 
     position: {
@@ -22,14 +21,9 @@ const teamMemberSchema = new mongoose.Schema({
     },
 
     profileImage: {
-        url: {
-            type: String,
-            required: [true, 'Profile image URL is required']
-        },
-        alt: {
-            type: String,
-            default: 'Team member photo'
-        }
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     },
 
     bio: {
@@ -45,6 +39,8 @@ const teamMemberSchema = new mongoose.Schema({
         unique: true,
         lowercase: true,
         trim: true,
+        validate: [validator.isEmail, 'Please provide a valid email'],
+        index: true,
         match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address']
     },
 
@@ -105,6 +101,11 @@ const teamMemberSchema = new mongoose.Schema({
         type: String,
         enum: ['Active', 'On Leave', 'Inactive'],
         default: 'Active'
+    },
+    role: {
+        type: String,
+        enum: ['Member', 'Team Lead', 'Manager', 'Director', 'VP', 'C-Level'],
+        default: 'Member'
     }
 
 }, {
