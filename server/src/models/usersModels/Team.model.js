@@ -1,5 +1,4 @@
-const mongoose = require('mongoose');
-
+import mongoose from 'mongoose';
 // Team Member Schema
 const teamMemberSchema = new mongoose.Schema({
     name: {
