@@ -13,7 +13,7 @@ const salaryRangeSchema = new mongoose.Schema({
     currency: {
         type: String,
         default: 'USD',
-        enum: ['USD', 'EUR', 'GBP', 'PKR', 'INR']
+        enum: ['USD', 'EUR', 'GBP', 'PKR']
     }
 }, { _id: false });
 
