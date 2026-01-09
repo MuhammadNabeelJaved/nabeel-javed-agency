@@ -60,6 +60,10 @@ const teamMemberSchema = new mongoose.Schema({
         portfolio: {
             type: String,
             default: ''
+        },
+        other: {
+            type: [String],
+            default: []
         }
     },
 
