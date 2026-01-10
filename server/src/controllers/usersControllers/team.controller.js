@@ -24,10 +24,12 @@ export const getActiveTeamMembers = asyncHandler(async (req, res, next) => {
 export const getTeamMembersByDepartment = asyncHandler(async (req, res, next) => {
     try {
         const { department } = req.params;
+
         if (!department || !validator.isAlpha(department.replace(/\s+/g, ''))) {
             throw new AppError("Invalid department parameter", 400);
         }
-        const teamMembers = await Team.getByDepartment(department);
+
+        const teamMembers = await Team.findOne({ department: department, isActive: true });
 
         if (!teamMembers || teamMembers.length === 0) {
             throw new AppError(`No team members found in department: ${department}`, 404);
