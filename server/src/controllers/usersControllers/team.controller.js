@@ -88,3 +88,26 @@ export const getTeamMembersByRole = asyncHandler(async (req, res, next) => {
         throw new AppError(`Failed to retrieve team members with role: ${error.message}`, 500);
     }
 });
+
+// Get team member by email
+
+export const getTeamMemberByEmail = asyncHandler(async (req, res, next) => {
+    try {
+        const { email } = req.params || req.query || req.body || {};
+
+        if (!email) {
+            throw new AppError("Team member email is required", 400);
+        }
+
+        const teamMember = await Team.findOne({ email: email });
+
+        if (!teamMember) {
+            throw new AppError(`No team member found with email: ${email}`, 404);
+        }
+
+        return successResponse(res, 200, `Team member with email: ${email} retrieved successfully`, teamMember);
+    } catch (error) {
+        console.error("Error in getTeamMemberByEmail:", error);
+        throw new AppError(`Failed to retrieve team member: ${error.message}`, 500);
+    }
+});
