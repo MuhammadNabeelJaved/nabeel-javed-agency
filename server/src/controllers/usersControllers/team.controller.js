@@ -4,6 +4,45 @@ import { successResponse } from "../../utils/apiResponse.js";
 import validator from "validator";
 import Team from "../../models/usersModels/Team.model.js"
 
+
+
+
+// Create a new team member
+
+export const createTeamMember = asyncHandler(async (req, res, next) => {
+    try {
+        const { name, position, department, email, phone, skills, experience, bio, socialLinks, profileImage, displayOrder, isActive, role } = req.body;
+
+        // Basic validation
+        if (!name || !position || !department || !email) {
+            throw new AppError("Name, position, department, and email are required fields", 400);
+        }
+
+        const teamMember = await Team.create({
+            name,
+            position,
+            department,
+            email,
+            phone,
+            bio,
+            socialLinks,
+            profileImage,
+            displayOrder,
+            isActive,
+            role,
+            experience,
+            skills
+        });
+
+        return successResponse(res, 201, "Team member created successfully", teamMember);
+    } catch (error) {
+        console.error("Error in createTeamMember:", error);
+        throw new AppError(`Failed to create team member: ${error.message}`, 500);
+    }
+})
+
+
+
 // Get all active team members
 export const getActiveTeamMembers = asyncHandler(async (req, res, next) => {
     try {
