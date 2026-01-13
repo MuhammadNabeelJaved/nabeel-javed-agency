@@ -114,6 +114,83 @@ const userSchema = new mongoose.Schema(
             default: null,
             index: true,
         },
+
+        // =====================
+        // TEAM MEMBER SPECIFIC FIELDS (conditionally required)
+        // =====================
+        teamProfile: {
+            position: {
+                type: String,
+                trim: true,
+                maxlength: [150, 'Position cannot exceed 150 characters'],
+                required: function () {
+                    return this.role === 'team' || this.role === 'admin';
+                }
+            },
+
+            department: {
+                type: String,
+                enum: ['CEO', 'Design', 'Development', 'Marketing', 'Sales', 'Management', 'Other'],
+            },
+
+            bio: {
+                type: String,
+                trim: true,
+                maxlength: [500, 'Bio cannot exceed 500 characters']
+            },
+
+            phone: {
+                type: String,
+                trim: true
+            },
+
+            socialLinks: {
+                linkedin: String,
+                twitter: String,
+                github: String,
+                portfolio: String,
+                other: [String]
+            },
+
+            skills: [{
+                type: String,
+                trim: true
+            }],
+
+            experience: {
+                type: String,
+                trim: true
+            },
+
+            joinedDate: {
+                type: Date,
+                default: Date.now
+            },
+
+            displayOrder: {
+                type: Number,
+                default: 0
+            },
+
+            featured: {
+                type: Boolean,
+                default: false
+            },
+
+            status: {
+                type: String,
+                enum: ['Active', 'On Leave', 'Inactive', 'Recently Joined'],
+                default: 'Active'
+            },
+
+            memberRole: {
+                type: String,
+                enum: ['Member', 'Team Lead', 'Manager', 'Director', 'VP', 'C-Level', 'Intern', 'Other'],
+                default: 'Member'
+            }
+        }
+
+
     },
     {
         timestamps: true,
@@ -133,6 +210,23 @@ userSchema.pre("save", async function () {
         // next(err);
     }
 });
+
+// Static method to get team members only
+userSchema.statics.getTeamMembers = function () {
+    return this.find({
+        role: { $in: ['team', 'admin'] },
+        isActive: true
+    }).sort({ 'teamProfile.displayOrder': 1 });
+};
+
+// Static method to get by department
+userSchema.statics.getByDepartment = function (department) {
+    return this.find({
+        role: { $in: ['team', 'admin'] },
+        'teamProfile.department': department,
+        isActive: true
+    });
+};
 
 
 userSchema.methods.genrateVerificationCode = async function () {
