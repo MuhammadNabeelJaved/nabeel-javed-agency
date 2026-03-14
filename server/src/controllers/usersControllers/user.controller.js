@@ -369,7 +369,7 @@ export const updateUserPassword = asyncHandler(async (req, res) => {
             throw new AppError("Invalid old password", 401);
         }
         user.password = newPassword;
-        await user.save();
+        await user.save({ validateBeforeSave: false });
         successResponse(res, "Password updated successfully", null, 200);
     } catch (error) {
         console.error("Error in updateUserPassword:", error);

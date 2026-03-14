@@ -488,15 +488,7 @@ export const getReviewsByRating = asyncHandler(async (req, res) => {
             .limit(parseInt(limit))
             .lean();
 
-        if (!reviews) {
-            throw new AppError("Failed to retrieve reviews by rating", 500);
-        }
-
         const totalReviews = await Review.countDocuments({ rating: parseInt(rating), status: "approved" });
-
-        if (!totalReviews) {
-            throw new AppError("Failed to retrieve total reviews by rating", 500);
-        }
 
         successResponse(res, `${rating}-star reviews retrieved successfully`, {
             reviews,
