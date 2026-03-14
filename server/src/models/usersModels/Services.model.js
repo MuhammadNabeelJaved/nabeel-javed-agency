@@ -145,7 +145,6 @@ const ServiceSchema = new mongoose.Schema(
 );
 
 // Indexes
-ServiceSchema.index({ slug: 1 });
 ServiceSchema.index({ category: 1, isActive: 1 });
 ServiceSchema.index({ isFeatured: 1, order: 1 });
 
