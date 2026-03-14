@@ -1,23 +1,37 @@
 import { Router } from 'express';
 import {
-    registerUser, loginUser, getUserProfile, deleteUser, getAllUserProfile,
-    updateUserProfile, updateUserPassword, forgotPassword, resetPassword, verifyUserEmail
+    registerUser,
+    loginUser,
+    logoutUser,
+    getUserProfile,
+    deleteUser,
+    getAllUserProfile,
+    updateUserProfile,
+    updateUserPassword,
+    forgotPassword,
+    resetPassword,
+    verifyUserEmail,
+    resendVerificationEmail,
 } from '../../controllers/usersControllers/user.controller.js';
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
 import upload from '../../middlewares/multer.js';
 
 const router = Router();
 
-router.route('/register').post(upload.single('avatar'), registerUser);
-router.route('/verify').post(verifyUserEmail);
-router.route('/login').post(loginUser);
-router.route('/profile/:id').get(userAuthenticated, authorizeRoles('admin', 'user', "team"), getUserProfile);
-router.route('/:id').delete(userAuthenticated, authorizeRoles('admin', 'user', "team"), deleteUser);
-router.route('/').get(userAuthenticated, authorizeRoles('admin'), getAllUserProfile);
-router.route('/update/:id').put(userAuthenticated, authorizeRoles('admin', 'user', "team"), upload.single('avatar'), updateUserProfile);
-router.route('/update-password/:id').put(userAuthenticated, authorizeRoles('admin', 'user', "team"), updateUserPassword);
-router.route('/forgot-password').post(userAuthenticated, authorizeRoles('admin', 'user', "team"), forgotPassword);
-router.route('/reset-password/:token').post(userAuthenticated, authorizeRoles('admin', 'user', "team"), resetPassword);
+// Public routes (no auth required)
+router.post('/register', upload.single('avatar'), registerUser);
+router.post('/login', loginUser);
+router.post('/verify', verifyUserEmail);
+router.post('/resend-verification', resendVerificationEmail);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
+// Protected routes
+router.post('/logout', userAuthenticated, logoutUser);
+router.get('/', userAuthenticated, authorizeRoles('admin'), getAllUserProfile);
+router.get('/profile/:id', userAuthenticated, authorizeRoles('admin', 'user', 'team'), getUserProfile);
+router.put('/update/:id', userAuthenticated, authorizeRoles('admin', 'user', 'team'), upload.single('avatar'), updateUserProfile);
+router.put('/update-password/:id', userAuthenticated, authorizeRoles('admin', 'user', 'team'), updateUserPassword);
+router.delete('/:id', userAuthenticated, authorizeRoles('admin', 'user', 'team'), deleteUser);
 
 export default router;

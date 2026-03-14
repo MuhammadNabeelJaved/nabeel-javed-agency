@@ -50,7 +50,7 @@ const reviewSchema = new mongoose.Schema({
 reviewSchema.index({ rating: -1 });
 reviewSchema.index({ createdAt: -1 });
 reviewSchema.index({ project: 1 });
-reviewSchema.index({ isFeatured: 1, displayOrder: 1 });
+reviewSchema.index({ status: 1 });
 
 // Virtual for star display
 reviewSchema.virtual('stars').get(function () {
@@ -79,7 +79,7 @@ reviewSchema.statics.getProjectAverageRating = async function (projectId) {
     const result = await this.aggregate([
         {
             $match: {
-                project: mongoose.Types.ObjectId(projectId),
+                project: new mongoose.Types.ObjectId(projectId),
                 status: 'approved'
             }
         },
