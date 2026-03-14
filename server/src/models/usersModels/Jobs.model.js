@@ -275,11 +275,7 @@ jobPostingSchema.pre('save', function () {
     }
 });
 
-// Pre-update Middleware
-jobPostingSchema.pre('findOneAndUpdate', function (next) {
-    this.set({ updatedAt: new Date() });
-    next();
-});
+// Pre-update Middleware (timestamps: true handles updatedAt automatically)
 
 const JobPosting = mongoose.models.JobPosting || mongoose.model('JobPosting', jobPostingSchema);
 
