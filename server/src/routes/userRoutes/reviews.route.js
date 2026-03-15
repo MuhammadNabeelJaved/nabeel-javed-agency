@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.route("/").post(userAuthenticated, createReview);
 router.route("/").get(userAuthenticated, authorizeRoles("admin"), getAllReviewsAdmin);
-router.route("/all").get(userAuthenticated, authorizeRoles("admin"), getAllReviews);
+router.route("/all").get(getAllReviews);
 router.route("/statistics").get(userAuthenticated, authorizeRoles("admin"), getReviewStatistics);
 router.route("/rating/:rating").get(userAuthenticated, authorizeRoles("user", "admin"), getReviewsByRating);
 router.route("/my-reviews").get(userAuthenticated, authorizeRoles("user", "admin"), getMyReviews);

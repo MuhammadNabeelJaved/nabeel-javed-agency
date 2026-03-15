@@ -23,7 +23,7 @@ const jwtTokens = async (user) => {
         return { accessToken, refreshToken };
     } catch (error) {
         console.error("Error in jwtTokens:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Token generation failed: ${error.message}`, 500);
     }
 }
@@ -31,7 +31,7 @@ const jwtTokens = async (user) => {
 // @desc    Register a new user
 export const registerUser = asyncHandler(async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password } = req.body || {};
         const avatar = req.file?.path;
 
         if (!name || !email || !password) {
@@ -101,7 +101,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         successResponse(res, "User registered successfully", user, 201);
     } catch (error) {
         console.error("Error in registerUser:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Registration failed: ${error.message}`, 500);
 
     }
@@ -145,7 +145,7 @@ export const verifyUserEmail = asyncHandler(async (req, res) => {
 
         successResponse(res, "Email verified successfully", null, 200);
     } catch (error) {
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to verify email: ${error.message}`, 500);
     }
 });
@@ -178,7 +178,7 @@ export const resendVerificationEmail = asyncHandler(async (req, res) => {
         successResponse(res, "Verification code resent successfully", null, 200);
     } catch (error) {
         console.error("Error in resendVerificationEmail:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to resend verification email: ${error.message}`, 500);
     }
 });
@@ -233,7 +233,7 @@ export const logoutUser = asyncHandler(async (req, res) => {
         successResponse(res, "User logged out successfully", null, 200);
     } catch (error) {
         console.error("Error in logoutUser:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to logout user: ${error.message}`, 500);
     }
 })
@@ -256,7 +256,7 @@ export const getAllUserProfile = asyncHandler(async (req, res) => {
         successResponse(res, "User profile retrieved successfully", allUser, 200);
     } catch (error) {
         console.error("Error in getAllUserProfile:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve user profile: ${error.message}`, 500);
     }
 });
@@ -274,7 +274,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
         successResponse(res, "User profile retrieved successfully", user, 200);
     } catch (error) {
         console.error("Error in getUserProfile:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve user profile: ${error.message}`, 500);
     }
 });
@@ -294,7 +294,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
         successResponse(res, "User deleted successfully", null, 200);
     } catch (error) {
         console.error("Error in deleteUser:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to delete user: ${error.message}`, 500);
     }
 });
@@ -359,7 +359,7 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
         );
     } catch (error) {
         console.error("Error in updateUserProfile:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to update user profile: ${error.message}`, 500);
     }
 });
@@ -390,7 +390,7 @@ export const updateUserPassword = asyncHandler(async (req, res) => {
         successResponse(res, "Password updated successfully", null, 200);
     } catch (error) {
         console.error("Error in updateUserPassword:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to update password: ${error.message}`, 500);
     }
 });
@@ -412,7 +412,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         successResponse(res, "Password reset email sent successfully", resetUrl, 200);
     } catch (error) {
         console.error("Error in forgotPassword:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to send password reset email: ${error.message}`, 500);
     }
 });
@@ -449,7 +449,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
         successResponse(res, "Password reset successfully", null, 200);
     } catch (error) {
         console.error("Error in resetPassword:", error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to reset password: ${error.message}`, 500);
     }
 });
