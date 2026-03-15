@@ -223,6 +223,24 @@ export const deleteProject = asyncHandler(async (req, res, next) => {
 
 
 // =========================
+// GET PUBLIC PORTFOLIO (no auth)
+// =========================
+export const getPublicPortfolio = asyncHandler(async (req, res) => {
+    const { category, search } = req.query;
+
+    const filter = {};
+    if (category) filter.category = category;
+    if (search) filter.$or = [
+        { projectTitle: { $regex: search, $options: "i" } },
+        { projectDescription: { $regex: search, $options: "i" } },
+    ];
+
+    const projects = await adminProject.getPublicPortfolio(filter);
+    successResponse(res, "Portfolio fetched successfully", { projects, total: projects.length });
+});
+
+
+// =========================
 // UPDATE PROJECT STATUS
 // =========================
 export const updateProjectStatus = asyncHandler(async (req, res, next) => {

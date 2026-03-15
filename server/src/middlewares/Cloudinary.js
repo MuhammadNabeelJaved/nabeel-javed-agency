@@ -34,23 +34,22 @@ const uploadImage = async (image, folderName = "avatars") => {
 }
 
 const deleteImage = async (imageUrl, folderName = "avatars") => {
-    console.log("Image URL", imageUrl)
     try {
         if (!imageUrl) {
-            throw new AppError(400, "Image URL is required")
+            throw new AppError("Image URL is required", 400)
         }
         const publicId = folderName + "/" + imageUrl.split("/").pop().split(".")[0]
-        console.log("publicId", publicId)
         const result = await cloudinary.uploader.destroy(publicId)
         if (!result) {
-            throw new AppError(500, "Failed to delete image from Cloudinary")
+            throw new AppError("Failed to delete image from Cloudinary", 500)
         }
         if (result.result === "ok") {
             return true
         }
         return false
     } catch (error) {
-        throw new AppError(500, "Failed to delete image from Cloudinary")
+        if (error.isOperational) throw error;
+        throw new AppError("Failed to delete image from Cloudinary", 500)
     }
 }
 

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import asyncHandler from "../../middlewares/asyncHandler.js";
 import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
@@ -32,11 +33,6 @@ export const registerUser = asyncHandler(async (req, res) => {
     try {
         const { name, email, password } = req.body;
         const avatar = req.file?.path;
-
-        console.log("Received file:", avatar);
-
-
-        console.log(name, email, password);
 
         if (!name || !email || !password) {
             throw new AppError("Name, email and password are required", 400);
@@ -71,7 +67,6 @@ export const registerUser = asyncHandler(async (req, res) => {
         // Email verification logic can be added here
 
         const code = await createdUser.generateVerificationCode();
-        console.log("Verification code:", code);
 
         // Send verification email
 
@@ -292,7 +287,10 @@ export const deleteUser = asyncHandler(async (req, res) => {
         if (!userId) {
             throw new AppError("User ID is required", 400);
         }
-        await User.findByIdAndDelete(userId);
+        const deletedUser = await User.findByIdAndDelete(userId);
+        if (!deletedUser) {
+            throw new AppError("User not found", 404);
+        }
         successResponse(res, "User deleted successfully", null, 200);
     } catch (error) {
         console.error("Error in deleteUser:", error);
@@ -335,8 +333,8 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
                 throw new AppError("User not found", 404);
             }
 
-            // delete old avatar
-            if (user.photo) {
+            // delete old avatar only if it's not the default placeholder
+            if (user.photo && user.photo !== "default.jpg") {
                 await deleteImage(user.photo);
             }
 
@@ -378,9 +376,7 @@ export const updateUserPassword = asyncHandler(async (req, res) => {
         if (!oldPassword || !newPassword) {
             throw new AppError("Old password and new password are required", 400);
         }
-        console.log("oldPassword:", oldPassword, "newPassword:", newPassword);
         const user = await User.findById(userId).select("+password");
-        console.log("DB password:", user?.password);
 
         if (!user) {
             throw new AppError("User not found", 404);
@@ -410,9 +406,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
             throw new AppError("User not found", 404);
         }
         const resetToken = await user.forgetPasswordToken();
-        await user.save({ validateBeforeSave: false });
         const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/reset-password/${resetToken}`;
-        console.log("Password reset URL:", resetUrl);
 
         // Send password reset email
         successResponse(res, "Password reset email sent successfully", resetUrl, 200);
@@ -448,7 +442,6 @@ export const resetPassword = asyncHandler(async (req, res) => {
         if (!user) {
             throw new AppError("Invalid or expired reset token", 400);
         }
-        console.log("User:", user);
         user.password = newPassword
         user.passwordResetToken = undefined;
         user.passwordResetExpires = undefined;
@@ -459,4 +452,54 @@ export const resetPassword = asyncHandler(async (req, res) => {
         if (error.isOperational) throw error;
         throw new AppError(`Failed to reset password: ${error.message}`, 500);
     }
+});
+
+
+// =========================
+// REFRESH ACCESS TOKEN
+// =========================
+export const refreshAccessToken = asyncHandler(async (req, res) => {
+    const token = req.cookies?.refreshToken || req.body?.refreshToken;
+
+    if (!token) throw new AppError("Refresh token not provided", 401);
+
+    let decoded;
+    try {
+        decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    } catch {
+        throw new AppError("Invalid or expired refresh token", 401);
+    }
+
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) throw new AppError("User not found", 401);
+    if (!user.isVerified) throw new AppError("Account not verified", 403);
+
+    const accessToken = user.generateAccessToken();
+    await user.save({ validateBeforeSave: false });
+
+    res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 15 * 60 * 1000,
+    });
+
+    successResponse(res, "Access token refreshed", { accessToken });
+});
+
+
+// =========================
+// GET PUBLIC TEAM MEMBERS
+// =========================
+export const getPublicTeamMembers = asyncHandler(async (req, res) => {
+    const members = await User.find({
+        role: { $in: ["team", "admin"] },
+        isActive: true,
+        deletedAt: null,
+        "teamProfile.status": "Active",
+    })
+        .select("name photo teamProfile.position teamProfile.department teamProfile.bio teamProfile.socialLinks teamProfile.skills teamProfile.featured teamProfile.displayOrder")
+        .sort({ "teamProfile.displayOrder": 1, createdAt: 1 });
+
+    successResponse(res, "Team members fetched", { members, total: members.length });
 });

@@ -12,6 +12,8 @@ import {
     resetPassword,
     verifyUserEmail,
     resendVerificationEmail,
+    refreshAccessToken,
+    getPublicTeamMembers,
 } from '../../controllers/usersControllers/user.controller.js';
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
 import upload from '../../middlewares/multer.js';
@@ -25,6 +27,8 @@ router.post('/verify', verifyUserEmail);
 router.post('/resend-verification', resendVerificationEmail);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
+router.post('/refresh-token', refreshAccessToken);
+router.get('/team', getPublicTeamMembers);
 
 // Protected routes
 router.post('/logout', userAuthenticated, logoutUser);

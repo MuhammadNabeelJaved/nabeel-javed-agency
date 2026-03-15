@@ -39,7 +39,10 @@ Route → Middleware chain (Auth → Multer → Validation) → Controller → M
 
 ### Authentication
 
-JWT-based with access tokens (15m) and refresh tokens (7d) stored in HTTP-only cookies. Two key middleware functions in `src/middlewares/Auth.js`:
+JWT-based with access tokens (15m) and refresh tokens (7d) stored in HTTP-only cookies.
+- Refresh token endpoint: `POST /api/v1/users/refresh-token` (cookie or body `refreshToken`)
+
+Two key middleware functions in `src/middlewares/Auth.js`:
 
 - `userAuthenticated` — verifies token, attaches `req.user`
 - `authorizeRoles(...roles)` — RBAC gate; roles are `admin`, `team`, `user`
@@ -73,8 +76,12 @@ successResponse(res, statusCode, message, data)
 | Reviews | `Reviews.model.js` | Rating 1–5, refs to User & Project, status `pending/approved/rejected` |
 | Services | `Services.model.js` | Slug, pricing plans, FAQs, category |
 | Jobs | `Jobs.model.js` | Employment type, salary range, expiry logic |
-| HomePageHero | `HomePageHero.js` | CMS for homepage hero content |
-| AdminProject | `AdminProject.model.js` | Admin-side project management |
+| HomePageHero | `HomePageHero.js` | CMS for homepage hero (hero badge, title lines, subtitle, CTA buttons) |
+| AdminProject | `AdminProject.model.js` | Admin portfolio projects; `techStack[]`, `isPublic` flag for public portfolio |
+| CMS | `CMS.model.js` | Singleton CMS for logo, tech stack categories, Concept-to-Reality steps, Why-Choose-Us section |
+| JobApplication | `JobApplication.model.js` | Job applicants; unique per (job, email); status workflow pending→hired |
+| Client | `Client.model.js` | Agency clients with company, industry, account manager, revenue tracking |
+| Notification | `Notification.model.js` | Per-user notifications with type enum, isRead, deep-link support |
 
 ### Environment Variables
 

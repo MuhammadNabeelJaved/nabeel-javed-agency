@@ -6,12 +6,16 @@ import {
     updateProject,
     deleteProject,
     updateProjectStatus,
+    getPublicPortfolio,
 } from "../../controllers/usersControllers/adminProject.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 
 const router = express.Router();
 
-// All routes require admin authentication
+// Public route – portfolio page
+router.get("/portfolio", getPublicPortfolio);
+
+// Admin-only routes
 router.use(userAuthenticated, authorizeRoles("admin"));
 
 router.get("/", getAllProjects);

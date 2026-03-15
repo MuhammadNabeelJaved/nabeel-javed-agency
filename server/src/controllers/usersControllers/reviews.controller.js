@@ -14,8 +14,6 @@ export const createReview = asyncHandler(async (req, res) => {
         const { rating, reviewText, project } = req.body;
         const userId = req?.user?._id;
 
-        console.log("Create Review Request Body:", req.body);
-
         // Validate required fields
         if (!rating || !reviewText || !project) {
             throw new AppError("Rating, review text, and project are required", 400);
