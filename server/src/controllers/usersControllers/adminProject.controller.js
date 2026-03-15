@@ -66,7 +66,7 @@ export const createProject = asyncHandler(async (req, res, next) => {
         return successResponse(res, 'Project created successfully', newProject, 201);
     } catch (error) {
         console.error(error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Server Error: ${error.message}`, 500);
     }
 });
@@ -122,7 +122,7 @@ export const getAllProjects = asyncHandler(async (req, res, next) => {
         });
     } catch (error) {
         console.error(error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Server Error: ${error.message}`, 500);
     }
 });
@@ -151,7 +151,7 @@ export const getProjectById = asyncHandler(async (req, res, next) => {
         successResponse(res, 'Project fetched successfully', project);
     } catch (error) {
         console.error(error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Server Error: ${error.message}`, 500);
     }
 });
@@ -190,7 +190,7 @@ export const updateProject = asyncHandler(async (req, res, next) => {
         successResponse(res, 'Project updated successfully', project);
     } catch (error) {
         console.error(error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Server Error: ${error.message}`, 500);
     }
 });
@@ -216,7 +216,7 @@ export const deleteProject = asyncHandler(async (req, res, next) => {
         successResponse(res, 'Project deleted successfully', null);
     } catch (error) {
         console.error(error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Server Error: ${error.message}`, 500);
     }
 });
@@ -269,7 +269,7 @@ export const updateProjectStatus = asyncHandler(async (req, res, next) => {
         successResponse(res, 'Project status updated successfully', project);
     } catch (error) {
         console.error(error);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Server Error: ${error.message}`, 500);
     }
 });

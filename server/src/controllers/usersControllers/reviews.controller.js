@@ -62,7 +62,7 @@ export const createReview = asyncHandler(async (req, res) => {
         successResponse(res, "Review submitted successfully. Waiting for admin approval.", review, 201);
     } catch (error) {
         console.error("Error creating review:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to create review: ${error.message}`, 500);
     }
 });
@@ -121,7 +121,7 @@ export const getAllReviews = asyncHandler(async (req, res) => {
         });
     } catch (error) {
         console.error("Error retrieving reviews:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve reviews: ${error.message}`, 500);
     }
 });
@@ -191,7 +191,7 @@ export const getAllReviewsAdmin = asyncHandler(async (req, res) => {
         });
     } catch (error) {
         console.error("Error retrieving reviews:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve reviews: ${error.message}`, 500);
     }
 });
@@ -225,7 +225,7 @@ export const getReviewById = asyncHandler(async (req, res) => {
         successResponse(res, "Review retrieved successfully", review);
     } catch (error) {
         console.error("Error retrieving review:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve review: ${error.message}`, 500);
     }
 });
@@ -302,7 +302,7 @@ export const getReviewsByProject = asyncHandler(async (req, res) => {
         });
     } catch (error) {
         console.error("Error retrieving project reviews:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve project reviews: ${error.message}`, 500);
     }
 });
@@ -337,7 +337,7 @@ export const getMyReviews = asyncHandler(async (req, res) => {
         });
     } catch (error) {
         console.error("Error retrieving user's reviews:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve user's reviews: ${error.message}`, 500);
     }
 });
@@ -397,7 +397,7 @@ export const updateReview = asyncHandler(async (req, res) => {
         successResponse(res, "Review updated successfully", review);
     } catch (error) {
         console.error("Error updating review:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to update review: ${error.message}`, 500);
     }
 });
@@ -435,7 +435,7 @@ export const updateReviewStatus = asyncHandler(async (req, res) => {
         successResponse(res, `Review ${status} successfully`, review);
     } catch (error) {
         console.error("Error updating review status:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to update review status: ${error.message}`, 500);
     }
 });
@@ -468,7 +468,7 @@ export const deleteReview = asyncHandler(async (req, res) => {
         successResponse(res, "Review deleted successfully", null);
     } catch (error) {
         console.error("Error deleting review:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to delete review: ${error.message}`, 500);
     }
 });
@@ -508,7 +508,7 @@ export const getReviewsByRating = asyncHandler(async (req, res) => {
         });
     } catch (error) {
         console.error("Error retrieving reviews by rating:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve reviews by rating: ${error.message}`, 500);
     }
 });
@@ -595,7 +595,7 @@ export const getReviewStatistics = asyncHandler(async (req, res) => {
         });
     } catch (error) {
         console.error("Error retrieving review statistics:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to retrieve review statistics: ${error.message}`, 500);
     }
 });
@@ -626,7 +626,7 @@ export const bulkDeleteReviews = asyncHandler(async (req, res) => {
         });
     } catch (error) {
         console.error("Error deleting reviews:", error.message);
-        if (error.isOperational) throw error;
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to delete reviews: ${error.message}`, 500);
     }
 });

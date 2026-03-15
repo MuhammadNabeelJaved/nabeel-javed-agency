@@ -176,6 +176,7 @@ jobPostingSchema.virtual('daysRemaining').get(function () {
 });
 
 jobPostingSchema.virtual('salaryDisplay').get(function () {
+    if (!this.salaryRange) return null;
     const { min, max, currency } = this.salaryRange;
     const formatNumber = (num) => {
         if (num >= 1000) return `${num / 1000}k`;

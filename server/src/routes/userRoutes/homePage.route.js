@@ -4,7 +4,7 @@ import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 
 const router = express.Router();
 
-router.route("/").get(userAuthenticated, authorizeRoles("admin"), getHomePage);
+router.route("/").get(getHomePage);
 router.route("/add").post(userAuthenticated, authorizeRoles("admin"), createHomePage);
 router.route("/update").put(userAuthenticated, authorizeRoles("admin"), updateHomePage);
 router.route("/delete-field").delete(userAuthenticated, authorizeRoles("admin"), deleteSpecificField);
