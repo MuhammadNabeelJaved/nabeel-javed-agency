@@ -29,6 +29,7 @@ export const userAuthenticated = asyncHandler(async (req, res, next) => {
         req.user = user;
         next();
     } catch (err) {
+        if (err.isOperational) throw err;
         throw new AppError(`Unauthorized: ${err.message}`, 401);
     }
 });

@@ -21,8 +21,6 @@ export const createContact = asyncHandler(async (req, res) => {
             throw new AppError("Please provide a valid email", 400);
         }
 
-        console.log("Creating contact with data:", { firstName, lastName, email, subject, message });
-
         // Create contact
         const contact = await Contact.create({
             firstName,
@@ -95,10 +93,6 @@ export const getAllContacts = asyncHandler(async (req, res) => {
 
         // Get total count
         const totalContacts = await Contact.countDocuments(query);
-
-        if (totalContacts === 0) {
-            throw new AppError("No contacts found", 404);
-        }
 
         successResponse(res, "Contacts retrieved successfully", {
             contacts,
@@ -242,10 +236,6 @@ export const getContactStats = asyncHandler(async (req, res) => {
     try {
         const totalContacts = await Contact.countDocuments();
 
-        if (totalContacts === 0) {
-            throw new AppError("No contacts found", 404);
-        }
-
         // Get contacts by month (last 6 months)
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -270,19 +260,11 @@ export const getContactStats = asyncHandler(async (req, res) => {
             },
         ]);
 
-        if (!contactsByMonth) {
-            throw new AppError("Failed to retrieve contact statistics", 500);
-        }
-
         // Get recent contacts (last 5)
         const recentContacts = await Contact.find()
             .sort({ createdAt: -1 })
             .limit(5)
             .select("firstName lastName email subject createdAt");
-
-        if (!recentContacts) {
-            throw new AppError("Failed to retrieve recent contacts", 500);
-        }
 
         successResponse(res, "Contact statistics retrieved successfully", {
             totalContacts,

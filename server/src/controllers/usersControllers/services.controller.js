@@ -75,10 +75,6 @@ export const getAllServices = asyncHandler(async (req, res) => {
     try {
         const services = await Service.find({}).sort({ createdAt: -1 });
 
-        if (!services || services.length === 0) {
-            throw new AppError("No services found", 404);
-        }
-
         successResponse(res, "Services retrieved successfully", services);
     } catch (error) {
         console.error("Error in getAllServices:", error);

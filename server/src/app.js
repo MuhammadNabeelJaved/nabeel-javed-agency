@@ -1,9 +1,8 @@
-import dotenv, { parse } from "dotenv";
+import dotenv from "dotenv";
 import express from "express"
 import path from "path";
 import cors from "cors"
 import cookieParser from "cookie-parser"
-import bodyParser from "body-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import errorHandler from "./middlewares/errorHandler.js";
@@ -30,14 +29,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded())
-// parse application/json
-app.use(bodyParser.json({ limit: '50mb' }))
 app.use(cookieParser())
-// Increase the payload size limit (e.g., to 50MB)
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use("/uploads", express.static(path.join(process.cwd(), "src/public/uploads")));
 
 
@@ -50,6 +44,10 @@ import homePageRoutes from "./routes/userRoutes/homePage.route.js";
 import servicesRoutes from "./routes/userRoutes/services.route.js";
 import jobsRoutes from "./routes/userRoutes/jobs.route.js";
 import adminProjectRoutes from "./routes/userRoutes/adminProject.route.js";
+import cmsRoutes from "./routes/userRoutes/cms.route.js";
+import jobApplicationRoutes from "./routes/userRoutes/jobApplication.route.js";
+import clientRoutes from "./routes/userRoutes/client.route.js";
+import notificationRoutes from "./routes/userRoutes/notification.route.js";
 
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
@@ -59,6 +57,10 @@ app.use("/api/v1/homepage", homePageRoutes);
 app.use("/api/v1/services", servicesRoutes);
 app.use("/api/v1/jobs", jobsRoutes);
 app.use("/api/v1/admin/projects", adminProjectRoutes);
+app.use("/api/v1/cms", cmsRoutes);
+app.use("/api/v1/job-applications", jobApplicationRoutes);
+app.use("/api/v1/clients", clientRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 // 404 handler
 app.use(notFound);
 

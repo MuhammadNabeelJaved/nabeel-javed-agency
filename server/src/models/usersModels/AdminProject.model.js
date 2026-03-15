@@ -188,6 +188,20 @@ const projectSchema = new mongoose.Schema({
         min: 0,
         max: 100,
         default: 0
+    },
+
+    // Tech Stack – array of technology names shown on the Add Project form
+    techStack: [{
+        type: String,
+        trim: true,
+        maxlength: [50, 'Tech name cannot exceed 50 characters']
+    }],
+
+    // Whether this project appears on the public portfolio page
+    isPublic: {
+        type: Boolean,
+        default: false,
+        index: true
     }
 }, {
     timestamps: true, // Automatically adds createdAt and updatedAt
@@ -303,6 +317,13 @@ projectSchema.statics.getProjectStats = async function (userId) {
             }
         }
     ]);
+};
+
+// Static: public portfolio – only published, non-archived projects
+projectSchema.statics.getPublicPortfolio = function (filter = {}) {
+    return this.find({ isPublic: true, isArchived: false, ...filter })
+        .select('projectTitle clientName category status techStack projectGallery projectDescription completionPercentage tags startDate endDate clientFeedback')
+        .sort({ createdAt: -1 });
 };
 
 // Model
