@@ -81,7 +81,7 @@ successResponse(res, statusCode, message, data)
 | CMS | `CMS.model.js` | Singleton CMS for logo, tech stack categories, Concept-to-Reality steps, Why-Choose-Us section |
 | JobApplication | `JobApplication.model.js` | Job applicants; unique per (job, email); status workflow pending→hired |
 | Client | `Client.model.js` | Agency clients with company, industry, account manager, revenue tracking |
-| Notification | `Notification.model.js` | Per-user notifications with type enum, isRead, deep-link support |
+| Task | `Task.model.js` | Team Kanban tasks; status workflow todo→in_progress→in_review→completed |
 
 ### Environment Variables
 
