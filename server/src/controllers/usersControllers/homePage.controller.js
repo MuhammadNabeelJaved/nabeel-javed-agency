@@ -147,7 +147,7 @@ export const deleteHomePage = asyncHandler(async (req, res) => {
 
 export const deleteSpecificField = asyncHandler(async (req, res) => {
     try {
-        const { fieldName } = req.params;
+        const { fieldName } = req.body;
         const homePage = await HomePage.findOne({});
         if (!homePage) {
             throw new AppError("Home page content not found", 404);
