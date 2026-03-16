@@ -69,6 +69,11 @@ import cmsRoutes from "./routes/userRoutes/cms.route.js";
 import jobApplicationRoutes from "./routes/userRoutes/jobApplication.route.js";
 import clientRoutes from "./routes/userRoutes/client.route.js";
 import notificationRoutes from "./routes/userRoutes/notification.route.js";
+import { conversationRouter, messageRouter } from "./routes/userRoutes/message.route.js";
+import taskRoutes from "./routes/userRoutes/task.route.js";
+import resourceRoutes from "./routes/userRoutes/resource.route.js";
+import eventRoutes from "./routes/userRoutes/event.route.js";
+import invoiceRoutes from "./routes/userRoutes/invoice.route.js";
 
 app.use("/api/v1/users", userRoutes);               // Auth, profile, team
 app.use("/api/v1/projects", projectRoutes);         // Client project requests
@@ -82,6 +87,12 @@ app.use("/api/v1/cms", cmsRoutes);                  // Global CMS (logo, tech st
 app.use("/api/v1/job-applications", jobApplicationRoutes); // Job applications
 app.use("/api/v1/clients", clientRoutes);           // Agency client CRM
 app.use("/api/v1/notifications", notificationRoutes); // User notifications
+app.use("/api/v1/conversations", conversationRouter);  // Chat conversations (channels + DMs)
+app.use("/api/v1/messages", messageRouter);            // Chat messages
+app.use("/api/v1/tasks", taskRoutes);                  // Team Kanban tasks
+app.use("/api/v1/resources", resourceRoutes);          // Team shared files & folders
+app.use("/api/v1/events", eventRoutes);                // Team calendar events
+app.use("/api/v1/invoices", invoiceRoutes);            // Billing & invoices
 
 // ─── Error Handling ─────────────────────────────────────────────────────────
 
