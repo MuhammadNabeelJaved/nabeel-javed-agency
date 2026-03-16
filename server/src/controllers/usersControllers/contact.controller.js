@@ -207,7 +207,7 @@ export const deleteContact = asyncHandler(async (req, res) => {
 // =========================
 export const deleteMultipleContacts = asyncHandler(async (req, res) => {
     try {
-        const { ids } = req.body;
+        const { ids } = req.body || {};
 
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             throw new AppError("Contact IDs array is required", 400);

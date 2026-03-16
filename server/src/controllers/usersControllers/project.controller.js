@@ -412,7 +412,7 @@ export const getProjectStats = asyncHandler(async (req, res) => {
     try {
         const filter = req?.user?.role === 'admin'
             ? {}
-            : { requestedBy: req?.user?.id };
+            : { requestedBy: req?.user?._id };
 
         const stats = await Project.aggregate([
             { $match: filter },

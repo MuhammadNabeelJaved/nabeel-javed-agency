@@ -59,9 +59,9 @@ export const createReview = asyncHandler(async (req, res) => {
             throw new AppError("You can only review your own projects", 403);
         }
 
-        // Check if project is completed
-        if (projectExists.status !== "approved") {
-            throw new AppError("You can only review completed projects", 400);
+        // Check if project is completed or approved
+        if (!["approved", "completed"].includes(projectExists.status)) {
+            throw new AppError("You can only review approved or completed projects", 400);
         }
 
         // Check if user has already reviewed this project
