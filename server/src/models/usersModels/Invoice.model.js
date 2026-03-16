@@ -120,7 +120,7 @@ invoiceSchema.virtual("isOverdue").get(function () {
 });
 
 // Auto-generate invoice number before first save
-invoiceSchema.pre("save", async function (next) {
+invoiceSchema.pre("save", async function () {
     if (!this.invoiceNumber) {
         const year = new Date().getFullYear();
         const count = await this.constructor.countDocuments({
@@ -128,16 +128,14 @@ invoiceSchema.pre("save", async function (next) {
         });
         this.invoiceNumber = `INV-${year}-${String(count + 1).padStart(4, "0")}`;
     }
-    next();
 });
 
 // Auto-set paidAt when status becomes 'paid'
-invoiceSchema.pre("save", function (next) {
+invoiceSchema.pre("save", async function () {
     if (this.isModified("status") && this.status === "paid" && !this.paidAt) {
         this.paidAt = new Date();
         if (!this.paidAmount) this.paidAmount = this.total;
     }
-    next();
 });
 
 invoiceSchema.index({ client: 1, status: 1, createdAt: -1 });
