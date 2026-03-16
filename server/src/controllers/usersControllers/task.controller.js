@@ -8,8 +8,6 @@ import asyncHandler from "../../middlewares/asyncHandler.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import AppError from "../../utils/AppError.js";
 import Task from "../../models/usersModels/Task.model.js";
-import Notification from "../../models/usersModels/Notification.model.js";
-
 // ─── Create Task ──────────────────────────────────────────────────────────────
 
 /**
@@ -35,17 +33,6 @@ export const createTask = asyncHandler(async (req, res) => {
         checklist: checklist || [],
         createdBy: req.user._id,
     });
-
-    // Notify assigned team member (if different from creator)
-    if (assignedTo && assignedTo.toString() !== req.user._id.toString()) {
-        await Notification.notify(
-            assignedTo,
-            "project_update",
-            "New Task Assigned",
-            `You have been assigned: "${task.title}"`,
-            { relatedId: task._id, relatedModel: "Task" }
-        );
-    }
 
     const populatedTask = await Task.findById(task._id)
         .populate("assignedTo", "name photo teamProfile.position")
