@@ -430,9 +430,9 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
         }
 
         // Reject attempts to change sensitive fields through this route
-        if (updates.password || updates.email) {
+        if (updates.password || updates.email || updates.role) {
             throw new AppError(
-                "Cannot update password or email through this route",
+                "Cannot update password, email, or role through this route",
                 400
             );
         }

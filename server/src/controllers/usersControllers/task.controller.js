@@ -47,13 +47,12 @@ export const createTask = asyncHandler(async (req, res) => {
         );
     }
 
-    await task.populate([
-        { path: "assignedTo", select: "name photo teamProfile.position" },
-        { path: "createdBy", select: "name photo" },
-        { path: "project", select: "projectTitle category" },
-    ]);
+    const populatedTask = await Task.findById(task._id)
+        .populate("assignedTo", "name photo teamProfile.position")
+        .populate("createdBy", "name photo")
+        .populate("project", "projectTitle category");
 
-    return successResponse(res, "Task created", task, 201);
+    return successResponse(res, "Task created", populatedTask, 201);
 });
 
 // ─── Get All Tasks ────────────────────────────────────────────────────────────

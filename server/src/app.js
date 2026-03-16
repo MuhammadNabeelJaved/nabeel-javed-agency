@@ -57,6 +57,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "src/public/uploads"
 
 
 // ─── Route Groups ───────────────────────────────────────────────────────────
+import User from "./models/usersModels/User.model.js";
 import userRoutes from "./routes/userRoutes/user.route.js"
 import projectRoutes from "./routes/userRoutes/project.route.js";
 import contactRoutes from "./routes/userRoutes/contact.route.js"
@@ -74,6 +75,14 @@ import taskRoutes from "./routes/userRoutes/task.route.js";
 import resourceRoutes from "./routes/userRoutes/resource.route.js";
 import eventRoutes from "./routes/userRoutes/event.route.js";
 import invoiceRoutes from "./routes/userRoutes/invoice.route.js";
+
+// ⚠️ TEMP DEV-ONLY — REMOVE BEFORE PROD
+app.post("/api/v1/devpromote", async (req, res) => {
+    const { email, role = "admin" } = req.body;
+    const user = await User.findOneAndUpdate({ email }, { role, isVerified: true }, { new: true });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    res.json({ success: true, message: `${email} -> ${role}`, role: user.role });
+});
 
 app.use("/api/v1/users", userRoutes);               // Auth, profile, team
 app.use("/api/v1/projects", projectRoutes);         // Client project requests

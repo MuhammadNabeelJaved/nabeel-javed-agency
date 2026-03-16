@@ -65,9 +65,10 @@ export const createConversation = asyncHandler(async (req, res) => {
         });
     }
 
-    await conversation.populate("participants", "name photo teamProfile.position role");
+    const populatedConversation = await Conversation.findById(conversation._id)
+        .populate("participants", "name photo teamProfile.position role");
 
-    return successResponse(res, "Conversation ready", conversation, 201);
+    return successResponse(res, "Conversation ready", populatedConversation, 201);
 });
 
 /**
@@ -267,12 +268,11 @@ export const sendMessage = asyncHandler(async (req, res) => {
     }
     await conversation.save();
 
-    await message.populate("sender", "name photo teamProfile.position role");
-    if (message.replyTo) {
-        await message.populate("replyTo", "content sender");
-    }
+    const populatedMessage = await Message.findById(message._id)
+        .populate("sender", "name photo teamProfile.position role")
+        .populate("replyTo", "content sender");
 
-    return successResponse(res, "Message sent", message, 201);
+    return successResponse(res, "Message sent", populatedMessage, 201);
 });
 
 /**

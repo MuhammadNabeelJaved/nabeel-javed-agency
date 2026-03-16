@@ -104,7 +104,7 @@ taskSchema.index({ project: 1, status: 1, priority: -1 });
 taskSchema.index({ assignedTo: 1, status: 1, dueDate: 1 });
 
 // Auto-set completedAt when status changes to "completed"
-taskSchema.pre("save", function (next) {
+taskSchema.pre("save", async function () {
     if (this.isModified("status")) {
         if (this.status === "completed" && !this.completedAt) {
             this.completedAt = new Date();
@@ -112,7 +112,6 @@ taskSchema.pre("save", function (next) {
             this.completedAt = undefined;
         }
     }
-    next();
 });
 
 // Virtual: is overdue?

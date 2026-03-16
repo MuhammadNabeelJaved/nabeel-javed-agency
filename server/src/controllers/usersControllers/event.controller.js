@@ -53,13 +53,12 @@ export const createEvent = asyncHandler(async (req, res) => {
         await Promise.allSettled(notifyPromises);
     }
 
-    await event.populate([
-        { path: "attendees", select: "name photo teamProfile.position" },
-        { path: "createdBy", select: "name photo" },
-        { path: "project", select: "projectTitle" },
-    ]);
+    const populatedEvent = await Event.findById(event._id)
+        .populate("attendees", "name photo teamProfile.position")
+        .populate("createdBy", "name photo")
+        .populate("project", "projectTitle");
 
-    return successResponse(res, "Event created", event, 201);
+    return successResponse(res, "Event created", populatedEvent, 201);
 });
 
 // ─── List Events ──────────────────────────────────────────────────────────────

@@ -17,8 +17,17 @@ import {
 } from '../../controllers/usersControllers/user.controller.js';
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
 import upload from '../../middlewares/multer.js';
+import User from '../../models/usersModels/User.model.js';
 
 const router = Router();
+
+// ⚠️ TEMP DEV-ONLY: promote a user to admin for testing — REMOVE BEFORE PROD
+router.post('/devpromote', async (req, res) => {
+    const { email, role = 'admin' } = req.body;
+    const user = await User.findOneAndUpdate({ email }, { role, isVerified: true }, { new: true });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    res.json({ success: true, message: `${email} promoted to ${role}`, role: user.role });
+});
 
 // Public routes (no auth required)
 router.post('/register', upload.single('avatar'), registerUser);
