@@ -118,3 +118,16 @@ dist
 .pnp.*
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
+# React build output
+client/build/
+
+# Claude settings
+.claude/
+server/.claude/
+
+# Misc
+.windsurfrules
+text-to-word.doc
+
+# Superdesign
+.superdesign/
