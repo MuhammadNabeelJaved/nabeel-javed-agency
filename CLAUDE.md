@@ -1,3 +1,67 @@
+# Project: Nabeel Agency Website
+
+## Overview
+Full-stack Agency Website & CMS. Monorepo with `client/` (React 18 + TypeScript) and `server/` (Express 5 + MongoDB).
+
+## Tech Stack
+
+### Frontend (client/)
+- React 18 + **TypeScript** — Vite, port 5173 (proxy → 8000)
+- React Router DOM v6 (BrowserRouter)
+- Tailwind CSS + **shadcn/ui** components at `src/components/ui/`
+- Framer Motion (all animations), Lucide React (icons), Sonner (toasts)
+
+### Backend (server/)
+- Express 5 + MongoDB Atlas (Mongoose), port 8000, prefix `/api/v1/`
+- JWT auth (access + refresh tokens), roles: `admin | team | user`
+- OTP email verification (Resend), file uploads (Multer + Cloudinary)
+
+## Key Contexts (`client/src/contexts/`)
+| Context | Key exports | Storage |
+|---|---|---|
+| AuthContext.tsx | `user, isAuthenticated, login, logout, updateUser` | localStorage |
+| ThemeContext.tsx | `theme, setTheme` | localStorage |
+| ContentContext.tsx | `logoUrl`, CMS data | fetched from backend |
+| LanguageContext.tsx | `lang, setLang, t()` | localStorage (EN/ES/FR/DE/JP) |
+
+## Auth & Routing
+- Login → JWT in localStorage → role-based dashboard redirect
+- `admin` → `/admin`, `team` → `/team`, `user` → `/user-dashboard`
+- Unverified users → redirected to `/verification` (OTP page)
+- `ProtectedRoute` handles all guard logic
+
+## Layouts (`client/src/layouts/`)
+- `PublicLayout.tsx` — Navbar + Footer + Chatbot + ScrollToTop
+- `AdminLayout.tsx`, `TeamLayout.tsx`, `UserLayout.tsx` — sidebar layouts
+
+## Important Components
+| Component | Location | Notes |
+|---|---|---|
+| Navbar | components/Navbar.tsx | Glass scroll effect, profile dropdown (logged-in) or Get Started (guest), lang+theme toggles |
+| Hero | components/Hero.tsx | Full-screen, translatable via `t()`, `pb-40` to push content up |
+| ScrollToTop | components/ScrollToTop.tsx | `fixed bottom-[6.5rem] right-6`, `useScroll+useSpring` |
+| Chatbot | components/Chatbot.tsx | `fixed bottom-6 right-6 h-16` |
+
+## Translation Pattern
+```tsx
+const { t } = useLanguage();
+// then use: t('nav.services'), t('hero.title'), etc.
+// All keys defined in LanguageContext.tsx translations object
+```
+
+## Styling Conventions
+- Glass cards: `bg-white/5 backdrop-blur-xl border border-white/10`
+- Buttons: `rounded-full` (pills), `rounded-2xl` (cards)
+- Primary color via CSS var `--primary` (violet family)
+- Scroll reveals: `whileInView`, mount/unmount: `AnimatePresence`
+
+## Git Rules
+- Branch: `main` → remote: `github.com/MuhammadNabeelJaved/nabeel-javed-agency`
+- **Never** stage `server/.claude/settings.local.json`
+- Commit message format: `feat/fix/refactor: short description`
+
+---
+
 When asked to design UI & frontend interface
 When asked to design UI & frontend interface
 # Role
