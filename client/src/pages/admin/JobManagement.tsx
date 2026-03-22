@@ -36,6 +36,7 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Notification } from '../../components/Notification';
 import { jobsApi } from '../../api/jobs.api';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 export default function JobManagement() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -45,6 +46,7 @@ export default function JobManagement() {
   const [currentJob, setCurrentJob] = useState<Partial<Job>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; title: string; message?: string } | null>(null);
 
   const showNotification = (type: 'success' | 'error', title: string, message?: string) => {
@@ -99,14 +101,16 @@ export default function JobManagement() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this job?')) return;
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
     try {
-      await jobsApi.delete(id);
+      await jobsApi.delete(deleteTargetId);
       showNotification('success', 'Job deleted', 'The position has been removed.');
+      setDeleteTargetId(null);
       loadJobs();
     } catch (err: any) {
       showNotification('error', 'Delete failed', err?.response?.data?.message || 'Could not delete the job.');
+      setDeleteTargetId(null);
     }
   };
 
@@ -257,7 +261,7 @@ export default function JobManagement() {
                       <DropdownMenuItem onClick={() => handleStatusToggle(job)}>
                         {job.status === 'active' ? 'Close Position' : 'Activate Position'}
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(jobId)}>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTargetId(jobId)}>
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -479,6 +483,13 @@ export default function JobManagement() {
           </div>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteTargetId}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={handleDelete}
+        description="Are you sure you want to delete this job posting? This action cannot be undone."
+      />
     </div>
   );
 }

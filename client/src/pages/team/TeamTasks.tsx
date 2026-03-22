@@ -18,6 +18,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { tasksApi } from '../../api/tasks.api';
 import { toast } from 'sonner';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -166,6 +167,7 @@ export default function TeamTasks() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(BLANK_FORM);
   const [saving, setSaving] = useState(false);
 
@@ -241,14 +243,16 @@ export default function TeamTasks() {
 
   // ── Delete ─────────────────────────────────────────────────────────────────
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this task?')) return;
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
     try {
-      await tasksApi.delete(id);
+      await tasksApi.delete(deleteTargetId);
       toast.success('Task deleted');
+      setDeleteTargetId(null);
       fetchTasks();
     } catch {
       toast.error('Failed to delete task');
+      setDeleteTargetId(null);
     }
   };
 
@@ -336,7 +340,7 @@ export default function TeamTasks() {
                             <TaskMenu
                               task={task}
                               onEdit={() => openEdit(task)}
-                              onDelete={() => handleDelete(task._id)}
+                              onDelete={() => setDeleteTargetId(task._id)}
                               onMove={(status) => handleMove(task._id, status)}
                             />
                           </div>
@@ -476,6 +480,13 @@ export default function TeamTasks() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={!!deleteTargetId}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={handleDelete}
+        description="Are you sure you want to delete this task? This action cannot be undone."
+      />
     </>
   );
 }

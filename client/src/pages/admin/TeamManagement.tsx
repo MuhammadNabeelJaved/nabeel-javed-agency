@@ -37,6 +37,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { usersApi } from '../../api/users.api';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -148,6 +149,9 @@ export default function TeamManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null);
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
@@ -258,13 +262,15 @@ export default function TeamManagement() {
     }
   };
 
-  const handleDelete = async (member: TeamMember) => {
-    if (!confirm(`Remove ${member.name} from the team? This cannot be undone.`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await usersApi.delete(member._id);
-      setMembers(prev => prev.filter(m => m._id !== member._id));
+      await usersApi.delete(deleteTarget._id);
+      setMembers(prev => prev.filter(m => m._id !== deleteTarget._id));
+      setDeleteTarget(null);
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Delete failed');
+      setDeleteTarget(null);
     }
   };
 
@@ -427,7 +433,7 @@ export default function TeamManagement() {
                             </Button>
                             <Button
                               variant="ghost" size="icon"
-                              onClick={() => handleDelete(member)}
+                              onClick={() => setDeleteTarget(member)}
                               title="Remove"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
@@ -816,6 +822,13 @@ export default function TeamManagement() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        description={deleteTarget ? `Remove ${deleteTarget.name} from the team? This cannot be undone.` : undefined}
+      />
     </div>
   );
 }

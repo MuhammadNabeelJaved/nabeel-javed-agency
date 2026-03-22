@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Notification } from '../../components/Notification';
 import { adminProjectsApi } from '../../api/adminProjects.api';
 import { useAuth } from '../../contexts/AuthContext';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -128,6 +129,7 @@ export default function Projects() {
   const [form, setForm] = useState<ProjectForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [viewProject, setViewProject] = useState<any | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; title: string; message?: string } | null>(null);
@@ -190,12 +192,13 @@ export default function Projects() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this project? This cannot be undone.')) return;
-    setDeletingId(id);
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeletingId(confirmDeleteId);
     try {
-      await adminProjectsApi.delete(id);
+      await adminProjectsApi.delete(confirmDeleteId);
       showNotif('success', 'Project deleted');
+      setConfirmDeleteId(null);
       loadProjects();
     } catch {
       showNotif('error', 'Delete failed');
@@ -343,7 +346,7 @@ export default function Projects() {
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(project)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-red-500" onClick={() => handleDelete(project._id)} disabled={deletingId === project._id}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-red-500" onClick={() => setConfirmDeleteId(project._id)} disabled={deletingId === project._id}>
                             {deletingId === project._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                           </Button>
                         </div>
@@ -530,6 +533,13 @@ export default function Projects() {
           </div>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={handleDelete}
+        description="Delete this project? This action cannot be undone."
+      />
     </div>
   );
 }

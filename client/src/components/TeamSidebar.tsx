@@ -4,14 +4,13 @@
  */
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  FolderKanban, 
-  CheckSquare, 
-  Users, 
-  BarChart2, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  FolderKanban,
+  CheckSquare,
+  BarChart2,
+  Settings,
+  LogOut,
   Bell,
   ChevronRight,
   Calendar,
@@ -31,7 +30,6 @@ export function TeamSidebar() {
     { name: 'Calendar', path: '/team/calendar', icon: Calendar },
     { name: 'Chat', path: '/team/chat', icon: MessageSquare },
     { name: 'Resources', path: '/team/resources', icon: Files },
-    { name: 'Clients', path: '/team/clients', icon: Users },
     { name: 'Reports', path: '/team/reports', icon: BarChart2 },
     { name: 'Notifications', path: '/team/notifications', icon: Bell },
     { name: 'Settings', path: '/team/settings', icon: Settings },

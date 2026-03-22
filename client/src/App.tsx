@@ -77,8 +77,6 @@ import TeamDashboardHome from './pages/team/TeamDashboardHome';
 import TeamProjects from './pages/team/TeamProjects';
 import TeamProjectDetail from './pages/team/TeamProjectDetail';
 import TeamTasks from './pages/team/TeamTasks';
-import TeamClients from './pages/team/TeamClients';
-import TeamClientDetail from './pages/team/TeamClientDetail';
 import TeamReports from './pages/team/TeamReports';
 import TeamNotifications from './pages/team/TeamNotifications';
 import TeamSettings from './pages/team/TeamSettings';
@@ -246,8 +244,6 @@ export default function App() {
                 <Route path="projects" element={<TeamProjects />} />
                 <Route path="projects/:id" element={<TeamProjectDetail />} />
                 <Route path="tasks" element={<TeamTasks />} />
-                <Route path="clients" element={<TeamClients />} />
-                <Route path="clients/:id" element={<TeamClientDetail />} />
                 <Route path="reports" element={<TeamReports />} />
                 <Route path="calendar" element={<TeamCalendar />} />
                 <Route path="chat" element={<TeamChat />} />

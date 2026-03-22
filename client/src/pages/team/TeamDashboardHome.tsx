@@ -1,53 +1,30 @@
 /**
  * Team Dashboard Home
- * Central hub for team members to manage work, track progress, and collaborate.
+ * Fetches real tasks and projects from DB.
  */
-import React, { useState } from 'react';
-import { 
-  CheckSquare, 
-  FolderKanban, 
-  Clock, 
-  Target, 
-  ArrowRight, 
-  Plus, 
-  MoreHorizontal, 
-  Calendar,
-  AlertCircle,
-  Search,
-  Filter,
+import React, { useState, useEffect } from 'react';
+import {
+  CheckSquare,
+  FolderKanban,
+  Clock,
+  Target,
+  ArrowRight,
   Activity,
-  User,
   CheckCircle2,
   Circle,
   Timer,
-  ArrowUpRight
+  AlertCircle,
+  ArrowUpRight,
+  MoreHorizontal,
+  Loader2,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Textarea } from '../../components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../../components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,411 +33,432 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
+import { tasksApi } from '../../api/tasks.api';
+import { adminProjectsApi } from '../../api/adminProjects.api';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'sonner';
 
-// --- Mock Data ---
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const INITIAL_TASKS = [
-  { id: 1, title: "Homepage Hero Animation", project: "Fintech Dashboard", priority: "High", due: "Today", status: "In Progress", assignee: "Sarah" },
-  { id: 2, title: "Fix Mobile Navigation", project: "E-commerce App", priority: "High", due: "Today", status: "To Do", assignee: "Sarah" },
-  { id: 3, title: "Client Feedback Meeting", project: "Internal", priority: "Medium", due: "Tomorrow", status: "Scheduled", assignee: "Sarah" },
-  { id: 4, title: "Update Documentation", project: "SaaS Platform", priority: "Low", due: "In 2 days", status: "Review", assignee: "Sarah" },
-  { id: 5, title: "API Integration", project: "Fintech Dashboard", priority: "High", due: "Next Week", status: "To Do", assignee: "Sarah" },
-];
+interface Task {
+  _id: string;
+  title: string;
+  status: 'todo' | 'in_progress' | 'in_review' | 'completed';
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: string;
+  tags?: string[];
+  project?: { _id: string; projectTitle: string } | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
-const INITIAL_PROJECTS = [
-  { id: 1, name: "Fintech Dashboard", role: "Lead Designer", progress: 75, deadline: "Mar 15", status: "Active" },
-  { id: 2, name: "E-commerce App", role: "UI Designer", progress: 45, deadline: "Apr 01", status: "Active" },
-  { id: 3, name: "SaaS Platform", role: "Frontend Dev", progress: 20, deadline: "Apr 20", status: "Planning" },
-];
+interface Project {
+  _id: string;
+  projectTitle: string;
+  clientName: string;
+  status: string;
+  completionPercentage?: number;
+  deadline?: string;
+  teamMembers?: { memberId: { _id: string; name: string } | null; role: string }[];
+}
 
-const TEAM_ACTIVITY = [
-  { id: 1, user: "Alex Johnson", action: "completed task", target: "User Authentication", time: "10 mins ago", avatar: "AJ" },
-  { id: 2, user: "Maria Garcia", action: "commented on", target: "Design System V2", time: "45 mins ago", avatar: "MG" },
-  { id: 3, user: "David Chen", action: "created project", target: "Mobile App Redesign", time: "2 hours ago", avatar: "DC" },
-  { id: 4, user: "Sarah Team", action: "updated status", target: "Homepage Hero", time: "3 hours ago", avatar: "ST" },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDue(dateStr?: string): { label: string; isToday: boolean; isOverdue: boolean } {
+  if (!dateStr) return { label: '—', isToday: false, isOverdue: false };
+  const due = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const diff = Math.round((dueDay.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return { label: 'Today', isToday: true, isOverdue: false };
+  if (diff === 1) return { label: 'Tomorrow', isToday: false, isOverdue: false };
+  if (diff === -1) return { label: 'Yesterday', isToday: false, isOverdue: true };
+  if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, isToday: false, isOverdue: true };
+  if (diff <= 7) return { label: `In ${diff} days`, isToday: false, isOverdue: false };
+  return {
+    label: due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    isToday: false,
+    isOverdue: false,
+  };
+}
+
+function timeAgo(dateStr?: string): string {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+const STATUS_MAP: Record<Task['status'], string> = {
+  todo: 'To Do',
+  in_progress: 'In Progress',
+  in_review: 'In Review',
+  completed: 'Completed',
+};
+
+const NEXT_STATUS: Record<Task['status'], Task['status']> = {
+  todo: 'in_progress',
+  in_progress: 'in_review',
+  in_review: 'completed',
+  completed: 'todo',
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TeamDashboardHome() {
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
-  const [projects, setProjects] = useState(INITIAL_PROJECTS);
-  const [activities, setActivities] = useState(TEAM_ACTIVITY);
-  
-  // Task Creation State
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', project: '', priority: 'Medium', due: '' });
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  // Project Creation State
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', role: '', deadline: '' });
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleCreateTask = () => {
-    const task = {
-      id: Date.now(),
-      title: newTask.title,
-      project: newTask.project || 'General',
-      priority: newTask.priority,
-      due: newTask.due || 'No Date',
-      status: 'To Do',
-      assignee: 'Sarah'
-    };
-    setTasks([task, ...tasks]);
-    setActivities([{ id: Date.now(), user: "Sarah Team", action: "created task", target: task.title, time: "Just now", avatar: "ST" }, ...activities]);
-    setIsTaskModalOpen(false);
-    setNewTask({ title: '', project: '', priority: 'Medium', due: '' });
-  };
+  // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  const handleCreateProject = () => {
-    const project = {
-      id: Date.now(),
-      name: newProject.name,
-      role: newProject.role || 'Member',
-      progress: 0,
-      deadline: newProject.deadline || 'TBD',
-      status: 'Planning'
-    };
-    setProjects([project, ...projects]);
-    setActivities([{ id: Date.now(), user: "Sarah Team", action: "created project", target: project.name, time: "Just now", avatar: "ST" }, ...activities]);
-    setIsProjectModalOpen(false);
-    setNewProject({ name: '', role: '', deadline: '' });
-  };
-
-  const handleStatusUpdate = (taskId: number, newStatus: string) => {
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-    const taskTitle = tasks.find(t => t.id === taskId)?.title;
-    setActivities([{ id: Date.now(), user: "Sarah Team", action: `marked as ${newStatus}`, target: taskTitle || 'task', time: "Just now", avatar: "ST" }, ...activities]);
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'High': return 'bg-red-500';
-      case 'Medium': return 'bg-amber-500';
-      case 'Low': return 'bg-blue-500';
-      default: return 'bg-slate-500';
+  const fetchAll = async () => {
+    try {
+      const [tasksRes, projectsRes] = await Promise.all([
+        tasksApi.getAll(),
+        adminProjectsApi.getAll(),
+      ]);
+      // getAll returns { tasks: [...], pagination: {} }
+      const allTasks: Task[] = tasksRes.data.data?.tasks ?? tasksRes.data.data ?? [];
+      setTasks(allTasks);
+      const pd = projectsRes.data.data;
+      setProjects(pd?.projects || pd || []);
+    } catch {
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  useEffect(() => { fetchAll(); }, []);
+
+  // ── Status update ─────────────────────────────────────────────────────────
+
+  const handleStatusUpdate = async (task: Task, newStatus: Task['status']) => {
+    try {
+      await tasksApi.updateStatus(task._id, newStatus);
+      setTasks(prev => prev.map(t => t._id === task._id ? { ...t, status: newStatus } : t));
+    } catch {
+      toast.error('Failed to update status');
+    }
+  };
+
+  // ── Derived stats ─────────────────────────────────────────────────────────
+
+  const activeTasks     = tasks.filter(t => t.status !== 'completed');
+  const completedTasks  = tasks.filter(t => t.status === 'completed');
+  const dueTodayCount   = tasks.filter(t => t.dueDate && formatDue(t.dueDate).isToday).length;
+  const activeProjects  = projects.filter(p => p.status === 'In Progress' || p.status === 'Active');
+  const efficiency      = tasks.length > 0
+    ? Math.round((completedTasks.length / tasks.length) * 100)
+    : 0;
+
+  // Recent 4 tasks as "activity" (sorted by updatedAt desc)
+  const recentActivity = [...tasks]
+    .sort((a, b) => new Date(b.updatedAt || '').getTime() - new Date(a.updatedAt || '').getTime())
+    .slice(0, 4);
+
+  const userInitials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'U';
+
+  const getStatusIcon = (status: Task['status']) => {
     switch (status) {
-      case 'Completed': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'In Progress': return <Timer className="h-4 w-4 text-blue-500" />;
-      case 'Review': return <AlertCircle className="h-4 w-4 text-amber-500" />;
-      default: return <Circle className="h-4 w-4 text-slate-400" />;
+      case 'completed':  return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case 'in_progress': return <Timer className="h-4 w-4 text-blue-500" />;
+      case 'in_review':  return <AlertCircle className="h-4 w-4 text-amber-500" />;
+      default:           return <Circle className="h-4 w-4 text-slate-400" />;
     }
   };
+
+  const getPriorityDot = (priority: Task['priority']) => {
+    if (priority === 'high')   return 'bg-red-500';
+    if (priority === 'medium') return 'bg-amber-500';
+    return 'bg-blue-500';
+  };
+
+  const getActivityLabel = (status: Task['status']) => {
+    if (status === 'completed')   return 'completed task';
+    if (status === 'in_progress') return 'started working on';
+    if (status === 'in_review')   return 'submitted for review';
+    return 'created task';
+  };
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
-      {/* Header Section */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground mt-1">Overview of your work and team activity.</p>
         </div>
         <div className="flex gap-3">
-          <Dialog open={isProjectModalOpen} onOpenChange={setIsProjectModalOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <FolderKanban className="h-4 w-4" /> New Project
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Project</DialogTitle>
-                <DialogDescription>Start a new collaborative project for your team.</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="p-name">Project Name</Label>
-                  <Input id="p-name" value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} placeholder="e.g. Website Redesign" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="p-role">Your Role</Label>
-                  <Input id="p-role" value={newProject.role} onChange={e => setNewProject({...newProject, role: e.target.value})} placeholder="e.g. Lead Designer" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="p-deadline">Target Deadline</Label>
-                  <Input id="p-deadline" type="date" value={newProject.deadline} onChange={e => setNewProject({...newProject, deadline: e.target.value})} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsProjectModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateProject}>Create Project</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 shadow-lg shadow-primary/20">
-                <Plus className="h-4 w-4" /> Create Task
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Task</DialogTitle>
-                <DialogDescription>Add a new task to your workload.</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="title">Task Title</Label>
-                  <Input id="title" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})} placeholder="e.g. Design Homepage Hero" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="project">Project</Label>
-                  <Select onValueChange={v => setNewTask({...newTask, project: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map(p => (
-                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                      ))}
-                      <SelectItem value="General">General / Administrative</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="priority">Priority</Label>
-                    <Select defaultValue="Medium" onValueChange={v => setNewTask({...newTask, priority: v})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="High">High</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="Low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="due">Due Date</Label>
-                    <Input id="due" value={newTask.due} onChange={e => setNewTask({...newTask, due: e.target.value})} placeholder="e.g. Tomorrow" />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsTaskModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateTask}>Create Task</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button variant="outline" className="gap-2" onClick={() => navigate('/team/projects')}>
+            <FolderKanban className="h-4 w-4" /> Projects
+          </Button>
+          <Button className="gap-2 shadow-lg shadow-primary/20" onClick={() => navigate('/team/tasks')}>
+            + Create Task
+          </Button>
         </div>
       </div>
 
-      {/* Stats Overview */}
+      {/* Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-gradient-to-br from-primary/10 via-background to-background border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
             <CheckSquare className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tasks.filter(t => t.status !== 'Completed').length}</div>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <span className="text-amber-500 font-medium">{tasks.filter(t => t.due === 'Today').length} due today</span>
+            <div className="text-2xl font-bold">{activeTasks.length}</div>
+            <p className="text-xs mt-1">
+              {dueTodayCount > 0
+                ? <span className="text-amber-500 font-medium">{dueTodayCount} due today</span>
+                : <span className="text-muted-foreground">No tasks due today</span>
+              }
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
             <FolderKanban className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{projects.filter(p => p.status === 'Active').length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Across 3 clients</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Week</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">28.5h</div>
-            <p className="text-xs text-green-500 mt-1 flex items-center">
-              <ArrowUpRight className="h-3 w-3 mr-1" /> On track
+            <div className="text-2xl font-bold">{activeProjects.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {projects.length} total projects
             </p>
           </CardContent>
         </Card>
-        
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{completedTasks.length}</div>
+            <p className="text-xs text-green-500 mt-1 flex items-center">
+              <ArrowUpRight className="h-3 w-3 mr-1" /> Tasks done
+            </p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Efficiency</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">94%</div>
+            <div className="text-2xl font-bold">{efficiency}%</div>
             <p className="text-xs text-muted-foreground mt-1">Task completion rate</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-7">
-        
-        {/* Main Content Area - Tasks */}
+
+        {/* My Tasks */}
         <div className="col-span-1 md:col-span-4 space-y-6">
           <Card className="h-full border-border/60 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>My Tasks</CardTitle>
-                  <CardDescription>Manage your daily assignments.</CardDescription>
+                  <CardTitle>Tasks</CardTitle>
+                  <CardDescription>Workspace tasks overview.</CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" className="gap-1">
+                <Button variant="ghost" size="sm" className="gap-1" onClick={() => navigate('/team/tasks')}>
                   View All <ArrowRight className="h-3 w-3" />
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="px-2 sm:px-6">
-              <div className="space-y-1">
-                <AnimatePresence>
-                  {tasks.slice(0, 6).map((task) => (
-                    <motion.div 
-                      key={task.id}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="group flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 border border-transparent hover:border-border/50 transition-all"
-                    >
-                      <div className="flex items-start gap-3 overflow-hidden">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="mt-1 flex-shrink-0 focus:outline-none">
-                              {getStatusIcon(task.status)}
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
-                            <DropdownMenuLabel>Change Status</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(task.id, 'To Do')}>
-                              <Circle className="h-3 w-3 mr-2 text-slate-400" /> To Do
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(task.id, 'In Progress')}>
-                              <Timer className="h-3 w-3 mr-2 text-blue-500" /> In Progress
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(task.id, 'Review')}>
-                              <AlertCircle className="h-3 w-3 mr-2 text-amber-500" /> In Review
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(task.id, 'Completed')}>
-                              <CheckCircle2 className="h-3 w-3 mr-2 text-green-500" /> Completed
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        
-                        <div className="min-w-0">
-                          <p className={`font-medium text-sm truncate ${task.status === 'Completed' ? 'text-muted-foreground line-through' : ''}`}>
-                            {task.title}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="text-[10px] h-4 px-1">
-                              {task.project}
-                            </Badge>
-                            <span className={`w-1.5 h-1.5 rounded-full ${getPriorityColor(task.priority)}`} title={`Priority: ${task.priority}`} />
+              {tasks.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CheckSquare className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                  <p>No tasks yet.</p>
+                  <Button size="sm" className="mt-4" onClick={() => navigate('/team/tasks')}>
+                    Create a task
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <AnimatePresence>
+                    {tasks.slice(0, 6).map((task) => {
+                      const due = formatDue(task.dueDate);
+                      return (
+                        <motion.div
+                          key={task._id}
+                          layout
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="group flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 border border-transparent hover:border-border/50 transition-all"
+                        >
+                          <div className="flex items-start gap-3 overflow-hidden">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="mt-1 flex-shrink-0 focus:outline-none">
+                                  {getStatusIcon(task.status)}
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleStatusUpdate(task, 'todo')}>
+                                  <Circle className="h-3 w-3 mr-2 text-slate-400" /> To Do
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusUpdate(task, 'in_progress')}>
+                                  <Timer className="h-3 w-3 mr-2 text-blue-500" /> In Progress
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusUpdate(task, 'in_review')}>
+                                  <AlertCircle className="h-3 w-3 mr-2 text-amber-500" /> In Review
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusUpdate(task, 'completed')}>
+                                  <CheckCircle2 className="h-3 w-3 mr-2 text-green-500" /> Completed
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <div className="min-w-0">
+                              <p className={`font-medium text-sm truncate ${task.status === 'completed' ? 'text-muted-foreground line-through' : ''}`}>
+                                {task.title}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                {task.project && (
+                                  <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                                    {task.project.projectTitle}
+                                  </Badge>
+                                )}
+                                <span className={`w-1.5 h-1.5 rounded-full ${getPriorityDot(task.priority)}`} title={`Priority: ${task.priority}`} />
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 pl-4 shrink-0">
-                        <div className="text-right">
-                          <p className={`text-xs font-medium ${task.due === 'Today' ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                            {task.due}
-                          </p>
-                        </div>
-                        <DropdownMenu>
-                           <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                           </DropdownMenuTrigger>
-                           <DropdownMenuContent align="end">
-                              <DropdownMenuItem>Edit Task</DropdownMenuItem>
-                              <DropdownMenuItem>Assign Member</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                           </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                
-                {tasks.length === 0 && (
-                   <div className="text-center py-12 text-muted-foreground">
-                      <CheckSquare className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                      <p>No tasks yet. Create one to get started!</p>
-                   </div>
-                )}
-              </div>
+
+                          <div className="flex items-center gap-4 pl-4 shrink-0">
+                            <p className={`text-xs font-medium ${due.isToday ? 'text-amber-500' : due.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
+                              {due.label}
+                            </p>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => navigate('/team/tasks')}>
+                                  Open in Kanban
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusUpdate(task, NEXT_STATUS[task.status])}>
+                                  Mark as {STATUS_MAP[NEXT_STATUS[task.status]]}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar Area - Activity & Projects */}
+        {/* Sidebar */}
         <div className="col-span-1 md:col-span-3 space-y-6">
-          
-          {/* Team Activity Feed */}
+
+          {/* Recent Activity (derived from tasks) */}
           <Card>
-             <CardHeader className="pb-3">
-               <CardTitle className="text-lg flex items-center gap-2">
-                 <Activity className="h-4 w-4 text-primary" /> Team Activity
-               </CardTitle>
-             </CardHeader>
-             <CardContent>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" /> Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentActivity.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>
+              ) : (
                 <div className="space-y-4 relative">
-                   {/* Timeline Line */}
-                   <div className="absolute left-4 top-2 bottom-2 w-px bg-border/50" />
-                   
-                   {activities.map((activity) => (
-                      <div key={activity.id} className="relative pl-10 flex gap-3 text-sm">
-                         <Avatar className="h-8 w-8 absolute left-0 border-2 border-background z-10">
-                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{activity.avatar}</AvatarFallback>
-                         </Avatar>
-                         <div>
-                            <p className="leading-snug">
-                               <span className="font-semibold text-foreground">{activity.user}</span>
-                               <span className="text-muted-foreground"> {activity.action} </span>
-                               <span className="font-medium text-foreground">{activity.target}</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{activity.time}</p>
-                         </div>
+                  <div className="absolute left-4 top-2 bottom-2 w-px bg-border/50" />
+                  {recentActivity.map((task) => (
+                    <div key={task._id} className="relative pl-10 flex gap-3 text-sm">
+                      <Avatar className="h-8 w-8 absolute left-0 border-2 border-background z-10">
+                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                          {userInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="leading-snug">
+                          <span className="font-semibold text-foreground">{user?.name || 'You'}</span>
+                          <span className="text-muted-foreground"> {getActivityLabel(task.status)} </span>
+                          <span className="font-medium text-foreground">{task.title}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(task.updatedAt)}</p>
                       </div>
-                   ))}
+                    </div>
+                  ))}
                 </div>
-             </CardContent>
+              )}
+            </CardContent>
           </Card>
 
-          {/* Quick Projects View */}
+          {/* Assigned Projects */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Assigned Projects</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-               {projects.slice(0, 3).map((project) => (
-                  <div key={project.id} className="space-y-2">
-                     <div className="flex justify-between text-sm">
-                        <span className="font-medium">{project.name}</span>
-                        <span className="text-muted-foreground text-xs">{project.status}</span>
-                     </div>
-                     <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div 
-                           className="h-full bg-primary transition-all duration-500" 
-                           style={{ width: `${project.progress}%` }} 
+              {projects.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No projects assigned.</p>
+              ) : (
+                projects.slice(0, 3).map((project) => {
+                  const myRole = project.teamMembers?.find(
+                    m => m.memberId?._id === user?._id
+                  )?.role;
+                  return (
+                    <div key={project._id} className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium truncate">{project.projectTitle}</span>
+                        <span className="text-muted-foreground text-xs shrink-0 ml-2">{project.status}</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-500"
+                          style={{ width: `${project.completionPercentage ?? 0}%` }}
                         />
-                     </div>
-                     <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{project.role}</span>
-                        <span>{project.progress}%</span>
-                     </div>
-                  </div>
-               ))}
-               <Button variant="ghost" className="w-full text-xs" asChild>
-                  <Link to="/team/projects">View All Projects</Link>
-               </Button>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{myRole || project.clientName}</span>
+                        <span>{project.completionPercentage ?? 0}%</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <Button variant="ghost" className="w-full text-xs" asChild>
+                <Link to="/team/projects">View All Projects</Link>
+              </Button>
             </CardContent>
           </Card>
         </div>
