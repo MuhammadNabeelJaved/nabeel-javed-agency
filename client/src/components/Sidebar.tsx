@@ -20,7 +20,8 @@ import {
   Briefcase,
   PenTool,
   Database,
-  Mail
+  Mail,
+  LayoutList,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
@@ -41,6 +42,7 @@ export function Sidebar() {
     { name: 'Jobs', path: '/admin/jobs', icon: Briefcase },
     { name: 'Applications', path: '/admin/job-applications', icon: Users },
     { name: 'Database', path: '/admin/database', icon: Database },
+    { name: 'Page Manager', path: '/admin/page-manager', icon: LayoutList },
     { name: 'Content Editor', path: '/admin/content-editor', icon: PenTool },
     { name: 'AI Tools', path: '/admin/ai-tools', icon: Bot },
     { name: 'Messages', path: '/admin/messages', icon: MessageSquare },

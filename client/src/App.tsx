@@ -72,6 +72,7 @@ import ClientManagement from './pages/admin/ClientManagement';
 import ContactManagement from './pages/admin/ContactManagement';
 import DatabaseManager from './pages/admin/DatabaseManager';
 import ClientProjectRequests from './pages/admin/ClientProjectRequests';
+import PageManager from './pages/admin/PageManager';
 
 // Team Dashboard Pages
 import { TeamDashboardLayout } from './layouts/TeamDashboardLayout';
@@ -236,6 +237,7 @@ export default function App() {
                 <Route path="jobs" element={<JobManagement />} />
                 <Route path="job-applications" element={<AdminJobApplications />} />
                 <Route path="database" element={<DatabaseManager />} />
+                <Route path="page-manager" element={<PageManager />} />
                 <Route path="content-editor" element={<ContentEditor />} />
                 <Route path="settings" element={<Settings />} />
               </Route>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { cmsApi } from '../api/cms.api';
+import { pageStatusApi, type PageStatusItem } from '../api/pageStatus.api';
 
 // --- Types ---
 
@@ -81,6 +82,9 @@ export interface ContentContextType {
   socialLinks: SocialLinks;
   testimonials: Testimonial[];
   isLoading: boolean;
+  // Page statuses (maintenance / coming-soon control)
+  pageStatuses: PageStatusItem[];
+  setPageStatuses: React.Dispatch<React.SetStateAction<PageStatusItem[]>>;
   // Updaters (save to API + local state)
   updateLogoUrl: (url: string) => Promise<void>;
   updateTechStack: (groups: TechGroup[]) => Promise<void>;
@@ -237,6 +241,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [contactInfo, setContactInfo] = useState<ContactInfo>(defaultContactInfo);
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(defaultSocialLinks);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [pageStatuses, setPageStatuses] = useState<PageStatusItem[]>([]);
 
   // Hero content stays in localStorage (managed via HomePageHero API separately)
   const [heroContent, setHeroContent] = useState<HeroContent>(() => {
@@ -271,7 +276,12 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  useEffect(() => { fetchCMS(); }, []);
+  useEffect(() => {
+    fetchCMS();
+    pageStatusApi.getAll()
+      .then(res => setPageStatuses(res.data.data ?? []))
+      .catch(() => {});
+  }, []);
 
   const updateLogoUrl = async (url: string) => {
     setLogoUrl(url);
@@ -335,6 +345,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     <ContentContext.Provider value={{
       logoUrl, heroContent, updateHeroContent, techStack, processSteps, whyChooseUs,
       contactInfo, socialLinks, testimonials, isLoading,
+      pageStatuses, setPageStatuses,
       updateLogoUrl, updateTechStack, updateProcessSteps, updateWhyChooseUs,
       updateContactInfo, updateSocialLinks, updateTestimonials,
       refetch: fetchCMS,
