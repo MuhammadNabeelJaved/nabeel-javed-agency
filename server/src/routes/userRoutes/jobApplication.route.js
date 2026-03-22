@@ -10,11 +10,12 @@ import {
     getMyApplications,
 } from "../../controllers/usersControllers/jobApplication.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
+import uploadAny from "../../middlewares/multerAny.js";
 
 const router = express.Router();
 
-// Public – applicants submit
-router.post("/", submitApplication);
+// Public – applicants submit (resume upload optional)
+router.post("/", uploadAny.single("resume"), submitApplication);
 
 // Authenticated user – see their own applications
 router.get("/my", userAuthenticated, getMyApplications);

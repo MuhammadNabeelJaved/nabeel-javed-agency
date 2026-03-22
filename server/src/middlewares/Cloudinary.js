@@ -95,4 +95,32 @@ const deleteImage = async (imageUrl, folderName = "avatars") => {
     }
 }
 
-export { uploadImage, deleteImage }
+/**
+ * Uploads any file type (PDF, DOC, image, etc.) to Cloudinary.
+ * Uses resource_type: 'auto' so Cloudinary detects the type automatically.
+ *
+ * @param {string} filePath   - Absolute path to the local temp file (written by Multer)
+ * @param {string} folderName - Cloudinary folder (default: "resumes")
+ * @returns {Promise<Object>} Cloudinary upload result (includes `secure_url`, `public_id`)
+ */
+const uploadFile = async (filePath, folderName = "resumes") => {
+    try {
+        if (!filePath) throw new AppError("File path is required", 400);
+
+        const result = await cloudinary.uploader.upload(filePath, {
+            folder: folderName,
+            resource_type: 'auto',
+        });
+
+        if (!result) throw new AppError("Cloudinary returned empty response", 500);
+
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        return result;
+    } catch (error) {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        if (error.isOperational) throw error;
+        throw new AppError("Failed to upload file to Cloudinary", 500);
+    }
+};
+
+export { uploadImage, deleteImage, uploadFile }

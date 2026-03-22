@@ -22,6 +22,7 @@ import { successResponse } from "../../utils/apiResponse.js";
 import JobApplication from "../../models/usersModels/JobApplication.model.js";
 import JobPosting from "../../models/usersModels/Jobs.model.js";
 import User from "../../models/usersModels/User.model.js";
+import { uploadFile } from "../../middlewares/Cloudinary.js";
 import {
     sendJobApplicationConfirmation,
     sendJobApplicationAdminNotification,
@@ -56,9 +57,14 @@ export const submitApplication = asyncHandler(async (req, res) => {
     const existing = await JobApplication.findOne({ job, email });
     if (existing) throw new AppError("You have already applied for this position", 409);
 
-    // Handle resume upload (Cloudinary URL injected by multer middleware if present)
-    const resumeUrl = req.file?.path || req.body.resumeUrl || "";
-    const resumePublicId = req.file?.filename || "";
+    // Upload resume to Cloudinary if provided
+    let resumeUrl = "";
+    let resumePublicId = "";
+    if (req.file?.path) {
+        const uploaded = await uploadFile(req.file.path, "resumes");
+        resumeUrl = uploaded.secure_url;
+        resumePublicId = uploaded.public_id;
+    }
 
     const application = await JobApplication.create({
         job,
