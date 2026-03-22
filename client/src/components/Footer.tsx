@@ -72,7 +72,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="relative bg-background text-foreground pt-24 pb-12 overflow-hidden border-t border-border/50">
+    <footer className="relative bg-background text-foreground pt-12 sm:pt-16 md:pt-24 pb-8 sm:pb-10 md:pb-12 overflow-hidden border-t border-border/50">
       {/* Decorative Elements */}
       <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
       <div className="absolute -top-[200px] -right-[200px] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
@@ -80,21 +80,21 @@ export function Footer() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Top Section: CTA & Branding */}
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12 mb-24">
-          <div className="space-y-6 max-w-2xl">
-            <motion.div 
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 sm:gap-10 lg:gap-12 mb-12 sm:mb-16 md:mb-24">
+          <div className="space-y-5 sm:space-y-6 max-w-2xl">
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <h2 className="text-6xl md:text-8xl font-bold tracking-tighter leading-[0.9] mb-6 text-foreground">
+              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter leading-[0.9] mb-4 sm:mb-6 text-foreground">
                 {t('footer.letsBuild')} <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-300 to-primary animate-gradient bg-[length:200%_auto]">
                   {t('footer.theFuture')}
                 </span>
               </h2>
-              <p className="text-xl text-muted-foreground max-w-md">
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-md">
                 {t('footer.readyToTransform')}
               </p>
             </motion.div>
@@ -119,7 +119,7 @@ export function Footer() {
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-sm font-medium text-green-500 uppercase tracking-wider">{t('footer.available')}</span>
             </div>
-             <a href={`mailto:${contactInfo.email || 'hello@nabeel.agency'}`} className="text-2xl md:text-3xl text-foreground hover:text-primary transition-colors border-b border-border/50 hover:border-primary pb-1">
+             <a href={`mailto:${contactInfo.email || 'hello@nabeel.agency'}`} className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-foreground hover:text-primary transition-colors border-b border-border/50 hover:border-primary pb-1 break-all sm:break-normal">
               {contactInfo.email || 'hello@nabeel.agency'}
             </a>
           </div>
@@ -129,10 +129,10 @@ export function Footer() {
         <div className="w-full h-px bg-border/50 mb-16" />
 
         {/* Middle Section: Links */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-24">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-8 sm:gap-10 md:gap-12 mb-12 sm:mb-16 md:mb-24">
           
           {/* Brand Column */}
-          <div className="md:col-span-4 space-y-6">
+          <div className="sm:col-span-2 md:col-span-4 space-y-6">
             <Link to="/" className="flex items-center gap-3 group mb-2">
               <div className="relative">
                 <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -173,7 +173,7 @@ export function Footer() {
 
           {/* Links Columns */}
           {footerLinks.map((column) => (
-            <div key={column.title} className="md:col-span-3">
+            <div key={column.title} className="md:col-span-3 sm:col-span-1">
               <h4 className="font-bold text-lg mb-6 text-foreground">{column.title}</h4>
               <ul className="space-y-4">
                 {column.links.map((link) => (

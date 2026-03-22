@@ -28,14 +28,14 @@ export function FeaturedProjects() {
   }, []);
 
   return (
-    <section className="relative py-32 overflow-hidden bg-background">
+    <section className="relative py-16 sm:py-24 md:py-32 overflow-hidden bg-background">
       {/* Background Ambience */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 sm:mb-12 md:mb-16 gap-4 sm:gap-6">
           <div className="space-y-4 max-w-2xl">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
@@ -52,7 +52,7 @@ export function FeaturedProjects() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-4xl md:text-6xl font-bold tracking-tight leading-tight text-foreground"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight leading-tight text-foreground"
             >
               Crafting Digital <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-blue-600 dark:from-white dark:via-white dark:to-white/50">Excellence</span>

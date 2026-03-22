@@ -35,7 +35,7 @@ export function Process() {
   });
 
   return (
-    <section ref={containerRef} className="py-32 relative bg-background overflow-hidden">
+    <section ref={containerRef} className="py-16 sm:py-24 md:py-32 relative bg-background overflow-hidden">
       {/* Ambient Background Lights */}
       <div className="absolute top-1/4 left-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
@@ -43,29 +43,29 @@ export function Process() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Header */}
-        <div className="text-center mb-24">
-          <motion.div 
+        <div className="text-center mb-12 sm:mb-16 md:mb-24">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-background/50 dark:bg-white/5 border border-border dark:border-white/10 backdrop-blur-md mb-6"
+            className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-background/50 dark:bg-white/5 border border-border dark:border-white/10 backdrop-blur-md mb-4 sm:mb-6"
           >
             <Icons.Lightbulb className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm font-medium text-foreground dark:text-white/90">{t('process.badge')}</span>
+            <span className="text-xs sm:text-sm font-medium text-foreground dark:text-white/90">{t('process.badge')}</span>
           </motion.div>
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-4xl md:text-6xl font-bold tracking-tight mb-6"
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight mb-4 sm:mb-6"
           >
             {t('process.title')}
           </motion.h2>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-lg text-muted-foreground max-w-2xl mx-auto"
+            className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-2 sm:px-0"
           >
             {t('process.subtitle')}
           </motion.p>

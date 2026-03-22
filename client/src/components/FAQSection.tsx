@@ -34,9 +34,9 @@ const FAQCard = ({ item, isOpen, onClick, index }: { item: FAQItem, isOpen: bool
     >
       <button
         onClick={onClick}
-        className="w-full flex items-center justify-between p-6 text-left relative z-10"
+        className="w-full flex items-center justify-between p-4 sm:p-6 text-left relative z-10"
       >
-        <span className={`font-semibold text-lg transition-colors duration-300 ${isOpen ? 'text-primary' : 'text-foreground group-hover:text-primary'}`}>
+        <span className={`font-semibold text-sm sm:text-base md:text-lg pr-4 transition-colors duration-300 ${isOpen ? 'text-primary' : 'text-foreground group-hover:text-primary'}`}>
           {item.question}
         </span>
         <div className={`relative flex items-center justify-center w-10 h-10 rounded-full border transition-all duration-300 ${
@@ -81,19 +81,19 @@ export const FAQSection = ({
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section className={`py-24 relative overflow-hidden ${className}`}>
+    <section className={`py-12 sm:py-16 md:py-24 relative overflow-hidden ${className}`}>
       {/* Background Decor */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] opacity-20 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" />
       </div>
 
       <div className="max-w-4xl mx-auto px-4 relative z-10">
-        <div className="text-center mb-16 space-y-4">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-card border border-border text-primary mb-4 shadow-lg backdrop-blur-md">
-            <HelpCircle className="w-7 h-7" />
+        <div className="text-center mb-8 sm:mb-12 md:mb-16 space-y-3 sm:space-y-4">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-card border border-border text-primary mb-3 sm:mb-4 shadow-lg backdrop-blur-md">
+            <HelpCircle className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
-          <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">{title}</h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">{title}</h2>
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-2 sm:px-0">
             {description}
           </p>
         </div>

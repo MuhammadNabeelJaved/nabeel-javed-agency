@@ -1,0 +1,16 @@
+{
+  "name": "Nabeel Agency",
+  "short_name": "Nabeel",
+  "description": "Digital Agency — Web, Mobile & AI Solutions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

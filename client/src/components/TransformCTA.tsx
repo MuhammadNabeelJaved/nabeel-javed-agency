@@ -41,7 +41,7 @@ export function TransformCTA() {
   return (
     <section 
       ref={containerRef}
-      className="relative py-32 px-4 overflow-hidden [perspective:1000px]"
+      className="relative py-16 sm:py-24 md:py-32 px-4 overflow-hidden [perspective:1000px]"
       onMouseMove={handleMouseMove}
     >
       {/* --- Dynamic Background --- */}
@@ -73,16 +73,16 @@ export function TransformCTA() {
             }}
           />
 
-          <div className="grid lg:grid-cols-2 gap-12 p-12 md:p-24 items-center">
-            
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-10 md:gap-12 p-6 sm:p-10 md:p-16 lg:p-24 items-center">
+
             {/* Left: Text Content */}
-            <div className="space-y-8 relative">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
-                <Sparkles className="w-4 h-4" />
+            <div className="space-y-6 sm:space-y-8 relative">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs sm:text-sm font-medium">
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>{t('cta.badge')}</span>
               </div>
-              
-              <h2 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground dark:text-white leading-[0.9]">
+
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-foreground dark:text-white leading-[0.9]">
                 {t('cta.titleLine1')} <br />
                 <motion.span
                   animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
@@ -93,19 +93,19 @@ export function TransformCTA() {
                 </motion.span>
               </h2>
 
-              <p className="text-xl text-muted-foreground dark:text-zinc-400 max-w-md leading-relaxed">
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground dark:text-zinc-400 max-w-md leading-relaxed">
                 {t('cta.description')}
               </p>
 
-              <div className="flex flex-wrap gap-4 pt-4">
-                <Link to="/contact">
-                  <Button size="lg" className="h-16 px-8 rounded-full text-lg bg-foreground text-background hover:bg-foreground/90 hover:scale-105 transition-all duration-300 shadow-xl">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 pt-2 sm:pt-4">
+                <Link to="/contact" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 md:h-16 px-6 sm:px-8 rounded-full text-base sm:text-lg bg-foreground text-background hover:bg-foreground/90 hover:scale-105 transition-all duration-300 shadow-xl">
                     {t('cta.startProject')}
-                    <ArrowRight className="w-5 h-5 ml-2" />
+                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
                   </Button>
                 </Link>
-                <Link to="/portfolio">
-                   <Button size="lg" variant="outline" className="h-16 px-8 rounded-full text-lg border-border/50 dark:border-zinc-700 hover:bg-foreground/5 hover:border-foreground/20 text-foreground dark:text-white transition-all duration-300">
+                <Link to="/portfolio" className="w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 sm:h-14 md:h-16 px-6 sm:px-8 rounded-full text-base sm:text-lg border-border/50 dark:border-zinc-700 hover:bg-foreground/5 hover:border-foreground/20 text-foreground dark:text-white transition-all duration-300">
                     {t('cta.viewCaseStudies')}
                   </Button>
                 </Link>
@@ -113,7 +113,7 @@ export function TransformCTA() {
             </div>
 
             {/* Right: Abstract 3D Visual */}
-            <div className="relative h-[400px] w-full flex items-center justify-center [perspective:1000px] group">
+            <div className="relative h-[240px] sm:h-[300px] md:h-[400px] w-full flex items-center justify-center [perspective:1000px] group hidden sm:flex">
               {/* Central Glowing Orb */}
               <motion.div 
                 animate={{ 
