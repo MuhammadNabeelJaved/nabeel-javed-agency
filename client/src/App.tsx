@@ -95,6 +95,7 @@ import UserChat from './pages/user/UserChat';
 import UserAIChat from './pages/user/UserAIChat';
 import UserProfile from './pages/user/UserProfile';
 import UserNotifications from './pages/user/UserNotifications';
+import UserAppliedJobs from './pages/user/UserAppliedJobs';
 
 import { CookieConsent } from './components/CookieConsent';
 
@@ -268,6 +269,7 @@ export default function App() {
                 <Route path="projects" element={<UserProjects />} />
                 <Route path="messages" element={<UserChat />} />
                 <Route path="ai-assistant" element={<UserAIChat />} />
+                <Route path="applied-jobs" element={<UserAppliedJobs />} />
                 <Route path="profile" element={<UserProfile />} />
                 <Route path="notifications" element={<UserNotifications />} />
               </Route>

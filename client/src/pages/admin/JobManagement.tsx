@@ -3,7 +3,22 @@
  * Full CRUD functionality for Jobs via API
  */
 import React, { useState, useEffect } from 'react';
-import { Job } from '../../hooks/useJobs';
+// Local type matching the DB schema (Jobs.model.js)
+interface JobDB {
+  _id?: string;
+  jobTitle?: string;
+  department?: string;
+  location?: string;
+  employmentType?: string;
+  experienceLevel?: string;
+  workMode?: string;
+  status?: string;
+  description?: string;
+  responsibilities?: string[];
+  requirements?: string[];
+  benefits?: string[];
+  salaryRange?: { min?: number; max?: number; currency?: string };
+}
 import {
   Plus,
   Search,
@@ -43,7 +58,7 @@ export default function JobManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentJob, setCurrentJob] = useState<Partial<Job>>({});
+  const [currentJob, setCurrentJob] = useState<Partial<JobDB>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -72,24 +87,24 @@ export default function JobManagement() {
   }, []);
 
   const filteredJobs = jobs.filter(job =>
-    (job.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (job.jobTitle || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (job.department || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddNew = () => {
     setCurrentJob({
-      title: '',
+      jobTitle: '',
       department: 'Engineering',
       location: 'Remote',
-      type: 'Full-time',
-      status: 'active',
+      employmentType: 'Full-time',
+      status: 'Active',
       description: '',
       responsibilities: [],
       requirements: [],
       benefits: [],
-      salaryRange: '',
+      salaryRange: { min: 0, max: 0, currency: 'USD' },
       experienceLevel: 'Mid Level',
-      workMode: 'Remote'
+      workMode: 'Remote',
     });
     setIsEditing(false);
     setIsDialogOpen(true);
@@ -116,7 +131,7 @@ export default function JobManagement() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentJob.title || !currentJob.description) return;
+    if (!currentJob.jobTitle || !currentJob.description) return;
     setIsSaving(true);
     try {
       if (isEditing) {
@@ -138,7 +153,7 @@ export default function JobManagement() {
 
   const handleStatusToggle = async (job: any) => {
     const id = job._id || job.id;
-    const newStatus = job.status === 'active' ? 'closed' : 'active';
+    const newStatus = job.status === 'Active' ? 'Closed' : 'Active';
     try {
       await jobsApi.updateStatus(id, newStatus);
       loadJobs();
@@ -215,13 +230,18 @@ export default function JobManagement() {
                 className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-white hover:shadow-md border border-border/40 rounded-xl transition-all"
               >
                 <div className="space-y-3 mb-4 sm:mb-0 w-full">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-lg text-foreground">{job.title}</h3>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="font-semibold text-lg text-foreground">{job.jobTitle}</h3>
                     <Badge className={`${
-                      job.status === 'active' ? 'bg-[#8b5cf6] hover:bg-[#7c3aed]' : 'bg-slate-500'
+                      job.status === 'Active' ? 'bg-[#8b5cf6] hover:bg-[#7c3aed]' :
+                      job.status === 'Draft'  ? 'bg-yellow-500 hover:bg-yellow-600' :
+                      'bg-slate-500'
                     } text-white border-none px-3 py-0.5 rounded-full font-medium text-xs`}>
                       {job.status}
                     </Badge>
+                    {job.applicationsCount > 0 && (
+                      <span className="text-xs text-muted-foreground">{job.applicationsCount} applicant{job.applicationsCount !== 1 ? 's' : ''}</span>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
@@ -235,8 +255,14 @@ export default function JobManagement() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-muted-foreground/70" />
-                      {job.type}
+                      {job.employmentType}
                     </div>
+                    {(job.salaryRange?.min || job.salaryDisplay) && (
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-muted-foreground/70" />
+                        {job.salaryDisplay || `$${Math.round(job.salaryRange.min/1000)}k – $${Math.round(job.salaryRange.max/1000)}k`}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -259,7 +285,7 @@ export default function JobManagement() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleStatusToggle(job)}>
-                        {job.status === 'active' ? 'Close Position' : 'Activate Position'}
+                        {job.status === 'Active' ? 'Close Position' : 'Activate Position'}
                       </DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTargetId(jobId)}>
                         Delete
@@ -302,8 +328,8 @@ export default function JobManagement() {
                       <div className="space-y-2">
                         <Label>Job Title</Label>
                         <Input
-                          value={currentJob.title}
-                          onChange={e => setCurrentJob({...currentJob, title: e.target.value})}
+                          value={currentJob.jobTitle}
+                          onChange={e => setCurrentJob({...currentJob, jobTitle: e.target.value})}
                           required
                           placeholder="e.g. Senior Frontend Engineer"
                           className="h-11"
@@ -323,8 +349,8 @@ export default function JobManagement() {
                         <div className="space-y-2">
                           <Label>Employment Type</Label>
                           <Select
-                            value={currentJob.type}
-                            onValueChange={(val: any) => setCurrentJob({...currentJob, type: val})}
+                            value={currentJob.employmentType}
+                            onValueChange={(val: any) => setCurrentJob({...currentJob, employmentType: val})}
                           >
                             <SelectTrigger className="h-11">
                               <SelectValue />
@@ -398,14 +424,27 @@ export default function JobManagement() {
                       </div>
                       <div className="space-y-2">
                         <Label>Salary Range</Label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            value={currentJob.salaryRange || ''}
-                            onChange={e => setCurrentJob({...currentJob, salaryRange: e.target.value})}
-                            placeholder="e.g. 140k - 180k"
-                            className="pl-10 h-11"
-                          />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              value={currentJob.salaryRange?.min ?? ''}
+                              onChange={e => setCurrentJob({...currentJob, salaryRange: {...(currentJob.salaryRange || {}), min: Number(e.target.value)}})}
+                              placeholder="Min (e.g. 80000)"
+                              className="pl-10 h-11"
+                            />
+                          </div>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              type="number"
+                              value={currentJob.salaryRange?.max ?? ''}
+                              onChange={e => setCurrentJob({...currentJob, salaryRange: {...(currentJob.salaryRange || {}), max: Number(e.target.value)}})}
+                              placeholder="Max (e.g. 120000)"
+                              className="pl-10 h-11"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

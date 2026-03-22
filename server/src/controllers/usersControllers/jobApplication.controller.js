@@ -208,6 +208,20 @@ export const deleteApplication = asyncHandler(async (req, res) => {
 });
 
 // =========================
+// GET MY APPLICATIONS (authenticated user)
+// =========================
+export const getMyApplications = asyncHandler(async (req, res) => {
+    const email = req.user.email;
+    if (!email) throw new AppError("User email not found", 400);
+
+    const applications = await JobApplication.find({ email })
+        .populate("job", "jobTitle department location employmentType workMode salaryRange status")
+        .sort({ createdAt: -1 });
+
+    successResponse(res, "Your applications fetched successfully", { applications, total: applications.length });
+});
+
+// =========================
 // GET STATS (admin)
 // =========================
 export const getApplicationStats = asyncHandler(async (req, res) => {

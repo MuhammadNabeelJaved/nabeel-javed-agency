@@ -29,26 +29,23 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { ShareWidget } from '../../components/ShareWidget';
-import { useJobs, Job } from '../../hooks/useJobs';
+import { jobsApi } from '../../api/jobs.api';
 import { toast } from 'sonner';
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
-  const { getJob } = useJobs();
   const navigate = useNavigate();
-  const [job, setJob] = useState<Job | null>(null);
+  const [job, setJob] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      const foundJob = getJob(id);
-      if (foundJob) {
-        setJob(foundJob);
-      }
-      setLoading(false);
-    }
-  }, [id, getJob]);
+    if (!id) return;
+    jobsApi.getById(id)
+      .then(res => setJob(res.data.data))
+      .catch(() => toast.error('Failed to load job details'))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   const handleShare = () => {
     setShareOpen(true);
@@ -103,16 +100,16 @@ export default function JobDetail() {
                   </Badge>
                 )}
                 <Badge variant="outline" className={`text-sm py-1 px-3
-                  ${job.status === 'active' ? 'border-green-500/30 text-green-600 bg-green-500/5' : ''}
-                  ${job.status === 'closed' ? 'border-red-500/30 text-red-600 bg-red-500/5' : ''}
-                  ${job.status === 'draft' ? 'border-yellow-500/30 text-yellow-600 bg-yellow-500/5' : ''}
+                  ${job.status === 'Active' ? 'border-green-500/30 text-green-600 bg-green-500/5' : ''}
+                  ${job.status === 'Closed' || job.status === 'Filled' ? 'border-red-500/30 text-red-600 bg-red-500/5' : ''}
+                  ${job.status === 'Draft' || job.status === 'Paused' ? 'border-yellow-500/30 text-yellow-600 bg-yellow-500/5' : ''}
                 `}>
-                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                  {job.status}
                 </Badge>
               </div>
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-tight">
-                {job.title}
+                {job.jobTitle}
               </h1>
 
               <div className="flex flex-wrap gap-y-4 gap-x-8 text-muted-foreground text-sm md:text-base">
@@ -122,11 +119,11 @@ export default function JobDetail() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-primary/70" />
-                  <span>{job.type}</span>
+                  <span>{job.employmentType}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5 text-primary/70" />
-                  <span>{job.salaryRange || 'Competitive'}</span>
+                  <span>{job.salaryDisplay || (job.salaryRange?.min ? `$${Math.round(job.salaryRange.min/1000)}k – $${Math.round(job.salaryRange.max/1000)}k` : 'Competitive')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-primary/70" />
@@ -136,9 +133,9 @@ export default function JobDetail() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                <ShareWidget 
-                  title={`Check out this ${job.title} role at Nabeel Agency`}
-                  description={`I found this great job opportunity for a ${job.title} position.`}
+                <ShareWidget
+                  title={`Check out this ${job.jobTitle} role at Nabeel Agency`}
+                  description={`I found this great job opportunity for a ${job.jobTitle} position.`}
                   open={shareOpen}
                   onOpenChange={setShareOpen}
                   trigger={
@@ -148,7 +145,7 @@ export default function JobDetail() {
                     </Button>
                   }
                 />
-                <Link to={`/careers/apply?role=${encodeURIComponent(job.title)}`} className="w-full sm:w-auto">
+                <Link to={`/careers/apply?job=${job._id}`} className="w-full sm:w-auto">
                     <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-base shadow-lg shadow-primary/20">
                     Apply Now
                     </Button>
@@ -277,7 +274,7 @@ export default function JobDetail() {
                     </p>
                   </div>
                   
-                  <Link to={`/careers/apply?role=${encodeURIComponent(job.title)}`}>
+                  <Link to={`/careers/apply?job=${job._id}`}>
                     <Button className="w-full h-12 text-base shadow-lg shadow-primary/20" size="lg">
                       Apply Now
                     </Button>
