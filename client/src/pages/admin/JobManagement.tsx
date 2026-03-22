@@ -48,7 +48,7 @@ import {
 } from '../../components/ui/dropdown-menu';
 import { Badge } from '../../components/ui/badge';
 import { Label } from '../../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Select, SelectItem } from '../../components/ui/select';
 import { Notification } from '../../components/Notification';
 import { jobsApi } from '../../api/jobs.api';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
@@ -340,21 +340,17 @@ export default function JobManagement() {
                         <Select
                           value={currentJob.department}
                           onValueChange={(val: any) => setCurrentJob({...currentJob, department: val})}
+                          className="h-11"
                         >
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select Department" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Engineering">Engineering</SelectItem>
-                            <SelectItem value="Design">Design</SelectItem>
-                            <SelectItem value="Marketing">Marketing</SelectItem>
-                            <SelectItem value="Sales">Sales</SelectItem>
-                            <SelectItem value="HR">HR</SelectItem>
-                            <SelectItem value="Finance">Finance</SelectItem>
-                            <SelectItem value="Operations">Operations</SelectItem>
-                            <SelectItem value="Product">Product</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
+                          <SelectItem value="Engineering">Engineering</SelectItem>
+                          <SelectItem value="Design">Design</SelectItem>
+                          <SelectItem value="Marketing">Marketing</SelectItem>
+                          <SelectItem value="Sales">Sales</SelectItem>
+                          <SelectItem value="HR">HR</SelectItem>
+                          <SelectItem value="Finance">Finance</SelectItem>
+                          <SelectItem value="Operations">Operations</SelectItem>
+                          <SelectItem value="Product">Product</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
                         </Select>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
@@ -363,16 +359,12 @@ export default function JobManagement() {
                           <Select
                             value={currentJob.employmentType}
                             onValueChange={(val: any) => setCurrentJob({...currentJob, employmentType: val})}
+                            className="h-11"
                           >
-                            <SelectTrigger className="h-11">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Full-time">Full-time</SelectItem>
-                              <SelectItem value="Part-time">Part-time</SelectItem>
-                              <SelectItem value="Contract">Contract</SelectItem>
-                              <SelectItem value="Freelance">Freelance</SelectItem>
-                            </SelectContent>
+                            <SelectItem value="Full-time">Full-time</SelectItem>
+                            <SelectItem value="Part-time">Part-time</SelectItem>
+                            <SelectItem value="Contract">Contract</SelectItem>
+                            <SelectItem value="Freelance">Freelance</SelectItem>
                           </Select>
                         </div>
                         <div className="space-y-2">
@@ -380,17 +372,13 @@ export default function JobManagement() {
                           <Select
                             value={currentJob.experienceLevel}
                             onValueChange={(val: any) => setCurrentJob({...currentJob, experienceLevel: val})}
+                            className="h-11"
                           >
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select Level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Entry Level">Entry Level</SelectItem>
-                              <SelectItem value="Mid Level">Mid Level</SelectItem>
-                              <SelectItem value="Senior Level">Senior Level</SelectItem>
-                              <SelectItem value="Lead">Lead</SelectItem>
-                              <SelectItem value="Executive">Executive</SelectItem>
-                            </SelectContent>
+                            <SelectItem value="Entry Level">Entry Level</SelectItem>
+                            <SelectItem value="Mid Level">Mid Level</SelectItem>
+                            <SelectItem value="Senior Level">Senior Level</SelectItem>
+                            <SelectItem value="Lead">Lead</SelectItem>
+                            <SelectItem value="Executive">Executive</SelectItem>
                           </Select>
                         </div>
                       </div>
@@ -412,15 +400,11 @@ export default function JobManagement() {
                           <Select
                             value={currentJob.workMode}
                             onValueChange={(val: any) => setCurrentJob({...currentJob, workMode: val})}
+                            className="h-11"
                           >
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select Mode" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Remote">Remote</SelectItem>
-                              <SelectItem value="Hybrid">Hybrid</SelectItem>
-                              <SelectItem value="On-site">On-site</SelectItem>
-                            </SelectContent>
+                            <SelectItem value="Remote">Remote</SelectItem>
+                            <SelectItem value="Hybrid">Hybrid</SelectItem>
+                            <SelectItem value="On-site">On-site</SelectItem>
                           </Select>
                         </div>
                         <div className="space-y-2">

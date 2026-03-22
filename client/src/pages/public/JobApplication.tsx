@@ -13,9 +13,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '../../components/ui/select';
+import { Select, SelectItem } from '../../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { submitJobApplication } from '../../api/jobApplications.api';
 import apiClient from '../../api/apiClient';
@@ -171,34 +169,26 @@ export default function JobApplication() {
                     <div className="space-y-2">
                       <Label>Desired Role *</Label>
                       <Select required value={jobId} onValueChange={setJobId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a position" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {jobs.map(job => (
-                            <SelectItem key={job._id} value={job._id}>
-                              {job.jobTitle}
-                            </SelectItem>
-                          ))}
-                          {jobs.length === 0 && (
-                            <SelectItem value="__none" disabled>No open positions</SelectItem>
-                          )}
-                        </SelectContent>
+                        <SelectItem value="">Select a position</SelectItem>
+                        {jobs.map(job => (
+                          <SelectItem key={job._id} value={job._id}>
+                            {job.jobTitle}
+                          </SelectItem>
+                        ))}
+                        {jobs.length === 0 && (
+                          <SelectItem value="__none" disabled>No open positions</SelectItem>
+                        )}
                       </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>Relevant Experience *</Label>
                       <Select required value={experience} onValueChange={setExperience}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Years of experience" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0-1 Years (Entry Level)">0-1 Years (Entry Level)</SelectItem>
-                          <SelectItem value="1-3 Years">1-3 Years (Junior)</SelectItem>
-                          <SelectItem value="3-5 Years">3-5 Years (Mid-Level)</SelectItem>
-                          <SelectItem value="5-10 Years">5-10 Years (Senior)</SelectItem>
-                          <SelectItem value="10+ Years">10+ Years (Lead/Principal)</SelectItem>
-                        </SelectContent>
+                        <SelectItem value="">Years of experience</SelectItem>
+                        <SelectItem value="0-1 Years (Entry Level)">0-1 Years (Entry Level)</SelectItem>
+                        <SelectItem value="1-3 Years">1-3 Years (Junior)</SelectItem>
+                        <SelectItem value="3-5 Years">3-5 Years (Mid-Level)</SelectItem>
+                        <SelectItem value="5-10 Years">5-10 Years (Senior)</SelectItem>
+                        <SelectItem value="10+ Years">10+ Years (Lead/Principal)</SelectItem>
                       </Select>
                     </div>
                   </div>
