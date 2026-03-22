@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 interface Category {
   id: number;
@@ -36,6 +37,7 @@ export default function CategoriesAdmin() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({ name: '', slug: '' });
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const handleOpenModal = (category?: Category) => {
     if (category) {
@@ -63,10 +65,10 @@ export default function CategoriesAdmin() {
     handleCloseModal();
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm('Are you sure? This will not delete the projects in this category.')) {
-      setCategories(categories.filter(c => c.id !== id));
-    }
+  const handleDelete = () => {
+    if (deleteTargetId === null) return;
+    setCategories(categories.filter(c => c.id !== deleteTargetId));
+    setDeleteTargetId(null);
   };
 
   // Auto-generate slug from name
@@ -138,7 +140,7 @@ export default function CategoriesAdmin() {
                     <Button onClick={() => handleOpenModal(category)} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-500">
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button onClick={() => handleDelete(category.id)} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500">
+                    <Button onClick={() => setDeleteTargetId(category.id)} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -203,6 +205,13 @@ export default function CategoriesAdmin() {
           </>
         )}
       </AnimatePresence>
+
+      <ConfirmDeleteDialog
+        open={deleteTargetId !== null}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={handleDelete}
+        description="Are you sure? This will not delete the projects in this category."
+      />
     </div>
   );
 }

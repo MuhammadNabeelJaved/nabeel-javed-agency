@@ -23,6 +23,7 @@ import { Input } from '../../components/ui/input';
 import { ServiceEditor, ServiceData } from './ServiceEditor';
 import { Notification } from '../../components/Notification';
 import { servicesApi } from '../../api/services.api';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 const iconOptions = [
   { value: 'web-development', label: 'Web Dev', icon: Code },
@@ -36,6 +37,7 @@ const iconOptions = [
 export default function ServicesAdmin() {
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [services, setServices] = useState<ServiceData[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<ServiceData | null>(null);
   const [editingService, setEditingService] = useState<ServiceData | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -113,15 +115,17 @@ export default function ServicesAdmin() {
     setView('edit');
   };
 
-  const handleDelete = async (service: ServiceData) => {
-    const id = (service as any)._id || String(service.id);
-    if (!confirm('Are you sure you want to delete this service?')) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const id = (deleteTarget as any)._id || String(deleteTarget.id);
     try {
       await servicesApi.delete(id);
       setServices(prev => prev.filter(s => ((s as any)._id || String(s.id)) !== id));
       showNotification('success', 'Service deleted', 'The service has been removed.');
+      setDeleteTarget(null);
     } catch (err: any) {
       showNotification('error', 'Delete failed', err?.response?.data?.message || 'Could not delete the service.');
+      setDeleteTarget(null);
     }
   };
 
@@ -278,7 +282,7 @@ export default function ServicesAdmin() {
                   <Button variant="outline" size="icon" className="h-8 w-8 bg-background" onClick={() => handleEdit(service)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8 bg-background hover:text-red-500 hover:border-red-200" onClick={() => handleDelete(service)}>
+                  <Button variant="outline" size="icon" className="h-8 w-8 bg-background hover:text-red-500 hover:border-red-200" onClick={() => setDeleteTarget(service)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -319,6 +323,13 @@ export default function ServicesAdmin() {
           </button>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        description="Are you sure you want to delete this service? This action cannot be undone."
+      />
     </div>
   );
 }

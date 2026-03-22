@@ -54,6 +54,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Notification } from '../../components/Notification';
 import { contactsApi } from '../../api/contacts.api';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 export default function ContactManagement() {
   // State
@@ -609,27 +610,16 @@ export default function ContactManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <Dialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" /> Confirm Deletion
-            </DialogTitle>
-            <DialogDescription>
-              {contactToDelete === 'BULK'
-                ? `Are you sure you want to delete ${selectedContacts.length} selected contacts?`
-                : "Are you sure you want to delete this contact message?"
-              }
-              <br />This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsDeleteAlertOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete Permanently</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteDialog
+        open={isDeleteAlertOpen}
+        onClose={() => setIsDeleteAlertOpen(false)}
+        onConfirm={handleDelete}
+        description={
+          contactToDelete === 'BULK'
+            ? `Are you sure you want to delete ${selectedContacts.length} selected contacts? This action cannot be undone.`
+            : "Are you sure you want to delete this contact message? This action cannot be undone."
+        }
+      />
     </div>
   );
 }

@@ -9,9 +9,11 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Search, Mail, Phone, ExternalLink, MoreVertical, Plus, Trash2, Edit } from 'lucide-react';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 export default function TeamClients() {
   const navigate = useNavigate();
+  const [deleteTargetId, setDeleteTargetId] = React.useState<number | null>(null);
   const [clients, setClients] = React.useState([
     {
       id: 1,
@@ -45,11 +47,10 @@ export default function TeamClients() {
     }
   ]);
 
-  const handleDelete = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    if(confirm('Delete this client?')) {
-       setClients(clients.filter(c => c.id !== id));
-    }
+  const handleDelete = () => {
+    if (deleteTargetId === null) return;
+    setClients(clients.filter(c => c.id !== deleteTargetId));
+    setDeleteTargetId(null);
   };
 
   return (
@@ -82,7 +83,7 @@ export default function TeamClients() {
                 {client.status}
               </Badge>
               <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="secondary" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive hover:text-white" onClick={(e) => handleDelete(e, client.id)}>
+                <Button variant="secondary" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive hover:text-white" onClick={(e) => { e.stopPropagation(); setDeleteTargetId(client.id); }}>
                    <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -127,6 +128,13 @@ export default function TeamClients() {
           </Card>
         ))}
       </div>
+
+      <ConfirmDeleteDialog
+        open={deleteTargetId !== null}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={handleDelete}
+        description="Are you sure you want to delete this client? This action cannot be undone."
+      />
     </div>
   );
 }

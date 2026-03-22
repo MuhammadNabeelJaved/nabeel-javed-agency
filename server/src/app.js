@@ -40,9 +40,13 @@ app.use(helmet());
 // Rate limiter – 100 requests per 15 minutes per IP
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    max: 1000, // limit each IP to 1000 requests per windowMs
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+        // Skip rate limiting for authenticated API requests (dashboard usage)
+        return !!req.headers.authorization || !!req.cookies?.accessToken;
+    },
 });
 app.use(limiter);
 
@@ -70,6 +74,7 @@ import cmsRoutes from "./routes/userRoutes/cms.route.js";
 import jobApplicationRoutes from "./routes/userRoutes/jobApplication.route.js";
 import clientRoutes from "./routes/userRoutes/client.route.js";
 import taskRoutes from "./routes/userRoutes/task.route.js";
+import resourceRoutes from "./routes/userRoutes/resource.route.js";
 
 // ⚠️ TEMP DEV-ONLY — REMOVE BEFORE PROD
 // Seed endpoint — populates CMS, Hero, and Services with default data
@@ -621,6 +626,64 @@ app.post("/api/v1/devseed", async (req, res) => {
             results.push(`TeamMembers: ${teamCount} already exist, skipped`);
         }
 
+        // ── Clients ──
+        const Client = (await import("./models/usersModels/Client.model.js")).default;
+        const clientCount = await Client.countDocuments({ isArchived: false });
+        if (clientCount === 0 || force) {
+            if (force) await Client.deleteMany({});
+            const adminUser = await User.findOne({ role: "admin" });
+            if (!adminUser) {
+                results.push("Clients: skipped (no admin user found — create an admin account first)");
+            } else {
+                const uid = adminUser._id;
+                const teamMembers = await User.find({ role: "team" }).limit(3);
+                const mgr1 = teamMembers[0]?._id || uid;
+                const mgr2 = teamMembers[1]?._id || uid;
+                const mgr3 = teamMembers[2]?._id || uid;
+
+                await Client.insertMany([
+                    { companyName: "FinTech Innovations Ltd", contactName: "James Carter", email: "james.carter@fintech-innovations.io", phone: "+1 (415) 234-5678", industry: "Financial Technology", status: "Active", website: "https://fintech-innovations.io", notes: "Long-term partner. Phase 2 of the analytics dashboard underway. Very satisfied with delivery speed.", totalRevenue: 85000, accountManager: mgr1, createdBy: uid },
+                    { companyName: "StyleHouse Fashion", contactName: "Olivia Bennett", email: "olivia@stylehouse.co", phone: "+44 20 7946 0123", industry: "E-Commerce / Fashion", status: "Active", website: "https://stylehouse.co", notes: "Recurring client. E-commerce redesign completed Q1. Planning mobile app expansion.", totalRevenue: 62000, accountManager: mgr2, createdBy: uid },
+                    { companyName: "MedCore Health Systems", contactName: "Dr. Aaron Patel", email: "aaron.patel@medcore.health", phone: "+1 (312) 789-0123", industry: "Healthcare", status: "Onboarding", website: "https://medcore.health", notes: "New client. HIPAA-compliant patient portal. Kickoff call scheduled next week.", totalRevenue: 0, accountManager: mgr3, createdBy: uid },
+                    { companyName: "EduSpark Learning", contactName: "Maria Gonzalez", email: "mgonzalez@eduspark.edu", phone: "+1 (213) 456-7890", industry: "Education Technology", status: "Active", website: "https://eduspark.edu", notes: "LMS integration completed. Exploring AI-powered tutoring features for phase 2.", totalRevenue: 48000, accountManager: mgr1, createdBy: uid },
+                    { companyName: "GreenEarth Logistics", contactName: "Tom Weir", email: "tom.weir@greenearth-logistics.com", phone: "+49 30 12345678", industry: "Logistics & Supply Chain", status: "Active", website: "https://greenearth-logistics.com", notes: "Fleet tracking dashboard delivered. Discussing IoT integration for real-time cargo monitoring.", totalRevenue: 37500, accountManager: mgr2, createdBy: uid },
+                    { companyName: "Nexus Real Estate Group", contactName: "Patricia Wong", email: "pwong@nexusrealestate.com", phone: "+1 (646) 555-0987", industry: "Real Estate", status: "Active", website: "https://nexusrealestate.com", notes: "Phase 1 (property listings) live. Phase 2 (offers & virtual tours) in progress.", totalRevenue: 54000, accountManager: mgr3, createdBy: uid },
+                    { companyName: "ContentFlow Inc", contactName: "Derek Hall", email: "derek@contentflow.io", phone: "+1 (512) 678-4321", industry: "SaaS / Content Marketing", status: "Inactive", website: "https://contentflow.io", notes: "Project delivered Q2. Client went in-house. May re-engage for v2 later this year.", totalRevenue: 20000, accountManager: mgr1, createdBy: uid },
+                    { companyName: "SpeedDine Food Tech", contactName: "Amara Johnson", email: "amara@speeddine.app", phone: "+1 (305) 789-2345", industry: "Food & Delivery Tech", status: "Onboarding", website: "https://speeddine.app", notes: "Rebuilding driver app from React Native to Flutter. Discovery phase ongoing.", totalRevenue: 0, accountManager: mgr2, createdBy: uid },
+                    { companyName: "Prime Properties Group", contactName: "Lucas Braun", email: "lucas@primeprop.de", phone: "+49 89 45678901", industry: "Real Estate", status: "Active", website: "https://primeprop.de", notes: "German real estate client. Virtual tour integration live. Strong long-term partnership potential.", totalRevenue: 31000, accountManager: mgr3, createdBy: uid },
+                    { companyName: "DataSphere Analytics", contactName: "Nina Ross", email: "nina.ross@datasphere.ai", phone: "+1 (628) 901-2345", industry: "Artificial Intelligence / Data", status: "Churned", website: "https://datasphere.ai", notes: "Churned after budget cuts in Q3. Completed MVP data dashboard. Keep warm for future re-engagement.", totalRevenue: 15500, accountManager: mgr1, createdBy: uid },
+                ]);
+                results.push("Clients: 10 dummy clients seeded");
+            }
+        } else {
+            results.push(`Clients: ${clientCount} already exist, skipped`);
+        }
+
+        // ── Resources ──
+        const Resource = (await import("./models/usersModels/Resource.model.js")).default;
+        const resourceCount = await Resource.countDocuments();
+        if (resourceCount === 0 || force) {
+            if (force) await Resource.deleteMany({});
+            const adminForRes = await User.findOne({ role: "admin" }).lean();
+            if (!adminForRes) {
+                results.push("Resources: skipped (no admin user found)");
+            } else {
+                await Resource.insertMany([
+                    { name: "Brand Guidelines.pdf",       originalName: "Brand_Guidelines.pdf",       url: "https://res.cloudinary.com/demo/raw/upload/sample",                        publicId: "team-resources/brand-guidelines",    mimeType: "application/pdf",                                                                          size: 2621440, resourceType: "raw",   uploadedBy: adminForRes._id },
+                    { name: "Design System V2.fig",       originalName: "Design_System_V2.fig",       url: "https://res.cloudinary.com/demo/raw/upload/sample",                        publicId: "team-resources/design-system-v2",    mimeType: "application/octet-stream",                                                                 size: 5242880, resourceType: "raw",   uploadedBy: adminForRes._id },
+                    { name: "Hero Banner.png",            originalName: "Hero_Banner.png",            url: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",      publicId: "team-resources/hero-banner",         mimeType: "image/png",                                                                                size: 4300800, resourceType: "image", uploadedBy: adminForRes._id },
+                    { name: "Q3 Report 2025.pdf",         originalName: "Q3_Report_2025.pdf",         url: "https://res.cloudinary.com/demo/raw/upload/sample",                        publicId: "team-resources/q3-report",           mimeType: "application/pdf",                                                                          size: 2516582, resourceType: "raw",   uploadedBy: adminForRes._id },
+                    { name: "Legal Documents.zip",        originalName: "Legal_Documents.zip",        url: "https://res.cloudinary.com/demo/raw/upload/sample",                        publicId: "team-resources/legal-documents",     mimeType: "application/zip",                                                                          size: 8912896, resourceType: "raw",   uploadedBy: adminForRes._id },
+                    { name: "Project Assets.zip",         originalName: "Project_Assets_v3.zip",      url: "https://res.cloudinary.com/demo/raw/upload/sample",                        publicId: "team-resources/project-assets",      mimeType: "application/zip",                                                                          size: 47185920,resourceType: "raw",   uploadedBy: adminForRes._id },
+                    { name: "Team Photo 2025.jpg",        originalName: "Team_Photo_2025.jpg",        url: "https://res.cloudinary.com/demo/image/upload/couple.jpg",                  publicId: "team-resources/team-photo",          mimeType: "image/jpeg",                                                                               size: 1887437, resourceType: "image", uploadedBy: adminForRes._id },
+                    { name: "Onboarding Checklist.docx",  originalName: "Onboarding_Checklist.docx", url: "https://res.cloudinary.com/demo/raw/upload/sample",                        publicId: "team-resources/onboarding-checklist",mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",              size: 409600,  resourceType: "raw",   uploadedBy: adminForRes._id },
+                ]);
+                results.push("Resources: 8 dummy files seeded");
+            }
+        } else {
+            results.push(`Resources: ${resourceCount} already exist, skipped`);
+        }
+
         res.json({ success: true, message: "Seed complete", results });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -646,6 +709,7 @@ app.use("/api/v1/cms", cmsRoutes);                  // Global CMS (logo, tech st
 app.use("/api/v1/job-applications", jobApplicationRoutes); // Job applications
 app.use("/api/v1/clients", clientRoutes);           // Agency client CRM
 app.use("/api/v1/tasks", taskRoutes);                  // Team Kanban tasks
+app.use("/api/v1/resources", resourceRoutes);          // Team shared resources (Cloudinary)
 
 // ─── Error Handling ─────────────────────────────────────────────────────────
 

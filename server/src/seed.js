@@ -15,6 +15,7 @@ import HomePage from './models/usersModels/HomePageHero.js';
 import Service from './models/usersModels/Services.model.js';
 import Task from './models/usersModels/Task.model.js';
 import User from './models/usersModels/User.model.js';
+import Resource from './models/usersModels/Resource.model.js';
 
 // ─── Hero Section ─────────────────────────────────────────────────────────────
 
@@ -647,6 +648,108 @@ async function seedTasks() {
   console.log(`✓ Tasks seeded (${dummyTasks.length} tasks across 4 Kanban columns)`);
 }
 
+// ─── Resources ────────────────────────────────────────────────────────────────
+
+async function seedResources() {
+  const existing = await Resource.countDocuments();
+  if (existing > 0) {
+    console.log(`✓ Resources already seeded (${existing} found), skipping`);
+    return;
+  }
+
+  const adminUser = await User.findOne({ role: 'admin' }).lean();
+  if (!adminUser) {
+    console.log('⚠ No admin user found — skipping resource seed.');
+    return;
+  }
+
+  const dummyResources = [
+    {
+      name: 'Brand Guidelines.pdf',
+      originalName: 'Brand_Guidelines.pdf',
+      url: 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+      publicId: 'demo/brand-guidelines',
+      mimeType: 'application/pdf',
+      size: 2621440,           // 2.5 MB
+      resourceType: 'raw',
+      uploadedBy: adminUser._id,
+    },
+    {
+      name: 'Design System V2.fig',
+      originalName: 'Design_System_V2.fig',
+      url: 'https://res.cloudinary.com/demo/raw/upload/sample',
+      publicId: 'demo/design-system-v2',
+      mimeType: 'application/octet-stream',
+      size: 5242880,           // 5 MB
+      resourceType: 'raw',
+      uploadedBy: adminUser._id,
+    },
+    {
+      name: 'Hero Banner.png',
+      originalName: 'Hero_Banner.png',
+      url: 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg',
+      publicId: 'demo/hero-banner',
+      mimeType: 'image/png',
+      size: 4300800,           // 4.1 MB
+      resourceType: 'image',
+      uploadedBy: adminUser._id,
+    },
+    {
+      name: 'Q3 Report.pdf',
+      originalName: 'Q3_Report_2025.pdf',
+      url: 'https://res.cloudinary.com/demo/raw/upload/sample',
+      publicId: 'demo/q3-report',
+      mimeType: 'application/pdf',
+      size: 2516582,           // 2.4 MB
+      resourceType: 'raw',
+      uploadedBy: adminUser._id,
+    },
+    {
+      name: 'Legal Documents.zip',
+      originalName: 'Legal_Documents.zip',
+      url: 'https://res.cloudinary.com/demo/raw/upload/sample',
+      publicId: 'demo/legal-documents',
+      mimeType: 'application/zip',
+      size: 8912896,           // 8.5 MB
+      resourceType: 'raw',
+      uploadedBy: adminUser._id,
+    },
+    {
+      name: 'Project Assets.zip',
+      originalName: 'Project_Assets_v3.zip',
+      url: 'https://res.cloudinary.com/demo/raw/upload/sample',
+      publicId: 'demo/project-assets',
+      mimeType: 'application/zip',
+      size: 47185920,          // 45 MB
+      resourceType: 'raw',
+      uploadedBy: adminUser._id,
+    },
+    {
+      name: 'Team Photo.jpg',
+      originalName: 'Team_Photo_2025.jpg',
+      url: 'https://res.cloudinary.com/demo/image/upload/couple.jpg',
+      publicId: 'demo/team-photo',
+      mimeType: 'image/jpeg',
+      size: 1887437,           // 1.8 MB
+      resourceType: 'image',
+      uploadedBy: adminUser._id,
+    },
+    {
+      name: 'Onboarding Checklist.docx',
+      originalName: 'Onboarding_Checklist.docx',
+      url: 'https://res.cloudinary.com/demo/raw/upload/sample',
+      publicId: 'demo/onboarding-checklist',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      size: 409600,            // 400 KB
+      resourceType: 'raw',
+      uploadedBy: adminUser._id,
+    },
+  ];
+
+  await Resource.insertMany(dummyResources);
+  console.log(`✓ Resources seeded (${dummyResources.length} dummy files)`);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -657,6 +760,7 @@ async function main() {
   await seedCMS();
   await seedServices();
   await seedTasks();
+  await seedResources();
 
   console.log('\n✅ Seed complete! All data is now live in the database.\n');
   await mongoose.disconnect();
