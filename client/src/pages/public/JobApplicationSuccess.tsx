@@ -80,24 +80,24 @@ export default function JobApplicationSuccess() {
           </Card>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           className="flex flex-col sm:flex-row justify-center gap-4 pt-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
         >
-          <Button variant="outline" size="lg" asChild>
-            <Link to="/careers/apply">
-              <Briefcase className="mr-2 h-4 w-4" />
+          <Link to="/careers">
+            <Button variant="outline" size="lg" className="w-full sm:w-auto h-13 px-8 text-base gap-2">
+              <Briefcase className="h-5 w-5" />
               View Other Roles
-            </Link>
-          </Button>
-          <Button size="lg" asChild>
-            <Link to="/">
-              <Home className="mr-2 h-4 w-4" />
+            </Button>
+          </Link>
+          <Link to="/">
+            <Button size="lg" className="w-full sm:w-auto h-13 px-8 text-base gap-2 shadow-lg shadow-primary/20">
+              <Home className="h-5 w-5" />
               Back to Home
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </motion.div>
       </div>
     </div>
