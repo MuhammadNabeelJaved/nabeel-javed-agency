@@ -2,20 +2,34 @@
  * Hero Section Component
  * High-impact visual with glowing background and clear CTA
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Bot, Sparkles, Zap, Globe, Code2, Smartphone, BarChart3, Fingerprint, Cloud } from 'lucide-react';
 import { Button } from './ui/button';
 import { Link } from 'react-router-dom';
-import { useContent } from '../contexts/ContentContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { homepageApi } from '../api/homepage.api';
+
+const defaultHero = {
+  statusBadge: "Accepting New Projects for 2026",
+  titleLine1: "We Build",
+  titleLine2: "Digital Excellence",
+  subtitle: "The agency for forward-thinking brands. We combine AI-driven development with award-winning design to build products that scale.",
+};
 
 export function Hero() {
-  const { heroContent } = useContent();
   const { t } = useLanguage();
+  const [hero, setHero] = useState(defaultHero);
+
+  useEffect(() => {
+    homepageApi.get().then(res => {
+      const data = res.data.data;
+      if (data) setHero(data);
+    }).catch(() => {});
+  }, []);
 
   return (
-    <div className="relative overflow-hidden min-h-screen flex items-center justify-center bg-background">
+    <div className="relative overflow-hidden min-h-screen flex items-center justify-center bg-background pb-40">
       {/* Background Effects */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse" />
@@ -39,7 +53,7 @@ export function Hero() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            <span className="text-sm font-medium text-foreground">{t('hero.badge')}</span>
+            <span className="text-sm font-medium text-foreground">{hero.statusBadge}</span>
           </motion.div>
           
           {/* Main Title */}
@@ -49,8 +63,8 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-none text-foreground"
           >
-            {t('hero.titleLine1')} <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-blue-600 dark:from-white dark:via-white dark:to-white/50">{t('hero.titleLine2')}</span>
+            {hero.titleLine1} <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-blue-600 dark:from-white dark:via-white dark:to-white/50">{hero.titleLine2}</span>
           </motion.h1>
           
           {/* Description */}
@@ -60,7 +74,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
           >
-            {t('hero.subtitle')}
+            {hero.subtitle}
           </motion.p>
           
           {/* CTA Buttons */}
@@ -72,13 +86,13 @@ export function Hero() {
           >
             <Link to="/contact">
               <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
-                {t('hero.startProject')}
+                {t('hero.startProject') || 'Start a Project'}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             <Link to="/portfolio">
               <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-border/50 hover:bg-muted text-foreground">
-                {t('hero.viewWork')}
+                {t('hero.viewWork') || 'View Our Work'}
               </Button>
             </Link>
           </motion.div>

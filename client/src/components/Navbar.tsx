@@ -7,32 +7,55 @@
  * - Theme & Language toggles
  * - Includes Dashboard link
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useContent } from '../contexts/ContentContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { Menu, X, Sun, Moon, Globe, Zap, Check, ChevronDown, ArrowRight, LayoutDashboard } from 'lucide-react';
+import { Menu, X, Sun, Moon, Globe, Check, ChevronDown, ArrowRight, LayoutDashboard, LogOut, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function Navbar() {
   const { theme, setTheme } = useTheme();
   const { logoUrl } = useContent();
   const { lang, setLang, t } = useLanguage();
+  const { user, isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [showLangs, setShowLangs] = useState(false);
   const location = useLocation();
 
   // Handle scroll effect
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfile(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const getDashboardPath = () => {
+    if (user?.role === 'admin') return '/admin';
+    if (user?.role === 'team') return '/team';
+    return '/user-dashboard';
+  };
+
+  const userInitials = user?.name
+    ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'U';
 
   const languages = [
     { code: 'EN' as const, name: 'English' },
@@ -180,17 +203,69 @@ export function Navbar() {
                 </AnimatePresence>
               </div>
 
-              <Link to="/login">
-                <Button 
-                  className={`rounded-full px-6 transition-all duration-300 shadow-lg ${
-                    scrolled
-                      ? 'bg-primary hover:bg-primary/90 shadow-primary/25 text-primary-foreground'
-                      : 'bg-foreground text-background hover:bg-foreground/90 hover:scale-105 shadow-black/10 dark:bg-white dark:text-black dark:shadow-white/10 border-0'
-                  }`}
-                >
-                  {t('nav.getStarted')}
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <div className="relative" ref={profileRef}>
+                  <button
+                    onClick={() => setShowProfile(!showProfile)}
+                    className="flex items-center gap-2 p-1 pr-3 rounded-full transition-all duration-300 hover:bg-accent border border-border/50"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
+                      {user?.avatar ? (
+                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-bold text-primary">{userInitials}</span>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-foreground max-w-[90px] truncate hidden lg:block">
+                      {user?.name?.split(' ')[0]}
+                    </span>
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${showProfile ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {showProfile && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-3 w-52 bg-popover/90 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl py-1 z-50 overflow-hidden"
+                      >
+                        <div className="px-4 py-3 border-b border-border/50">
+                          <p className="text-sm font-semibold text-foreground truncate">{user?.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                        </div>
+                        <Link
+                          to={getDashboardPath()}
+                          onClick={() => setShowProfile(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                        >
+                          <LayoutDashboard className="h-4 w-4" />
+                          Dashboard
+                        </Link>
+                        <button
+                          onClick={() => { logout(); setShowProfile(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Logout
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <Link to="/login">
+                  <Button
+                    className={`rounded-full px-6 transition-all duration-300 shadow-lg ${
+                      scrolled
+                        ? 'bg-primary hover:bg-primary/90 shadow-primary/25 text-primary-foreground'
+                        : 'bg-foreground text-background hover:bg-foreground/90 hover:scale-105 shadow-black/10 dark:bg-white dark:text-black dark:shadow-white/10 border-0'
+                    }`}
+                  >
+                    {t('nav.getStarted')}
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -269,11 +344,41 @@ export function Navbar() {
                   </button>
                 </div>
                 
-                <Link to="/login" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full h-14 text-lg rounded-2xl shadow-xl shadow-primary/20">
-                    {t('nav.getStarted')} <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
+                {isAuthenticated ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-muted/50">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden shrink-0">
+                        {user?.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-sm font-bold text-primary">{userInitials}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate">{user?.name}</p>
+                        <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+                      </div>
+                    </div>
+                    <Link to={getDashboardPath()} onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full h-12 text-base rounded-2xl">
+                        <LayoutDashboard className="mr-2 h-5 w-5" /> Dashboard
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="destructive"
+                      className="w-full h-12 text-base rounded-2xl"
+                      onClick={() => { logout(); setIsOpen(false); }}
+                    >
+                      <LogOut className="mr-2 h-5 w-5" /> Logout
+                    </Button>
+                  </div>
+                ) : (
+                  <Link to="/login" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full h-14 text-lg rounded-2xl shadow-xl shadow-primary/20">
+                      {t('nav.getStarted')} <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                )}
               </motion.div>
             </div>
           </motion.div>

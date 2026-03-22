@@ -4,9 +4,8 @@
  */
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Code, Palette, Rocket, Database, Smartphone, Globe, Shield, BarChart, CheckCircle2, Zap, Layout, Users, Loader2 } from 'lucide-react';
+import { Code, Palette, Rocket, Database, Smartphone, Globe, Shield, BarChart, Zap, Layout, Users, Loader2 } from 'lucide-react';
 import { ServiceCard } from '../../components/ServiceCard';
-import { PricingCard } from '../../components/PricingCard';
 import { FAQSection } from '../../components/FAQSection';
 import { Button } from '../../components/ui/button';
 import { servicesApi } from '../../api/services.api';
@@ -34,53 +33,6 @@ const gradientMap: Record<string, string> = {
   'consulting': 'from-purple-500/20 to-indigo-500/20',
   'other': 'from-cyan-500/20 to-blue-500/20',
 };
-
-const pricingTiers = [
-  {
-    name: "Starter",
-    price: "$2,999",
-    description: "Perfect for small businesses looking to establish a professional online presence.",
-    features: [
-      { text: "Custom UI/UX Design", included: true },
-      { text: "5 Page Responsive Website", included: true },
-      { text: "Basic SEO Optimization", included: true },
-      { text: "CMS Integration", included: true },
-      { text: "1 Month Support", included: true },
-      { text: "AI Chatbot Integration", included: false },
-      { text: "Advanced Analytics", included: false }
-    ]
-  },
-  {
-    name: "Business",
-    price: "$5,999",
-    description: "Comprehensive solution for growing companies needing advanced functionality.",
-    popular: true,
-    ctaText: "Get Started",
-    features: [
-      { text: "Premium UI/UX Design", included: true },
-      { text: "Unlimited Pages", included: true },
-      { text: "Advanced SEO & Performance", included: true },
-      { text: "Custom Admin Dashboard", included: true },
-      { text: "3 Months Support", included: true },
-      { text: "Basic AI Integration", included: true },
-      { text: "Payment Gateway", included: true }
-    ]
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    description: "Full-scale digital transformation for large organizations with complex needs.",
-    features: [
-      { text: "Enterprise Architecture", included: true },
-      { text: "Microservices Support", included: true },
-      { text: "Global CDN & Security", included: true },
-      { text: "Dedicated Team", included: true },
-      { text: "24/7 Priority Support", included: true },
-      { text: "Advanced AI Solutions", included: true },
-      { text: "SLA Guarantee", included: true }
-    ]
-  }
-];
 
 const processSteps = [
   { title: "Discovery", description: "We dive deep into your business goals.", icon: Users },
@@ -218,34 +170,6 @@ export default function Services() {
                   <p className="text-muted-foreground text-sm">{step.description}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-32 relative">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">Simple, Transparent Pricing</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Choose the perfect plan for your business needs. No hidden fees.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            {pricingTiers.map((tier, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.2 }}
-                className={tier.popular ? "lg:-mt-4 lg:mb-0" : ""}
-              >
-                <PricingCard tier={tier} />
-              </motion.div>
             ))}
           </div>
         </div>

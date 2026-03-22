@@ -232,3 +232,97 @@ export const deleteScrollingCard = asyncHandler(async (req, res) => {
 
     successResponse(res, "Scrolling card deleted", { scrollingCards: cms.whyChooseUs.scrollingCards });
 });
+
+// =========================
+// UPDATE CONTACT INFO
+// =========================
+export const updateContactInfo = asyncHandler(async (req, res) => {
+    const { address, email, phone, businessHours } = req.body;
+
+    const cms = await CMS.getOrCreate();
+    if (address !== undefined) cms.contactInfo.address = address;
+    if (email !== undefined) cms.contactInfo.email = email;
+    if (phone !== undefined) cms.contactInfo.phone = phone;
+    if (businessHours !== undefined) cms.contactInfo.businessHours = businessHours;
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+
+    successResponse(res, "Contact info updated", { contactInfo: cms.contactInfo });
+});
+
+// =========================
+// UPDATE SOCIAL LINKS
+// =========================
+export const updateSocialLinks = asyncHandler(async (req, res) => {
+    const { twitter, linkedin, instagram, github } = req.body;
+
+    const cms = await CMS.getOrCreate();
+    if (twitter !== undefined) cms.socialLinks.twitter = twitter;
+    if (linkedin !== undefined) cms.socialLinks.linkedin = linkedin;
+    if (instagram !== undefined) cms.socialLinks.instagram = instagram;
+    if (github !== undefined) cms.socialLinks.github = github;
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+
+    successResponse(res, "Social links updated", { socialLinks: cms.socialLinks });
+});
+
+// =========================
+// TESTIMONIALS CRUD
+// =========================
+export const updateTestimonials = asyncHandler(async (req, res) => {
+    const { testimonials } = req.body;
+    if (!Array.isArray(testimonials)) throw new AppError("testimonials must be an array", 400);
+
+    const cms = await CMS.getOrCreate();
+    cms.testimonials = testimonials;
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+
+    successResponse(res, "Testimonials updated", { testimonials: cms.testimonials });
+});
+
+export const addTestimonial = asyncHandler(async (req, res) => {
+    const { content, author, role, rating } = req.body;
+    if (!content || !author) throw new AppError("content and author are required", 400);
+
+    const cms = await CMS.getOrCreate();
+    cms.testimonials.push({ content, author, role, rating, order: cms.testimonials.length });
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+
+    successResponse(res, "Testimonial added", { testimonials: cms.testimonials }, 201);
+});
+
+export const updateTestimonial = asyncHandler(async (req, res) => {
+    const { testimonialId } = req.params;
+    const { content, author, role, rating, order } = req.body;
+
+    const cms = await CMS.getOrCreate();
+    const testimonial = cms.testimonials.id(testimonialId);
+    if (!testimonial) throw new AppError("Testimonial not found", 404);
+
+    if (content !== undefined) testimonial.content = content;
+    if (author !== undefined) testimonial.author = author;
+    if (role !== undefined) testimonial.role = role;
+    if (rating !== undefined) testimonial.rating = rating;
+    if (order !== undefined) testimonial.order = order;
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+
+    successResponse(res, "Testimonial updated", { testimonials: cms.testimonials });
+});
+
+export const deleteTestimonial = asyncHandler(async (req, res) => {
+    const { testimonialId } = req.params;
+
+    const cms = await CMS.getOrCreate();
+    const testimonial = cms.testimonials.id(testimonialId);
+    if (!testimonial) throw new AppError("Testimonial not found", 404);
+
+    testimonial.deleteOne();
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+
+    successResponse(res, "Testimonial deleted", { testimonials: cms.testimonials });
+});

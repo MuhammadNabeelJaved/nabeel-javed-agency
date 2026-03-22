@@ -88,13 +88,26 @@ export default function ServicesAdmin() {
       },
       stats: s.stats || { successRate: '99%', projects: '250+', team: 'Top 1%', support: '24/7' },
       features: {
-        title: s.features?.title || 'Transforming ideas into digital reality',
-        description: s.features?.description || '',
-        list: Array.isArray(s.features?.list) ? s.features.list : [],
-        cards: Array.isArray(s.features?.cards) ? s.features.cards : [],
+        title: 'Transforming ideas into digital reality',
+        description: '',
+        list: [],
+        cards: Array.isArray(s.features)
+          ? s.features.map((f: any) => ({ title: f.title || '', description: f.description || '', icon: f.icon || 'Code' }))
+          : Array.isArray(s.features?.cards) ? s.features.cards : [],
       },
-      pricing: Array.isArray(s.pricingPlans) ? s.pricingPlans : Array.isArray(s.pricing) ? s.pricing : [],
-      faqs: Array.isArray(s.faqs) ? s.faqs : [],
+      pricing: Array.isArray(s.pricingPlans)
+        ? s.pricingPlans.map((p: any) => ({
+            name: p.name || '',
+            price: p.price?.amount != null ? `$${p.price.amount}` : (p.price || ''),
+            period: p.price?.period || p.period || 'project',
+            description: p.description || '',
+            features: Array.isArray(p.features) ? p.features : [],
+            popular: p.isPopular ?? p.popular ?? false,
+          }))
+        : [],
+      faqs: Array.isArray(s.faqs)
+        ? s.faqs.map((f: any) => ({ question: f.question || '', answer: f.answer || '' }))
+        : [],
     };
     setEditingService(mapped);
     setView('edit');

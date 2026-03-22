@@ -3,49 +3,29 @@
  * Implements a "Creative Glossy" Accordion Slider for desktop
  * and a stacked layout for mobile.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ProjectCard } from './ProjectCard';
-
-const projects = [
-  {
-    id: 1,
-    slug: "fintech-dashboard",
-    title: "FinTech Dashboard",
-    category: "Web App",
-    description: "Real-time financial data visualization with predictive analytics and AI-driven insights.",
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop",
-    tags: ["React", "D3.js", "Finance"],
-    year: "2024"
-  },
-  {
-    id: 2,
-    slug: "ai-content-generator",
-    title: "AI Content Generator",
-    category: "SaaS Platform",
-    description: "Automated content creation platform powered by LLMs, helping businesses scale their marketing.",
-    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2070&auto=format&fit=crop",
-    tags: ["AI", "Next.js", "Stripe"],
-    year: "2023"
-  },
-  {
-    id: 3,
-    slug: "ecommerce-rebrand",
-    title: "E-Commerce Rebrand",
-    category: "UI/UX Design",
-    description: "Complete visual identity overhaul and storefront redesign for a luxury fashion brand.",
-    image: "https://images.unsplash.com/photo-1661956602116-aa6865609028?q=80&w=2064&auto=format&fit=crop",
-    tags: ["Figma", "Design", "Retail"],
-    year: "2024"
-  }
-];
+import { adminProjectsApi } from '../api/adminProjects.api';
 
 export function FeaturedProjects() {
-  const [activeId, setActiveId] = useState<number | null>(1);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    adminProjectsApi.getPortfolio()
+      .then(res => {
+        const data = res.data.data.projects;
+        const list = Array.isArray(data) ? data.slice(0, 3) : [];
+        setProjects(list);
+        if (list.length > 0) setActiveId(list[0]._id);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <section className="relative py-32 overflow-hidden bg-background">
@@ -97,11 +77,11 @@ export function FeaturedProjects() {
         {/* Desktop Accordion Layout (Hidden on Mobile) */}
         <div className="hidden lg:flex h-[600px] gap-6">
           {projects.map((project) => (
-            <AccordionItem 
-              key={project.id} 
-              project={project} 
-              isActive={activeId === project.id} 
-              onHover={() => setActiveId(project.id)}
+            <AccordionItem
+              key={project._id}
+              project={project}
+              isActive={activeId === project._id}
+              onHover={() => setActiveId(project._id)}
             />
           ))}
         </div>
@@ -109,7 +89,7 @@ export function FeaturedProjects() {
         {/* Mobile Stack Layout (Hidden on Desktop) */}
         <div className="grid grid-cols-1 gap-8 lg:hidden">
           {projects.map((project) => (
-            <ProjectCard key={project.id} {...project} />
+            <ProjectCard key={project._id} {...project} slug={project._id} title={project.projectTitle} category={project.category} description={project.projectDescription} image={project.projectGallery?.[0] || ''} tags={project.techStack || []} />
           ))}
         </div>
 
@@ -119,6 +99,12 @@ export function FeaturedProjects() {
 }
 
 function AccordionItem({ project, isActive, onHover }: { project: any, isActive: boolean, onHover: () => void }) {
+  const title = project.projectTitle || project.title || 'Untitled';
+  const image = project.projectGallery?.[0] || project.image || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop';
+  const tags: string[] = project.techStack || project.tags || [];
+  const year = project.endDate ? new Date(project.endDate).getFullYear().toString() : (project.year || '');
+  const slug = project._id || project.slug;
+
   return (
     <motion.div
       layout
@@ -127,75 +113,47 @@ function AccordionItem({ project, isActive, onHover }: { project: any, isActive:
         isActive ? 'flex-[3]' : 'flex-[1] grayscale hover:grayscale-0'
       }`}
     >
-      {/* Full-card clickable link */}
-      <Link to={`/portfolio/${project.slug}`} className="absolute inset-0 z-10" aria-label={project.title} />
-      {/* Background Image */}
-      <img 
-        src={project.image} 
-        alt={project.title} 
+      <Link to={`/portfolio/${slug}`} className="absolute inset-0 z-10" aria-label={title} />
+      <img
+        src={image}
+        alt={title}
         className="absolute inset-0 w-full h-full object-cover transform transition-transform duration-1000 scale-110"
         style={{ transform: isActive ? 'scale(1.1)' : 'scale(1.3)' }}
       />
-      
-      {/* Overlay Gradient */}
       <div className={`absolute inset-0 bg-gradient-to-b from-black/0 via-black/20 to-black/90 transition-opacity duration-500 ${isActive ? 'opacity-80' : 'opacity-60'}`} />
-      
-      {/* Content Container */}
       <div className="absolute inset-0 p-8 flex flex-col justify-end">
-        
-        {/* Active State Content */}
         <AnimatePresence>
           {isActive && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="space-y-4"
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.4, delay: 0.2 }} className="space-y-4">
               <div className="flex items-center gap-3">
                 <Badge className="bg-primary text-primary-foreground border-0 px-3 py-1 text-xs">{project.category}</Badge>
-                <span className="text-white/60 text-sm font-mono">{project.year}</span>
+                {year && <span className="text-white/60 text-sm font-mono">{year}</span>}
               </div>
-              
               <div className="flex justify-between items-end">
                 <div>
-                   <h3 className="text-4xl font-bold text-white mb-2 leading-tight">{project.title}</h3>
-                   <p className="text-white/80 max-w-lg text-lg line-clamp-2">{project.description}</p>
+                  <h3 className="text-4xl font-bold text-white mb-2 leading-tight">{title}</h3>
+                  <p className="text-white/80 max-w-lg text-lg line-clamp-2">{project.projectDescription || project.description}</p>
                 </div>
-                
-                <Link to={`/portfolio/${project.slug}`} className="relative z-20 flex-shrink-0">
+                <Link to={`/portfolio/${slug}`} className="relative z-20 flex-shrink-0">
                   <Button size="icon" className="rounded-full h-14 w-14 bg-white text-black hover:bg-primary hover:text-white transition-colors">
                     <ArrowUpRight className="h-6 w-6" />
                   </Button>
                 </Link>
               </div>
-
               <div className="flex gap-2 pt-4">
-                {project.tags.map((tag: string) => (
-                  <span key={tag} className="text-xs text-white/50 border border-white/10 px-2 py-1 rounded-md bg-black/20 backdrop-blur-sm">
-                    {tag}
-                  </span>
+                {tags.map((tag: string) => (
+                  <span key={tag} className="text-xs text-white/50 border border-white/10 px-2 py-1 rounded-md bg-black/20 backdrop-blur-sm">{tag}</span>
                 ))}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Inactive State Vertical Text */}
         {!isActive && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute bottom-8 left-8 origin-bottom-left -rotate-90 translate-x-8"
-          >
-            <h3 className="text-2xl font-bold text-white whitespace-nowrap tracking-wider">{project.title}</h3>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute bottom-8 left-8 origin-bottom-left -rotate-90 translate-x-8">
+            <h3 className="text-2xl font-bold text-white whitespace-nowrap tracking-wider">{title}</h3>
           </motion.div>
         )}
       </div>
-      
-      {/* Glossy Border Overlay */}
       <div className={`absolute inset-0 border border-white/10 rounded-[2rem] pointer-events-none transition-colors duration-300 ${isActive ? 'border-white/20' : 'border-transparent'}`} />
     </motion.div>
   );

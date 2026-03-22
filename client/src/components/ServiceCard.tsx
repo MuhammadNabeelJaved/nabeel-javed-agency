@@ -12,10 +12,11 @@ interface ServiceCardProps {
   icon: LucideIcon;
   gradient?: string;
   className?: string;
+  slug?: string;
 }
 
-export function ServiceCard({ title, description, icon: Icon, gradient, className }: ServiceCardProps) {
-  const slug = title.toLowerCase().replace(/\s+/g, '-');
+export function ServiceCard({ title, description, icon: Icon, gradient, className, slug: slugProp }: ServiceCardProps) {
+  const slug = slugProp || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   
   return (
     <Link to={`/services/${slug}`} className={`block h-full group ${className}`}>

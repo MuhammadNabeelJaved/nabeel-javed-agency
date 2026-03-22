@@ -129,21 +129,21 @@ function TechTicker({ items }: { items: typeof PROJECT_DATA.techStack }) {
 
   return (
     <div className="flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_20%,white_80%,transparent)]">
-      <motion.div 
+      <motion.div
         className="flex gap-12 py-8 pr-12 items-center"
         animate={{ x: "-33.33%" }}
-        transition={{ 
-          duration: 30, 
-          ease: "linear", 
-          repeat: Infinity 
+        transition={{
+          duration: 30,
+          ease: "linear",
+          repeat: Infinity
         }}
       >
         {duplicatedItems.map((tech, index) => (
           <div key={`${tech.name}-${index}`} className="flex flex-col items-center justify-center gap-3 group shrink-0 w-24">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 group-hover:border-primary/50 group-hover:scale-110 transition-all duration-300">
+            <div className="w-16 h-16 rounded-2xl bg-muted/50 border border-border flex items-center justify-center group-hover:bg-primary/10 group-hover:border-primary/50 group-hover:scale-110 transition-all duration-300">
               <tech.icon className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
-            <span className="text-sm font-medium text-muted-foreground/60 group-hover:text-foreground transition-colors">{tech.name}</span>
+            <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{tech.name}</span>
           </div>
         ))}
       </motion.div>
@@ -183,10 +183,10 @@ function ImageSlider({ images }: { images: string[] }) {
         
         {/* Controls */}
         <div className="absolute inset-0 flex items-center justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="outline" size="icon" onClick={prevSlide} className="rounded-full bg-background/50 backdrop-blur border-white/10 hover:bg-background/80">
+          <Button variant="outline" size="icon" onClick={prevSlide} className="rounded-full bg-background/80 backdrop-blur border-border hover:bg-background">
             <ChevronLeft className="h-6 w-6" />
           </Button>
-          <Button variant="outline" size="icon" onClick={nextSlide} className="rounded-full bg-background/50 backdrop-blur border-white/10 hover:bg-background/80">
+          <Button variant="outline" size="icon" onClick={nextSlide} className="rounded-full bg-background/80 backdrop-blur border-border hover:bg-background">
             <ChevronRight className="h-6 w-6" />
           </Button>
         </div>
@@ -241,32 +241,40 @@ export default function ProjectDetail() {
   return (
     <div ref={containerRef} className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/30">
       
-      {/* Navigation Back */}
-      <div className="fixed top-8 left-8 z-50 mix-blend-difference text-white">
-        <Link to="/portfolio">
-          <Button variant="ghost" className="rounded-full h-12 w-12 p-0 hover:bg-white/20 hover:scale-110 transition-all">
-            <ArrowLeft className="h-6 w-6" />
-          </Button>
-        </Link>
-      </div>
-
       {/* --- HERO SECTION --- */}
       <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
         {/* Background Image with Parallax */}
-        <motion.div 
+        <motion.div
           style={{ y: heroY, opacity: heroOpacity }}
           className="absolute inset-0 z-0"
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-background z-10" />
-          <img 
-            src={PROJECT_DATA.heroImage} 
-            alt="Hero" 
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-background z-10" />
+          <img
+            src={PROJECT_DATA.heroImage}
+            alt="Hero"
             className="w-full h-full object-cover"
           />
         </motion.div>
 
         {/* Hero Content */}
-        <div className="relative z-20 max-w-7xl mx-auto px-6 w-full pt-20">
+        <div className="relative z-20 max-w-7xl mx-auto px-6 w-full pt-24">
+          {/* Back Button — sits below the navbar, inside hero */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
+          >
+            <Link
+              to="/portfolio"
+              className="inline-flex items-center gap-2 text-white/70 hover:text-white transition-all duration-200 group"
+            >
+              <span className="flex items-center justify-center h-9 w-9 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm group-hover:bg-white/20 group-hover:border-white/40 transition-all">
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+              </span>
+              <span className="text-sm font-medium tracking-wide">Back to Portfolio</span>
+            </Link>
+          </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -436,7 +444,7 @@ export default function ProjectDetail() {
            <p className="text-muted-foreground">The modern architecture behind the platform.</p>
         </div>
         
-        <div className="bg-gradient-to-r from-background via-muted/10 to-background border-y border-border/30 py-12">
+        <div className="bg-muted/20 border-y border-border/50 py-12">
           <TechTicker items={PROJECT_DATA.techStack} />
         </div>
       </section>
