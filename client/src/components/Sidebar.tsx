@@ -35,6 +35,7 @@ export function Sidebar() {
     { name: 'Services', path: '/admin/services', icon: Zap },
     { name: 'Projects', path: '/admin/projects', icon: FolderKanban },
     { name: 'Clients', path: '/admin/clients', icon: Users },
+    { name: 'Project Requests', path: '/admin/client-requests', icon: FolderKanban },
     { name: 'Team', path: '/admin/team', icon: Users },
     { name: 'Contacts', path: '/admin/contacts', icon: Mail },
     { name: 'Jobs', path: '/admin/jobs', icon: Briefcase },
