@@ -148,21 +148,21 @@ export function TechStack() {
   const { techStack } = useContent();
 
   return (
-    <section className="py-24 relative overflow-hidden bg-background">
+    <section className="py-12 sm:py-16 md:py-24 relative overflow-hidden bg-background">
       {/* Background Grid Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-16 space-y-4">
+        <div className="text-center mb-10 sm:mb-12 md:mb-16 space-y-3 sm:space-y-4">
              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider">
                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                Our Tech Arsenal
              </div>
-             <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
                Built with the <br />
                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-blue-600">Modern Web Stack</span>
              </h2>
-             <p className="text-muted-foreground max-w-lg mx-auto text-lg">
+             <p className="text-muted-foreground max-w-lg mx-auto text-sm sm:text-base md:text-lg px-2 sm:px-0">
                We leverage the most advanced tools to ensure your product is scalable, secure, and lightning fast.
              </p>
         </div>
@@ -170,7 +170,7 @@ export function TechStack() {
         <div className="space-y-8">
           {techStack.map((group, i) => (
             <SpotlightCard key={group.id} className="w-full">
-              <div className="p-8">
+              <div className="p-4 sm:p-6 md:p-8">
                 <div className="mb-6 flex items-center gap-4">
                   <div className={cn("h-8 w-1 rounded-full bg-gradient-to-b", 
                     i === 0 ? "from-blue-500 to-cyan-500" : 

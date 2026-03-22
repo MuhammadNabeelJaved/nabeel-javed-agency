@@ -73,6 +73,7 @@ export interface Testimonial {
 export interface ContentContextType {
   logoUrl: string;
   heroContent: HeroContent;
+  updateHeroContent: (content: HeroContent) => void;
   techStack: TechGroup[];
   processSteps: ProcessStep[];
   whyChooseUs: WhyChooseUsContent;
@@ -238,12 +239,17 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
   // Hero content stays in localStorage (managed via HomePageHero API separately)
-  const [heroContent] = useState<HeroContent>(() => {
+  const [heroContent, setHeroContent] = useState<HeroContent>(() => {
     try {
       const saved = localStorage.getItem('heroContent');
       return saved ? JSON.parse(saved) : defaultHeroContent;
     } catch { return defaultHeroContent; }
   });
+
+  const updateHeroContent = (content: HeroContent) => {
+    setHeroContent(content);
+    localStorage.setItem('heroContent', JSON.stringify(content));
+  };
 
   const fetchCMS = async () => {
     try {
@@ -327,7 +333,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ContentContext.Provider value={{
-      logoUrl, heroContent, techStack, processSteps, whyChooseUs,
+      logoUrl, heroContent, updateHeroContent, techStack, processSteps, whyChooseUs,
       contactInfo, socialLinks, testimonials, isLoading,
       updateLogoUrl, updateTechStack, updateProcessSteps, updateWhyChooseUs,
       updateContactInfo, updateSocialLinks, updateTestimonials,

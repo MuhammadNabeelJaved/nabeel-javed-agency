@@ -17,7 +17,7 @@ const fallbackTestimonials = [
 
 const ReviewCard = ({ data, className }: { data: any; className?: string }) => (
   <div className={cn(
-    "w-[350px] md:w-[400px] p-8 rounded-3xl mx-4 flex flex-col justify-between h-[280px] transition-all duration-500 group",
+    "w-[85vw] sm:w-[350px] md:w-[400px] p-5 sm:p-8 rounded-3xl mx-3 sm:mx-4 flex flex-col justify-between min-h-[260px] transition-all duration-500 group",
     "bg-card/50 dark:bg-white/5 backdrop-blur-md border border-border/50 dark:border-white/10 hover:border-primary/40 hover:bg-card dark:hover:bg-white/10 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2",
     className
   )}>
@@ -49,13 +49,13 @@ export function Testimonials() {
   const displayTestimonials = testimonials.length > 0 ? testimonials : fallbackTestimonials;
 
   return (
-    <section className="py-32 bg-background relative overflow-hidden">
+    <section className="py-16 sm:py-24 md:py-32 bg-background relative overflow-hidden">
       <div className="absolute top-1/4 left-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] opacity-30 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[100px] opacity-30 pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-20">
-        <h2 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">Trusted by <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Innovators</span></h2>
-        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-10 sm:mb-14 md:mb-20">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold mb-4 sm:mb-6 tracking-tight">Trusted by <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Innovators</span></h2>
+        <p className="text-muted-foreground text-sm sm:text-base md:text-lg max-w-2xl mx-auto px-2 sm:px-0">
           Don't just take our word for it. Here's what our partners have to say about the digital experiences we build together.
         </p>
       </div>

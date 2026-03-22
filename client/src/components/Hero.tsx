@@ -29,7 +29,7 @@ export function Hero() {
   }, []);
 
   return (
-    <div className="relative overflow-hidden min-h-screen flex items-center justify-center bg-background pb-40">
+    <div className="relative overflow-hidden min-h-screen flex items-center justify-center bg-background pb-24 sm:pb-32 md:pb-40">
       {/* Background Effects */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse" />
@@ -40,58 +40,58 @@ export function Hero() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-20">
-        <div className="flex flex-col items-center text-center space-y-10">
-          
+        <div className="flex flex-col items-center text-center space-y-6 sm:space-y-8 md:space-y-10">
+
           {/* Badge */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-background/50 border border-border/50 backdrop-blur-md shadow-sm"
+            className="inline-flex items-center space-x-2 px-3 py-1.5 sm:px-4 rounded-full bg-background/50 border border-border/50 backdrop-blur-md shadow-sm"
           >
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            <span className="text-sm font-medium text-foreground">{hero.statusBadge}</span>
+            <span className="text-xs sm:text-sm font-medium text-foreground">{hero.statusBadge}</span>
           </motion.div>
-          
+
           {/* Main Title */}
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-none text-foreground"
+            className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-none text-foreground"
           >
             {hero.titleLine1} <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-blue-600 dark:from-white dark:via-white dark:to-white/50">{hero.titleLine2}</span>
           </motion.h1>
-          
+
           {/* Description */}
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+            className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-xl sm:max-w-2xl mx-auto leading-relaxed px-2 sm:px-0"
           >
             {hero.subtitle}
           </motion.p>
-          
+
           {/* CTA Buttons */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center gap-4"
+            className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto px-4 sm:px-0"
           >
-            <Link to="/contact">
-              <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
+            <Link to="/contact" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                 {t('hero.startProject') || 'Start a Project'}
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </Link>
-            <Link to="/portfolio">
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-full border-border/50 hover:bg-muted text-foreground">
+            <Link to="/portfolio" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full border-border/50 hover:bg-muted text-foreground">
                 {t('hero.viewWork') || 'View Our Work'}
               </Button>
             </Link>

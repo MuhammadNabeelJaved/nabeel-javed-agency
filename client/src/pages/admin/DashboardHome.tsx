@@ -6,15 +6,16 @@
  * - Performance charts
  * - Content Management (Quick Edit)
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
-import { Activity, CreditCard, Users, FolderKanban, ArrowUpRight, ArrowDownRight, Clock, CheckCircle2, Save, LayoutTemplate } from 'lucide-react';
+import { Activity, CreditCard, Users, FolderKanban, ArrowUpRight, ArrowDownRight, Save, LayoutTemplate, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useContent } from '../../contexts/ContentContext';
+import { homepageApi } from '../../api/homepage.api';
+import { toast } from 'sonner';
 
 const data = [
   { name: 'Mon', usage: 4000, projects: 2400 },
@@ -26,25 +27,52 @@ const data = [
   { name: 'Sun', usage: 3490, projects: 4300 },
 ];
 
+const defaultHero = { statusBadge: '', titleLine1: '', titleLine2: '', subtitle: '' };
+
 export default function DashboardHome() {
-  const { heroContent, updateHeroContent } = useContent();
-  const [editingContent, setEditingContent] = useState(heroContent);
+  const [heroForm, setHeroForm] = useState(defaultHero);
   const [isSaving, setIsSaving] = useState(false);
   const [isModified, setIsModified] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const handleContentChange = (field: keyof typeof heroContent, value: string) => {
-    setEditingContent(prev => ({ ...prev, [field]: value }));
+  // Fetch current hero data from DB on mount
+  useEffect(() => {
+    homepageApi.get().then(res => {
+      const data = res.data.data;
+      if (data) setHeroForm({
+        statusBadge: data.statusBadge || '',
+        titleLine1: data.titleLine1 || '',
+        titleLine2: data.titleLine2 || '',
+        subtitle: data.subtitle || '',
+      });
+    }).catch(() => {});
+  }, []);
+
+  const handleContentChange = (field: keyof typeof heroForm, value: string) => {
+    setHeroForm(prev => ({ ...prev, [field]: value }));
     setIsModified(true);
+    setSaved(false);
   };
 
-  const handleSaveContent = () => {
+  const handleSaveContent = async () => {
     setIsSaving(true);
-    // Simulate API delay
-    setTimeout(() => {
-      updateHeroContent(editingContent);
-      setIsSaving(false);
+    try {
+      // Try update first; if 404 (no doc yet) then create
+      try {
+        await homepageApi.update(heroForm);
+      } catch (err: any) {
+        if (err?.response?.status === 404) {
+          await homepageApi.create(heroForm);
+        } else throw err;
+      }
       setIsModified(false);
-    }, 500);
+      setSaved(true);
+      toast.success('Hero section updated successfully!');
+    } catch {
+      toast.error('Failed to save. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -123,16 +151,18 @@ export default function DashboardHome() {
               </CardTitle>
               <CardDescription>Quickly update your hero section content.</CardDescription>
             </div>
-            {isModified && (
+            {saved && !isModified ? (
+              <Badge variant="outline" className="text-green-500 border-green-500/50 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Saved</Badge>
+            ) : isModified ? (
               <Badge variant="outline" className="text-amber-500 border-amber-500/50">Unsaved Changes</Badge>
-            )}
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase text-muted-foreground">Status Badge</label>
-              <Input 
-                value={editingContent.badgeText}
-                onChange={(e) => handleContentChange('badgeText', e.target.value)}
+              <Input
+                value={heroForm.statusBadge}
+                onChange={(e) => handleContentChange('statusBadge', e.target.value)}
                 placeholder="e.g. Accepting New Projects"
               />
             </div>
@@ -140,16 +170,16 @@ export default function DashboardHome() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-medium uppercase text-muted-foreground">Title Line 1</label>
-                <Input 
-                  value={editingContent.titleLine1}
+                <Input
+                  value={heroForm.titleLine1}
                   onChange={(e) => handleContentChange('titleLine1', e.target.value)}
                   placeholder="e.g. We Build"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-medium uppercase text-muted-foreground">Title Line 2 (Colored)</label>
-                <Input 
-                  value={editingContent.titleLine2}
+                <Input
+                  value={heroForm.titleLine2}
                   onChange={(e) => handleContentChange('titleLine2', e.target.value)}
                   placeholder="e.g. Digital Excellence"
                 />
@@ -158,8 +188,8 @@ export default function DashboardHome() {
 
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase text-muted-foreground">Subtitle</label>
-              <Textarea 
-                value={editingContent.subtitle}
+              <Textarea
+                value={heroForm.subtitle}
                 onChange={(e) => handleContentChange('subtitle', e.target.value)}
                 placeholder="Hero description text..."
                 className="resize-none min-h-[80px]"
