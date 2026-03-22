@@ -76,6 +76,7 @@ import clientRoutes from "./routes/userRoutes/client.route.js";
 import taskRoutes from "./routes/userRoutes/task.route.js";
 import resourceRoutes from "./routes/userRoutes/resource.route.js";
 import pageStatusRoutes from "./routes/userRoutes/pageStatus.route.js";
+import announcementRoutes from "./routes/userRoutes/announcement.route.js";
 
 // ⚠️ TEMP DEV-ONLY — REMOVE BEFORE PROD
 // Seed endpoint — populates CMS, Hero, and Services with default data
@@ -712,6 +713,7 @@ app.use("/api/v1/clients", clientRoutes);           // Agency client CRM
 app.use("/api/v1/tasks", taskRoutes);                  // Team Kanban tasks
 app.use("/api/v1/resources", resourceRoutes);          // Team shared resources (Cloudinary)
 app.use("/api/v1/page-status", pageStatusRoutes);      // Public page status (maintenance / coming-soon)
+app.use("/api/v1/announcements", announcementRoutes);  // Announcement bar (public GET, admin CRUD)
 
 // ─── Error Handling ─────────────────────────────────────────────────────────
 

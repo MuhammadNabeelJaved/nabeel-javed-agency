@@ -100,6 +100,17 @@ export function GlobalStyles() {
         100% { transform: translateY(-33.33%); }
       }
 
+      @keyframes announcement-ticker {
+        0%   { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+      }
+      .animate-ticker {
+        animation: announcement-ticker var(--ticker-duration, 30s) linear infinite;
+      }
+      .animate-ticker:hover {
+        animation-play-state: paused;
+      }
+
       .animate-shine {
         animation: shine 1.5s ease-in-out infinite;
       }
