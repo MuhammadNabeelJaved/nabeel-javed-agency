@@ -1,72 +1,85 @@
 /**
  * Team Projects Page
- * List of assigned projects
+ * Fetches all projects from DB and displays them.
  */
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Check, X, Users, Clock, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Check, X, Users, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { adminProjectsApi } from '../../api/adminProjects.api';
+import { toast } from 'sonner';
+
+interface Project {
+  _id: string;
+  projectTitle: string;
+  clientName: string;
+  status: string;
+  yourRole: string;
+  deadline?: string;
+  startDate?: string;
+  completionPercentage?: number;
+  teamMembers?: { memberId: { name: string; email: string } | null; role: string }[];
+  projectDescription?: string;
+  priority?: string;
+  tags?: string[];
+  category?: string;
+}
+
+function statusVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
+  if (status === 'In Progress') return 'default';
+  if (status === 'Completed') return 'secondary';
+  return 'outline';
+}
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function TeamProjects() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState([
-    { 
-      id: 1, 
-      name: "Fintech Dashboard Redesign", 
-      client: "FinTech Corp", 
-      status: "Active", 
-      role: "Lead Designer",
-      dueDate: "Mar 15, 2024", 
-      progress: 75,
-      members: 4,
-      description: "Complete overhaul of the user dashboard including new analytics widgets and dark mode support."
-    },
-    { 
-      id: 2, 
-      name: "E-commerce Mobile App", 
-      client: "Shopify Store", 
-      status: "Active", 
-      role: "UI Designer",
-      dueDate: "Apr 01, 2024", 
-      progress: 45,
-      members: 6,
-      description: "Native mobile application design for iOS and Android platforms."
-    },
-    { 
-      id: 3, 
-      name: "SaaS Platform Frontend", 
-      client: "Cloud Systems", 
-      status: "Planning", 
-      role: "Frontend Dev",
-      dueDate: "Apr 20, 2024", 
-      progress: 20,
-      members: 3,
-      description: "Implementation of the new react-based frontend architecture."
-    },
-    { 
-      id: 4, 
-      name: "Marketing Website", 
-      client: "Growth IO", 
-      status: "Completed", 
-      role: "Web Developer",
-      dueDate: "Feb 28, 2024", 
-      progress: 100,
-      members: 2,
-      description: "Landing page development with high-performance animations."
-    }
-  ]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('');
 
-  const handleDelete = (id: number) => {
-    if(confirm('Are you sure you want to delete this project?')) {
-      setProjects(projects.filter(p => p.id !== id));
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const res = await adminProjectsApi.getAll();
+      const data = res.data.data;
+      setProjects(data?.projects || data || []);
+    } catch {
+      toast.error('Failed to load projects');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAccept = (id: number) => {
-    setProjects(projects.map(p => p.id === id ? {...p, status: 'Active'} : p));
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      await adminProjectsApi.updateStatus(id, status);
+      setProjects(prev => prev.map(p => p._id === id ? { ...p, status } : p));
+      toast.success('Status updated');
+    } catch {
+      toast.error('Failed to update status');
+    }
   };
+
+  const displayed = statusFilter ? projects.filter(p => p.status === statusFilter) : projects;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -76,82 +89,105 @@ export default function TeamProjects() {
           <p className="text-muted-foreground">Manage your assigned projects and track progress.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">Filter</Button>
-          <Button variant="outline">Sort</Button>
+          <Button
+            variant={statusFilter === '' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setStatusFilter('')}
+          >All</Button>
+          {['In Progress', 'Completed', 'Draft', 'On Hold'].map(s => (
+            <Button
+              key={s}
+              variant={statusFilter === s ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter(s)}
+            >{s}</Button>
+          ))}
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {projects.map((project) => (
-          <Card key={project.id} className="group hover:border-primary/50 transition-all duration-300 flex flex-col">
-            <CardHeader>
-              <div className="flex justify-between items-start mb-2">
-                <Badge variant={project.status === 'Active' ? 'default' : project.status === 'Completed' ? 'secondary' : 'outline'}>
-                  {project.status}
-                </Badge>
-                <div className="flex gap-1">
-                   {project.status === 'Planning' && (
-                     <Button variant="ghost" size="icon" className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-500/10" onClick={() => handleAccept(project.id)} title="Accept Project">
-                       <Check className="h-4 w-4" />
-                     </Button>
-                   )}
-                   <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(project.id)} title="Delete Project">
-                      <X className="h-4 w-4" />
-                   </Button>
-                </div>
-              </div>
-              <CardTitle 
-                className="line-clamp-1 group-hover:text-primary transition-colors cursor-pointer"
-                onClick={() => navigate(`/team/projects/${project.id}`)}
-              >
-                {project.name}
-              </CardTitle>
-              <CardDescription className="flex items-center gap-2">
-                <Users className="h-3 w-3" /> {project.client}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <p className="text-sm text-muted-foreground mb-6 line-clamp-2 min-h-[40px]">
-                {project.description}
-              </p>
-              
-              <div className="mt-auto space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">{project.progress}%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-500" 
-                      style={{ width: `${project.progress}%` }} 
-                    />
+      {displayed.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
+          <p className="text-lg font-medium">No projects found</p>
+          <p className="text-sm">Projects created by admin will appear here.</p>
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {displayed.map((project) => (
+            <Card key={project._id} className="group hover:border-primary/50 transition-all duration-300 flex flex-col">
+              <CardHeader>
+                <div className="flex justify-between items-start mb-2">
+                  <Badge variant={statusVariant(project.status)}>{project.status}</Badge>
+                  <div className="flex gap-1">
+                    {project.status === 'Draft' && (
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                        onClick={() => handleUpdateStatus(project._id, 'In Progress')}
+                        title="Start Project"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
+                <CardTitle
+                  className="line-clamp-1 group-hover:text-primary transition-colors cursor-pointer"
+                  onClick={() => navigate(`/team/projects/${project._id}`)}
+                >
+                  {project.projectTitle}
+                </CardTitle>
+                <CardDescription className="flex items-center gap-2">
+                  <Users className="h-3 w-3" /> {project.clientName}
+                </CardDescription>
+              </CardHeader>
 
-                <div className="flex justify-between items-center pt-4 border-t border-border/50">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {project.dueDate}
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <div className="flex -space-x-2">
-                      {[...Array(project.members)].slice(0, 3).map((_, i) => (
-                        <div key={i} className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-[10px] overflow-hidden">
-                          <img src={`https://i.pravatar.cc/100?img=${i + 10 + project.id}`} alt="User" />
-                        </div>
-                      ))}
+              <CardContent className="flex-1 flex flex-col">
+                <p className="text-sm text-muted-foreground mb-6 line-clamp-2 min-h-[40px]">
+                  {project.projectDescription || '—'}
+                </p>
+
+                <div className="mt-auto space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{project.completionPercentage ?? 0}%</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => navigate(`/team/projects/${project.id}`)}>
-                      Details <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all duration-500"
+                        style={{ width: `${project.completionPercentage ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-4 border-t border-border/50">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {formatDate(project.deadline)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex -space-x-2">
+                        {(project.teamMembers || []).slice(0, 3).map((m, i) => (
+                          <div key={i} className="h-6 w-6 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary overflow-hidden">
+                            {m.memberId?.name?.[0] ?? '?'}
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        variant="ghost" size="sm"
+                        className="h-6 text-xs px-2"
+                        onClick={() => navigate(`/team/projects/${project._id}`)}
+                      >
+                        Details <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

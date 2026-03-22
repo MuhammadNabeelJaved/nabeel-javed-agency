@@ -1,57 +1,85 @@
 /**
  * Team Project Detail Page
- * Full page view for a specific project with detailed info and actions
+ * Fetches a single project by ID from the DB.
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Calendar, 
-  Clock, 
-  Users, 
-  CheckCircle2, 
-  MoreHorizontal, 
-  ArrowLeft,
-  FileText,
-  Link as LinkIcon,
-  MessageSquare,
-  AlertCircle
+import {
+  Calendar, Clock, Users, CheckCircle2, ArrowLeft, FileText, Loader2
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { adminProjectsApi } from '../../api/adminProjects.api';
+import { toast } from 'sonner';
+
+interface TeamMember {
+  memberId: { _id: string; name: string; email: string } | null;
+  role: string;
+}
+
+interface Project {
+  _id: string;
+  projectTitle: string;
+  clientName: string;
+  status: string;
+  priority: string;
+  deadline?: string;
+  startDate?: string;
+  projectDescription?: string;
+  tags?: string[];
+  teamMembers?: TeamMember[];
+  completionPercentage?: number;
+  yourRole?: string;
+  category?: string;
+}
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function priorityColor(p?: string) {
+  if (p === 'High') return 'text-orange-500';
+  if (p === 'Critical') return 'text-red-500';
+  if (p === 'Low') return 'text-green-500';
+  return 'text-foreground';
+}
 
 export default function TeamProjectDetail() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - in a real app, fetch based on ID
-  const project = {
-    id: 1,
-    title: "Fintech Dashboard Redesign",
-    client: "FinTech Corp",
-    status: "Active",
-    priority: "High",
-    dueDate: "Mar 15, 2024",
-    startDate: "Jan 10, 2024",
-    description: "Complete overhaul of the user dashboard including new analytics widgets, dark mode support, and improved accessibility. The goal is to increase user engagement by 40% and reduce support tickets related to navigation.",
-    techStack: ["React", "TypeScript", "Tailwind CSS", "Recharts"],
-    team: [
-      { name: "Sarah Jenkins", role: "PM", avatar: "https://i.pravatar.cc/150?u=1" },
-      { name: "David Chen", role: "Tech Lead", avatar: "https://i.pravatar.cc/150?u=2" },
-      { name: "You", role: "Lead Designer", avatar: "https://i.pravatar.cc/150?u=3" }
-    ],
-    tasks: [
-      { id: 101, title: "Design System Update", status: "Completed", assignee: "You" },
-      { id: 102, title: "Dark Mode Components", status: "In Progress", assignee: "David Chen" },
-      { id: 103, title: "Analytics Widget Integration", status: "Pending", assignee: "You" }
-    ],
-    assets: [
-      { name: "Brand_Guidelines.pdf", size: "2.4 MB" },
-      { name: "Wireframes_v2.fig", size: "15 MB" }
-    ]
-  };
+  useEffect(() => {
+    if (!id) return;
+    adminProjectsApi.getById(id)
+      .then(res => setProject(res.data.data))
+      .catch(() => toast.error('Failed to load project'))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" onClick={() => navigate('/team/projects')} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back to Projects
+        </Button>
+        <div className="text-center text-muted-foreground py-16">Project not found.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -62,17 +90,34 @@ export default function TeamProjectDetail() {
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold tracking-tight">{project.title}</h1>
-            <Badge variant={project.status === 'Active' ? 'default' : 'secondary'}>{project.status}</Badge>
+            <h1 className="text-3xl font-bold tracking-tight">{project.projectTitle}</h1>
+            <Badge variant={project.status === 'In Progress' ? 'default' : 'secondary'}>{project.status}</Badge>
           </div>
           <div className="flex items-center gap-4 text-muted-foreground">
-            <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {project.client}</span>
-            <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> Due: {project.dueDate}</span>
+            <span className="flex items-center gap-1"><Users className="h-4 w-4" /> {project.clientName}</span>
+            {project.deadline && (
+              <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> Due: {formatDate(project.deadline)}</span>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">Edit Project</Button>
-          <Button>Update Status</Button>
+          <Badge variant="outline" className="h-9 px-4 text-sm flex items-center">
+            {project.yourRole || project.category}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="space-y-1">
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Overall Progress</span>
+          <span className="font-medium text-foreground">{project.completionPercentage ?? 0}%</span>
+        </div>
+        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all duration-700"
+            style={{ width: `${project.completionPercentage ?? 0}%` }}
+          />
         </div>
       </div>
 
@@ -85,64 +130,57 @@ export default function TeamProjectDetail() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground leading-relaxed">
-                {project.description}
+                {project.projectDescription || 'No description provided.'}
               </p>
-              
-              <div className="pt-4">
-                <h3 className="font-semibold mb-2">Tech Stack</h3>
-                <div className="flex flex-wrap gap-2">
-                  {project.techStack.map(tech => (
-                    <Badge key={tech} variant="secondary">{tech}</Badge>
-                  ))}
+              {project.tags && project.tags.length > 0 && (
+                <div className="pt-4">
+                  <h3 className="font-semibold mb-2">Tech Stack / Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {project.tags.map(tag => (
+                      <Badge key={tag} variant="secondary">{tag}</Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="tasks">
+          <Tabs defaultValue="team">
             <TabsList>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
+              <TabsTrigger value="team">Team</TabsTrigger>
               <TabsTrigger value="files">Files</TabsTrigger>
             </TabsList>
-            <TabsContent value="tasks" className="space-y-4 mt-4">
-              {project.tasks.map(task => (
-                <Card key={task.id} className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${task.status === 'Completed' ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'}`}>
-                      {task.status === 'Completed' && <CheckCircle2 className="h-4 w-4" />}
-                    </div>
+
+            <TabsContent value="team" className="space-y-3 mt-4">
+              {(project.teamMembers || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground px-1">No team members assigned.</p>
+              ) : (
+                project.teamMembers!.map((m, i) => (
+                  <Card key={i} className="flex items-center gap-4 p-4">
+                    <Avatar>
+                      <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                        {m.memberId?.name?.[0] ?? '?'}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
-                      <p className="font-medium">{task.title}</p>
-                      <p className="text-xs text-muted-foreground">Assigned to: {task.assignee}</p>
+                      <p className="font-medium text-sm">{m.memberId?.name ?? 'Unknown'}</p>
+                      <p className="text-xs text-muted-foreground">{m.role}</p>
                     </div>
-                  </div>
-                  <Badge variant="outline">{task.status}</Badge>
-                </Card>
-              ))}
+                    {m.memberId?.email && (
+                      <p className="text-xs text-muted-foreground ml-auto">{m.memberId.email}</p>
+                    )}
+                  </Card>
+                ))
+              )}
             </TabsContent>
-            <TabsContent value="activity">
+
+            <TabsContent value="files">
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">
-                  Activity log placeholder
+                  <FileText className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p>No files attached yet.</p>
                 </CardContent>
               </Card>
-            </TabsContent>
-            <TabsContent value="files">
-              <div className="grid gap-4">
-                {project.assets.map((file, i) => (
-                  <Card key={i} className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-8 w-8 text-primary/50" />
-                      <div>
-                        <p className="font-medium">{file.name}</p>
-                        <p className="text-xs text-muted-foreground">{file.size}</p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm">Download</Button>
-                  </Card>
-                ))}
-              </div>
             </TabsContent>
           </Tabs>
         </div>
@@ -151,48 +189,30 @@ export default function TeamProjectDetail() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Team</CardTitle>
+              <CardTitle className="text-lg">Project Info</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {project.team.map((member, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={member.avatar} />
-                      <AvatarFallback>{member.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium leading-none">{member.name}</p>
-                      <p className="text-xs text-muted-foreground">{member.role}</p>
-                    </div>
-                  </div>
+            <CardContent className="space-y-0 text-sm">
+              {[
+                { label: 'Start Date', value: formatDate(project.startDate) },
+                { label: 'Deadline', value: formatDate(project.deadline) },
+                { label: 'Category', value: project.category },
+                { label: 'Priority', value: project.priority, className: priorityColor(project.priority) },
+                { label: 'Status', value: project.status },
+              ].map(({ label, value, className }) => (
+                <div key={label} className="flex justify-between py-2.5 border-b last:border-0">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className={`font-medium ${className ?? ''}`}>{value || '—'}</span>
                 </div>
               ))}
-              <Button variant="outline" className="w-full text-xs">Manage Team</Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Project Info</CardTitle>
+              <CardTitle className="text-lg">Client</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-muted-foreground">Start Date</span>
-                <span>{project.startDate}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-muted-foreground">Deadline</span>
-                <span>{project.dueDate}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-muted-foreground">Priority</span>
-                <span className="font-medium text-orange-500">{project.priority}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Client Contact</span>
-                <span className="text-primary cursor-pointer hover:underline">View</span>
-              </div>
+            <CardContent className="text-sm space-y-2">
+              <p className="font-medium">{project.clientName}</p>
             </CardContent>
           </Card>
         </div>
