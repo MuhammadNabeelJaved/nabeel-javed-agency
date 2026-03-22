@@ -6,7 +6,8 @@ export interface AuthUser {
   email: string;
   role: 'admin' | 'team' | 'user';
   isVerified: boolean;
-  avatar?: string;
+  photo?: string;   // backend field name
+  avatar?: string;  // alias used in some places
 }
 
 interface AuthResponse {

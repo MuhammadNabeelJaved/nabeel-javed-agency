@@ -70,6 +70,7 @@ import JobManagement from './pages/admin/JobManagement';
 import ClientManagement from './pages/admin/ClientManagement';
 import ContactManagement from './pages/admin/ContactManagement';
 import DatabaseManager from './pages/admin/DatabaseManager';
+import ClientProjectRequests from './pages/admin/ClientProjectRequests';
 
 // Team Dashboard Pages
 import { TeamDashboardLayout } from './layouts/TeamDashboardLayout';
@@ -227,6 +228,7 @@ export default function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="team" element={<TeamManagement />} />
                 <Route path="clients" element={<ClientManagement />} />
+                <Route path="client-requests" element={<ClientProjectRequests />} />
                 <Route path="contacts" element={<ContactManagement />} />
                 <Route path="jobs" element={<JobManagement />} />
                 <Route path="database" element={<DatabaseManager />} />
