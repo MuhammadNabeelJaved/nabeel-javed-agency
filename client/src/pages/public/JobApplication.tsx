@@ -1,86 +1,106 @@
 /**
  * Job Application Page
- * Allows candidates to apply for positions at the agency.
- * Features:
- * - Comprehensive application form
- * - File upload simulation for Resume/CV
- * - Role selection
- * - Form validation and success state
+ * Submits application to the real backend API.
+ * Sends confirmation + admin notification emails on success.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Briefcase, 
-  User, 
-  Mail, 
-  Phone, 
-  Upload, 
-  CheckCircle2, 
-  Send, 
-  FileText, 
-  ChevronRight,
-  Loader2
+import {
+  Briefcase, User, Mail, Phone, Upload, Send, FileText, Loader2
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '../../components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { useJobs } from '../../hooks/useJobs';
+import { submitJobApplication } from '../../api/jobApplications.api';
+import apiClient from '../../api/apiClient';
+import { toast } from 'sonner';
+
+interface Job {
+  _id: string;
+  jobTitle: string;
+  department: string;
+  status: string;
+}
 
 export default function JobApplication() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileName, setFileName]         = useState<string | null>(null);
+  const [jobs, setJobs]                 = useState<Job[]>([]);
+  const [jobId, setJobId]               = useState('');
+  const [experience, setExperience]     = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const preselectedRole = searchParams.get('role');
-  const [role, setRole] = useState(preselectedRole || '');
-  const { jobs } = useJobs();
+  const preselectedId = searchParams.get('job');
 
-  // Filter for active jobs only
-  const activeJobs = jobs.filter(job => job.status === 'active');
-
+  // ── Fetch active jobs ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (preselectedRole) {
-      setRole(preselectedRole);
-    }
-  }, [preselectedRole]);
+    apiClient.get('/jobs/active')
+      .then(res => {
+        const data = res.data.data;
+        const list: Job[] = data?.jobs || data || [];
+        setJobs(list);
+        if (preselectedId) setJobId(preselectedId);
+      })
+      .catch(() => {/* silently ignore – dropdown will be empty */});
+  }, [preselectedId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsSubmitting(false);
-    navigate('/careers/apply/success');
+    const form = e.currentTarget;
+
+    if (!jobId) {
+      toast.error('Please select a position.');
+      return;
+    }
+    if (!experience) {
+      toast.error('Please select your experience level.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('job',             jobId);
+    formData.append('firstName',       (form.querySelector('#firstName') as HTMLInputElement).value.trim());
+    formData.append('lastName',        (form.querySelector('#lastName')  as HTMLInputElement).value.trim());
+    formData.append('email',           (form.querySelector('#email')     as HTMLInputElement).value.trim());
+    formData.append('phone',           (form.querySelector('#phone')     as HTMLInputElement).value.trim());
+    formData.append('desiredRole',     jobs.find(j => j._id === jobId)?.jobTitle || '');
+    formData.append('experienceLevel', experience);
+    formData.append('portfolioUrl',    (form.querySelector('#portfolio') as HTMLInputElement).value.trim());
+    formData.append('coverLetter',     (form.querySelector('#coverLetter') as HTMLTextAreaElement).value.trim());
+
+    const file = fileRef.current?.files?.[0];
+    if (file) formData.append('resume', file);
+
+    try {
+      setIsSubmitting(true);
+      await submitJobApplication(formData);
+      navigate('/careers/apply/success');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to submit application. Please try again.';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFileName(e.target.files[0].name);
-    }
+    if (e.target.files?.[0]) setFileName(e.target.files[0].name);
   };
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-20">
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="relative px-4 sm:px-6 lg:px-8 mb-16">
         <div className="max-w-4xl mx-auto text-center space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
               <Briefcase className="w-4 h-4" />
               <span>We're Hiring</span>
@@ -95,29 +115,23 @@ export default function JobApplication() {
         </div>
       </section>
 
-      {/* Application Form */}
+      {/* Form */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
           <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardHeader className="space-y-1 pb-8 border-b border-border/50">
               <CardTitle className="text-2xl">Job Application</CardTitle>
-              <CardDescription>
-                Please fill out the form below. All fields marked with * are required.
-              </CardDescription>
+              <CardDescription>Please fill out the form below. All fields marked with * are required.</CardDescription>
             </CardHeader>
+
             <CardContent className="pt-8">
               <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Personal Info Section */}
+
+                {/* Personal Information */}
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <User className="w-5 h-5 text-primary" />
-                    Personal Information
+                    <User className="w-5 h-5 text-primary" /> Personal Information
                   </h3>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="firstName">First Name *</Label>
@@ -128,7 +142,6 @@ export default function JobApplication() {
                       <Input id="lastName" placeholder="Doe" required />
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address *</Label>
@@ -149,46 +162,46 @@ export default function JobApplication() {
 
                 <div className="h-px bg-border/50" />
 
-                {/* Role Section */}
+                {/* Role & Experience */}
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Briefcase className="w-5 h-5 text-primary" />
-                    Role & Experience
+                    <Briefcase className="w-5 h-5 text-primary" /> Role & Experience
                   </h3>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="role">Desired Role *</Label>
-                      <Select required value={role} onValueChange={setRole}>
+                      <Label>Desired Role *</Label>
+                      <Select required value={jobId} onValueChange={setJobId}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a position" />
                         </SelectTrigger>
                         <SelectContent>
-                          {activeJobs.map(job => (
-                            <SelectItem key={job.id} value={job.title}>{job.title}</SelectItem>
+                          {jobs.map(job => (
+                            <SelectItem key={job._id} value={job._id}>
+                              {job.jobTitle}
+                            </SelectItem>
                           ))}
-                          <SelectItem value="other">Other / General Application</SelectItem>
+                          {jobs.length === 0 && (
+                            <SelectItem value="__none" disabled>No open positions</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div className="space-y-2">
-                      <Label htmlFor="experience">Relevant Experience *</Label>
-                      <Select required>
+                      <Label>Relevant Experience *</Label>
+                      <Select required value={experience} onValueChange={setExperience}>
                         <SelectTrigger>
                           <SelectValue placeholder="Years of experience" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="entry">0-1 Years (Entry Level)</SelectItem>
-                          <SelectItem value="junior">1-3 Years (Junior)</SelectItem>
-                          <SelectItem value="mid">3-5 Years (Mid-Level)</SelectItem>
-                          <SelectItem value="senior">5-8 Years (Senior)</SelectItem>
-                          <SelectItem value="lead">8+ Years (Lead/Principal)</SelectItem>
+                          <SelectItem value="0-1 Years (Entry Level)">0-1 Years (Entry Level)</SelectItem>
+                          <SelectItem value="1-3 Years">1-3 Years (Junior)</SelectItem>
+                          <SelectItem value="3-5 Years">3-5 Years (Mid-Level)</SelectItem>
+                          <SelectItem value="5-10 Years">5-10 Years (Senior)</SelectItem>
+                          <SelectItem value="10+ Years">10+ Years (Lead/Principal)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="portfolio">Portfolio URL</Label>
                     <Input id="portfolio" placeholder="https://dribbble.com/yourname or https://github.com/yourname" />
@@ -198,32 +211,28 @@ export default function JobApplication() {
 
                 <div className="h-px bg-border/50" />
 
-                {/* Documents Section */}
+                {/* Documents */}
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-primary" />
-                    Documents
+                    <FileText className="w-5 h-5 text-primary" /> Documents
                   </h3>
-
                   <div className="space-y-2">
                     <Label htmlFor="resume">Resume/CV *</Label>
                     <div className="border-2 border-dashed border-border rounded-lg p-6 hover:bg-muted/50 transition-colors text-center cursor-pointer relative">
-                      <input 
-                        type="file" 
-                        id="resume" 
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        id="resume"
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         accept=".pdf,.doc,.docx"
                         onChange={handleFileChange}
-                        required
                       />
                       <div className="flex flex-col items-center gap-2 pointer-events-none">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                           <Upload className="w-5 h-5 text-primary" />
                         </div>
                         {fileName ? (
-                          <div className="text-sm font-medium text-primary break-all">
-                            {fileName}
-                          </div>
+                          <div className="text-sm font-medium text-primary break-all">{fileName}</div>
                         ) : (
                           <>
                             <span className="text-sm font-medium">Click to upload or drag and drop</span>
@@ -233,12 +242,11 @@ export default function JobApplication() {
                       </div>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="coverLetter">Cover Letter / Personal Statement</Label>
-                    <Textarea 
-                      id="coverLetter" 
-                      placeholder="Tell us why you'd be a great fit for our team..." 
+                    <Textarea
+                      id="coverLetter"
+                      placeholder="Tell us why you'd be a great fit for our team..."
                       className="min-h-[150px]"
                     />
                   </div>
@@ -246,20 +254,16 @@ export default function JobApplication() {
 
                 <Button type="submit" size="lg" className="w-full h-12 text-lg" disabled={isSubmitting}>
                   {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Submitting Application...
-                    </>
+                    <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting Application...</>
                   ) : (
-                    <>
-                      Submit Application
-                      <Send className="ml-2 h-5 w-5" />
-                    </>
+                    <><Send className="mr-2 h-5 w-5" /> Submit Application</>
                   )}
                 </Button>
-                
+
                 <p className="text-xs text-center text-muted-foreground">
-                  By submitting this form, you agree to our <Link to="/careers/privacy" target="_blank" className="underline hover:text-foreground">Job Privacy Policy</Link> and consent to the processing of your personal data.
+                  By submitting this form, you agree to our{' '}
+                  <Link to="/careers/privacy" target="_blank" className="underline hover:text-foreground">Job Privacy Policy</Link>{' '}
+                  and consent to the processing of your personal data.
                 </p>
               </form>
             </CardContent>

@@ -21,6 +21,11 @@ import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import JobApplication from "../../models/usersModels/JobApplication.model.js";
 import JobPosting from "../../models/usersModels/Jobs.model.js";
+import User from "../../models/usersModels/User.model.js";
+import {
+    sendJobApplicationConfirmation,
+    sendJobApplicationAdminNotification,
+} from "../../utils/sendEmails.js";
 
 // =========================
 // SUBMIT APPLICATION (public)
@@ -71,6 +76,24 @@ export const submitApplication = asyncHandler(async (req, res) => {
 
     // Increment applications count on the job
     await jobPosting.incrementApplications();
+
+    // Send confirmation email to applicant + admin notification (non-blocking)
+    Promise.allSettled([
+        sendJobApplicationConfirmation({
+            to: email,
+            name: firstName,
+            jobTitle: jobPosting.jobTitle,
+            department: jobPosting.department,
+        }),
+        sendJobApplicationAdminNotification({
+            to: process.env.ADMIN_EMAIL || process.env.FROM_EMAIL,
+            applicantName: `${firstName} ${lastName}`,
+            applicantEmail: email,
+            jobTitle: jobPosting.jobTitle,
+            department: jobPosting.department,
+            applicationId: application._id.toString(),
+        }),
+    ]).catch((err) => console.error("Email sending error:", err));
 
     successResponse(res, "Application submitted successfully", application, 201);
 });
@@ -159,9 +182,19 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
             reviewedAt: new Date(),
         },
         { new: true, runValidators: true }
-    );
+    ).populate("job", "jobTitle department");
 
     if (!application) throw new AppError("Application not found", 404);
+
+    // When hired: upgrade the applicant's user account role to 'team'
+    if (status === "hired") {
+        const user = await User.findOne({ email: application.email });
+        if (user && user.role !== "admin") {
+            user.role = "team";
+            await user.save();
+        }
+    }
+
     successResponse(res, "Application status updated", application);
 });
 

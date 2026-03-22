@@ -67,6 +67,7 @@ import Settings from './pages/admin/Settings';
 import ContentEditor from './pages/admin/ContentEditor';
 import TeamManagement from './pages/admin/TeamManagement';
 import JobManagement from './pages/admin/JobManagement';
+import AdminJobApplications from './pages/admin/AdminJobApplications';
 import ClientManagement from './pages/admin/ClientManagement';
 import ContactManagement from './pages/admin/ContactManagement';
 import DatabaseManager from './pages/admin/DatabaseManager';
@@ -232,6 +233,7 @@ export default function App() {
                 <Route path="client-requests" element={<ClientProjectRequests />} />
                 <Route path="contacts" element={<ContactManagement />} />
                 <Route path="jobs" element={<JobManagement />} />
+                <Route path="job-applications" element={<AdminJobApplications />} />
                 <Route path="database" element={<DatabaseManager />} />
                 <Route path="content-editor" element={<ContentEditor />} />
                 <Route path="settings" element={<Settings />} />

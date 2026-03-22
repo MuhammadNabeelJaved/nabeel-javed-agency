@@ -39,6 +39,7 @@ export function Sidebar() {
     { name: 'Team', path: '/admin/team', icon: Users },
     { name: 'Contacts', path: '/admin/contacts', icon: Mail },
     { name: 'Jobs', path: '/admin/jobs', icon: Briefcase },
+    { name: 'Applications', path: '/admin/job-applications', icon: Users },
     { name: 'Database', path: '/admin/database', icon: Database },
     { name: 'Content Editor', path: '/admin/content-editor', icon: PenTool },
     { name: 'AI Tools', path: '/admin/ai-tools', icon: Bot },
