@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { cmsApi } from '../api/cms.api';
 import { pageStatusApi, type PageStatusItem } from '../api/pageStatus.api';
+import { announcementsApi, type AnnouncementItem } from '../api/announcements.api';
 
 // --- Types ---
 
@@ -85,6 +86,10 @@ export interface ContentContextType {
   // Page statuses (maintenance / coming-soon control)
   pageStatuses: PageStatusItem[];
   setPageStatuses: React.Dispatch<React.SetStateAction<PageStatusItem[]>>;
+  // Announcement bar
+  announcements: AnnouncementItem[];
+  setAnnouncements: React.Dispatch<React.SetStateAction<AnnouncementItem[]>>;
+  hasActiveAnnouncements: boolean;
   // Updaters (save to API + local state)
   updateLogoUrl: (url: string) => Promise<void>;
   updateTechStack: (groups: TechGroup[]) => Promise<void>;
@@ -242,6 +247,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(defaultSocialLinks);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [pageStatuses, setPageStatuses] = useState<PageStatusItem[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
 
   // Hero content stays in localStorage (managed via HomePageHero API separately)
   const [heroContent, setHeroContent] = useState<HeroContent>(() => {
@@ -280,6 +286,9 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     fetchCMS();
     pageStatusApi.getAll()
       .then(res => setPageStatuses(res.data.data ?? []))
+      .catch(() => {});
+    announcementsApi.getActive()
+      .then(res => setAnnouncements((res.data as any).data ?? []))
       .catch(() => {});
   }, []);
 
@@ -346,6 +355,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       logoUrl, heroContent, updateHeroContent, techStack, processSteps, whyChooseUs,
       contactInfo, socialLinks, testimonials, isLoading,
       pageStatuses, setPageStatuses,
+      announcements, setAnnouncements,
+      hasActiveAnnouncements: announcements.length > 0,
       updateLogoUrl, updateTechStack, updateProcessSteps, updateWhyChooseUs,
       updateContactInfo, updateSocialLinks, updateTestimonials,
       refetch: fetchCMS,
