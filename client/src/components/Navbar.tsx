@@ -13,6 +13,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useContent } from '../contexts/ContentContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { usePageVisibility } from '../hooks/usePageVisibility';
 import { Button } from './ui/button';
 import { Menu, X, Sun, Moon, Globe, Check, ChevronDown, ArrowRight, LayoutDashboard, LogOut, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,6 +23,7 @@ export function Navbar() {
   const { logoUrl, hasActiveAnnouncements } = useContent();
   const { lang, setLang, t } = useLanguage();
   const { user, isAuthenticated, logout } = useAuth();
+  const { isVisible } = usePageVisibility();
   const [isOpen, setIsOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -71,7 +73,7 @@ export function Navbar() {
     { name: t('nav.contact'), path: '/contact' },
     { name: t('nav.userDashboard'), path: '/user-dashboard' },
     { name: t('nav.admin'), path: '/admin' },
-  ];
+  ].filter(link => isVisible(link.path));
 
   return (
     <>

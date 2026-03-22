@@ -1,12 +1,13 @@
 /**
  * Admin Page Manager
- * Control which public pages are Active, Under Maintenance, or Coming Soon.
- * Supports adding custom URLs and deleting them.
+ * Control which pages are Active, Under Maintenance, or Coming Soon.
+ * Pages are grouped by category: Public, Admin, User, Team, Custom.
  */
 import React, { useState } from 'react';
 import {
   Globe, Wrench, Clock, CheckCircle2, Loader2, RefreshCw, AlertTriangle,
-  Plus, Trash2, X, ToggleLeft,
+  Plus, Trash2, X, Shield, User, Users, LayoutDashboard, ChevronDown, ChevronRight,
+  Eye, EyeOff,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -24,23 +25,58 @@ const STATUS_CONFIG = {
     label: 'Active',
     icon: CheckCircle2,
     badge: 'bg-green-500/10 text-green-600 border-green-500/20',
-    btn: 'bg-green-500 hover:bg-green-600 text-white',
   },
   maintenance: {
     label: 'Maintenance',
     icon: Wrench,
     badge: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-    btn: 'bg-amber-500 hover:bg-amber-600 text-white',
   },
   'coming-soon': {
     label: 'Coming Soon',
     icon: Clock,
     badge: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-    btn: 'bg-blue-500 hover:bg-blue-600 text-white',
   },
 } as const;
 
 type StatusKey = keyof typeof STATUS_CONFIG;
+
+// ─── Category config ────────────────────────────────────────────────────────
+const CATEGORY_CONFIG = {
+  public: {
+    label: 'Public Pages',
+    description: 'Visitor-facing pages accessible without login',
+    icon: Globe,
+    color: 'text-violet-500',
+    bg: 'bg-violet-500/10',
+    border: 'border-violet-500/20',
+  },
+  admin: {
+    label: 'Admin Dashboard',
+    description: 'Admin-only management pages (/admin/*)',
+    icon: Shield,
+    color: 'text-red-500',
+    bg: 'bg-red-500/10',
+    border: 'border-red-500/20',
+  },
+  user: {
+    label: 'User Dashboard',
+    description: 'Logged-in user pages (/user-dashboard/*)',
+    icon: User,
+    color: 'text-sky-500',
+    bg: 'bg-sky-500/10',
+    border: 'border-sky-500/20',
+  },
+  team: {
+    label: 'Team Dashboard',
+    description: 'Team member pages (/team/*)',
+    icon: Users,
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/20',
+  },
+} as const;
+
+type CategoryKey = keyof typeof CATEGORY_CONFIG;
 
 function StatusBadge({ status }: { status: StatusKey }) {
   const cfg = STATUS_CONFIG[status];
@@ -155,6 +191,226 @@ function AddPageDialog({ onClose, onSave, saving }: AddPageDialogProps) {
   );
 }
 
+// ─── Category Section ────────────────────────────────────────────────────────
+function CategorySection({
+  category,
+  pages,
+  updating,
+  onUpdate,
+  onToggleVisibility,
+  onDelete,
+}: {
+  category: CategoryKey;
+  pages: PageStatusItem[];
+  updating: string | null;
+  onUpdate: (page: PageStatusItem, status: StatusKey) => void;
+  onToggleVisibility: (page: PageStatusItem) => void;
+  onDelete?: (key: string) => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const cfg = CATEGORY_CONFIG[category];
+  const Icon = cfg.icon;
+
+  if (pages.length === 0) return null;
+
+  const activeCount = pages.filter(p => p.status === 'active').length;
+  const maintenanceCount = pages.filter(p => p.status === 'maintenance').length;
+  const comingSoonCount = pages.filter(p => p.status === 'coming-soon').length;
+
+  return (
+    <div className="space-y-4">
+      {/* Section Header */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center justify-between p-4 rounded-2xl border border-border/50 bg-card/50 hover:bg-muted/30 transition-colors group"
+      >
+        <div className="flex items-center gap-3">
+          <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${cfg.bg} border ${cfg.border}`}>
+            <Icon className={`h-4 w-4 ${cfg.color}`} />
+          </div>
+          <div className="text-left">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-base">{cfg.label}</h3>
+              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{pages.length} pages</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{cfg.description}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Mini status summary */}
+          <div className="hidden sm:flex items-center gap-2 text-xs">
+            {activeCount > 0 && (
+              <span className="flex items-center gap-1 text-green-600">
+                <CheckCircle2 className="h-3 w-3" />{activeCount}
+              </span>
+            )}
+            {maintenanceCount > 0 && (
+              <span className="flex items-center gap-1 text-amber-600">
+                <Wrench className="h-3 w-3" />{maintenanceCount}
+              </span>
+            )}
+            {comingSoonCount > 0 && (
+              <span className="flex items-center gap-1 text-blue-600">
+                <Clock className="h-3 w-3" />{comingSoonCount}
+              </span>
+            )}
+          </div>
+          {collapsed
+            ? <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            : <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          }
+        </div>
+      </button>
+
+      {!collapsed && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {pages.map(page => (
+            <PageCard
+              key={page.key}
+              page={page}
+              isUpdating={updating === page.key}
+              onUpdate={onUpdate}
+              onToggleVisibility={onToggleVisibility}
+              onDelete={onDelete ? () => onDelete(page.key) : undefined}
+              isCustom={page.isCustom}
+              categoryColor={cfg.color}
+              categoryBg={cfg.bg}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Page Card ───────────────────────────────────────────────────────────────
+function PageCard({
+  page,
+  isUpdating,
+  onUpdate,
+  onToggleVisibility,
+  onDelete,
+  isCustom,
+  categoryColor,
+  categoryBg,
+}: {
+  page: PageStatusItem;
+  isUpdating: boolean;
+  onUpdate: (page: PageStatusItem, status: StatusKey) => void;
+  onToggleVisibility: (page: PageStatusItem) => void;
+  onDelete?: () => void;
+  isCustom?: boolean;
+  categoryColor?: string;
+  categoryBg?: string;
+}) {
+  const currentStatus = page.status as StatusKey;
+  const isHidden = page.isHidden ?? false;
+
+  return (
+    <Card className={`border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden transition-opacity ${isHidden ? 'opacity-60' : ''}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 ${categoryBg || 'bg-primary/10'} ${categoryColor ? 'border-current/20' : 'border-primary/20'}`}>
+              <Globe className={`h-5 w-5 ${categoryColor || 'text-primary'}`} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-base">{page.label}</CardTitle>
+                {isCustom && (
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Custom</span>
+                )}
+                {isHidden && (
+                  <span className="text-[10px] bg-slate-500/10 text-slate-500 border border-slate-500/20 px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+                    <EyeOff className="h-2.5 w-2.5" /> Hidden
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground font-mono mt-0.5">{page.path}{page.matchPrefix ? '/*' : ''}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <StatusBadge status={currentStatus} />
+            {isCustom && onDelete && (
+              <button
+                onClick={onDelete}
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Delete custom page"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-0 space-y-3">
+        {/* Status buttons */}
+        <div>
+          <p className="text-xs text-muted-foreground mb-2">Page status:</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(['active', 'maintenance', 'coming-soon'] as StatusKey[]).map(s => {
+              const cfg = STATUS_CONFIG[s];
+              const Icon = cfg.icon;
+              const isActive = currentStatus === s;
+              return (
+                <button
+                  key={s}
+                  onClick={() => onUpdate(page, s)}
+                  disabled={isUpdating || isActive}
+                  className={`
+                    flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-xs font-medium
+                    border transition-all duration-200
+                    ${isActive
+                      ? `${cfg.badge} ring-2 ring-offset-1 ring-current scale-[1.02] cursor-default`
+                      : 'border-border/50 text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground'
+                    }
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                  `}
+                >
+                  {isUpdating && !isActive
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Icon className="h-4 w-4" />
+                  }
+                  <span className="leading-none text-center">{cfg.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Visibility toggle */}
+        <div className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-colors ${isHidden ? 'bg-slate-500/5 border-slate-500/20' : 'bg-muted/30 border-border/50'}`}>
+          <div className="flex items-center gap-2">
+            {isHidden
+              ? <EyeOff className="h-4 w-4 text-slate-500" />
+              : <Eye className="h-4 w-4 text-green-500" />
+            }
+            <div>
+              <p className="text-xs font-medium">{isHidden ? 'Hidden from visitors' : 'Visible to visitors'}</p>
+              <p className="text-[10px] text-muted-foreground">Admins always see this page</p>
+            </div>
+          </div>
+          <button
+            onClick={() => onToggleVisibility(page)}
+            disabled={isUpdating}
+            title={isHidden ? 'Make visible' : 'Hide page'}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${isHidden ? 'bg-slate-400' : 'bg-green-500'}`}
+          >
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${isHidden ? 'translate-x-1' : 'translate-x-4'}`} />
+          </button>
+        </div>
+
+        {page.updatedAt && (
+          <p className="text-[10px] text-muted-foreground/60 text-right">
+            Last changed: {new Date(page.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function PageManager() {
   const { pageStatuses, setPageStatuses } = useContent();
@@ -227,11 +483,31 @@ export default function PageManager() {
     }
   };
 
+  const handleToggleVisibility = async (page: PageStatusItem) => {
+    const newHidden = !page.isHidden;
+    setUpdating(page.key);
+    try {
+      const res = await pageStatusApi.toggleVisibility(page.key, newHidden);
+      const updated = (res.data as any).data as PageStatusItem;
+      setPageStatuses(prev => prev.map(p => p.key === page.key ? { ...p, isHidden: newHidden, updatedAt: updated.updatedAt } : p));
+      showNotification('success', newHidden ? `"${page.label}" hidden` : `"${page.label}" visible`, newHidden ? 'Page is now hidden from visitors.' : 'Page is now visible to visitors.');
+    } catch (err: any) {
+      showNotification('error', 'Update failed', err?.response?.data?.message || 'Could not update visibility.');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const activeCount = pageStatuses.filter(p => p.status === 'active').length;
   const maintenanceCount = pageStatuses.filter(p => p.status === 'maintenance').length;
   const comingSoonCount = pageStatuses.filter(p => p.status === 'coming-soon').length;
+  const hiddenCount = pageStatuses.filter(p => p.isHidden).length;
 
-  const builtInPages = pageStatuses.filter(p => !p.isCustom);
+  // Group pages by category
+  const publicPages = pageStatuses.filter(p => !p.isCustom && (p.category === 'public' || !p.category));
+  const adminPages = pageStatuses.filter(p => !p.isCustom && p.category === 'admin');
+  const userPages = pageStatuses.filter(p => !p.isCustom && p.category === 'user');
+  const teamPages = pageStatuses.filter(p => !p.isCustom && p.category === 'team');
   const customPages = pageStatuses.filter(p => p.isCustom);
 
   return (
@@ -259,7 +535,7 @@ export default function PageManager() {
           <div className="bg-background rounded-2xl w-full max-w-sm border border-border shadow-2xl p-6 space-y-4">
             <h3 className="text-lg font-bold">Delete Custom Page?</h3>
             <p className="text-sm text-muted-foreground">
-              This will remove "<span className="font-medium text-foreground">{pageStatuses.find(p => p.key === confirmDeleteKey)?.label}</span>" from the Page Manager. Visitors seeing this page won't be redirected — the page just won't be managed here anymore.
+              This will remove "<span className="font-medium text-foreground">{pageStatuses.find(p => p.key === confirmDeleteKey)?.label}</span>" from the Page Manager.
             </p>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setConfirmDeleteKey(null)}>Cancel</Button>
@@ -282,7 +558,7 @@ export default function PageManager() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Page Manager</h2>
           <p className="text-muted-foreground mt-1">
-            Control which public pages are live, under maintenance, or coming soon.
+            Control access and visibility for all pages — public, admin, user, and team dashboards.
           </p>
         </div>
         <div className="flex gap-2">
@@ -297,17 +573,19 @@ export default function PageManager() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Active', count: activeCount, cfg: STATUS_CONFIG.active },
           { label: 'Maintenance', count: maintenanceCount, cfg: STATUS_CONFIG.maintenance },
           { label: 'Coming Soon', count: comingSoonCount, cfg: STATUS_CONFIG['coming-soon'] },
-        ].map(({ label, count, cfg }) => {
-          const Icon = cfg.icon;
+          { label: 'Hidden', count: hiddenCount, icon: EyeOff, badge: 'bg-slate-500/10 text-slate-600 border-slate-500/20' },
+        ].map(({ label, count, cfg, icon, badge }: any) => {
+          const Icon = icon || cfg.icon;
+          const badgeClass = badge || cfg.badge;
           return (
             <Card key={label} className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-5 flex items-center gap-4">
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${cfg.badge}`}>
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${badgeClass}`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
@@ -328,22 +606,69 @@ export default function PageManager() {
         </p>
       </div>
 
-      {/* ── Built-in Pages ── */}
+      {/* ── Page Categories ── */}
       {pageStatuses.length === 0 ? (
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin mr-3" /> Loading pages...
         </div>
       ) : (
-        <>
-          <PageGrid pages={builtInPages} updating={updating} onUpdate={handleUpdate} />
+        <div className="space-y-6">
+          {/* Public Pages */}
+          <CategorySection
+            category="public"
+            pages={publicPages}
+            updating={updating}
+            onUpdate={handleUpdate}
+            onToggleVisibility={handleToggleVisibility}
+          />
+
+          {/* Admin Pages */}
+          <CategorySection
+            category="admin"
+            pages={adminPages}
+            updating={updating}
+            onUpdate={handleUpdate}
+            onToggleVisibility={handleToggleVisibility}
+          />
+
+          {/* User Dashboard Pages */}
+          <CategorySection
+            category="user"
+            pages={userPages}
+            updating={updating}
+            onUpdate={handleUpdate}
+            onToggleVisibility={handleToggleVisibility}
+          />
+
+          {/* Team Dashboard Pages */}
+          <CategorySection
+            category="team"
+            pages={teamPages}
+            updating={updating}
+            onUpdate={handleUpdate}
+            onToggleVisibility={handleToggleVisibility}
+          />
 
           {/* ── Custom Pages ── */}
-          {customPages.length > 0 && (
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold">Custom Pages</h3>
-                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{customPages.length}</span>
+                <div className="h-9 w-9 rounded-xl flex items-center justify-center bg-primary/10 border border-primary/20">
+                  <LayoutDashboard className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-base">Custom Pages</h3>
+                    {customPages.length > 0 && (
+                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{customPages.length} pages</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Custom URLs you've added manually</p>
+                </div>
               </div>
+            </div>
+
+            {customPages.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {customPages.map(page => (
                   <PageCard
@@ -351,125 +676,25 @@ export default function PageManager() {
                     page={page}
                     isUpdating={updating === page.key}
                     onUpdate={handleUpdate}
+                    onToggleVisibility={handleToggleVisibility}
                     onDelete={() => setConfirmDeleteKey(page.key)}
                     isCustom
                   />
                 ))}
               </div>
-            </div>
-          )}
-
-          {customPages.length === 0 && (
-            <button
-              onClick={() => setShowAddDialog(true)}
-              className="w-full border-2 border-dashed border-border/50 rounded-2xl p-8 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group"
-            >
-              <Plus className="h-8 w-8 mx-auto mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
-              <p className="font-medium text-muted-foreground group-hover:text-foreground transition-colors">Add your first custom page</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">Track any URL — /blog, /pricing, /new-feature</p>
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Extracted sub-components ──────────────────────────────────────────────
-
-function PageGrid({ pages, updating, onUpdate }: {
-  pages: PageStatusItem[];
-  updating: string | null;
-  onUpdate: (page: PageStatusItem, status: StatusKey) => void;
-}) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {pages.map(page => (
-        <PageCard key={page.key} page={page} isUpdating={updating === page.key} onUpdate={onUpdate} />
-      ))}
-    </div>
-  );
-}
-
-function PageCard({ page, isUpdating, onUpdate, onDelete, isCustom }: {
-  page: PageStatusItem;
-  isUpdating: boolean;
-  onUpdate: (page: PageStatusItem, status: StatusKey) => void;
-  onDelete?: () => void;
-  isCustom?: boolean;
-}) {
-  const currentStatus = page.status as StatusKey;
-
-  return (
-    <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-              <Globe className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base">{page.label}</CardTitle>
-                {isCustom && (
-                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Custom</span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground font-mono mt-0.5">{page.path}{page.matchPrefix ? '/*' : ''}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <StatusBadge status={currentStatus} />
-            {isCustom && onDelete && (
+            ) : (
               <button
-                onClick={onDelete}
-                className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                title="Delete custom page"
+                onClick={() => setShowAddDialog(true)}
+                className="w-full border-2 border-dashed border-border/50 rounded-2xl p-8 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Plus className="h-8 w-8 mx-auto mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                <p className="font-medium text-muted-foreground group-hover:text-foreground transition-colors">Add your first custom page</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Track any URL — /blog, /pricing, /new-feature</p>
               </button>
             )}
           </div>
         </div>
-      </CardHeader>
-
-      <CardContent className="pt-0 space-y-2">
-        <p className="text-xs text-muted-foreground mb-3">Set visibility for visitors:</p>
-        <div className="grid grid-cols-3 gap-2">
-          {(['active', 'maintenance', 'coming-soon'] as StatusKey[]).map(s => {
-            const cfg = STATUS_CONFIG[s];
-            const Icon = cfg.icon;
-            const isActive = currentStatus === s;
-            return (
-              <button
-                key={s}
-                onClick={() => onUpdate(page, s)}
-                disabled={isUpdating || isActive}
-                className={`
-                  flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-xs font-medium
-                  border transition-all duration-200
-                  ${isActive
-                    ? `${cfg.badge} ring-2 ring-offset-1 ring-current scale-[1.02] cursor-default`
-                    : 'border-border/50 text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground'
-                  }
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                `}
-              >
-                {isUpdating && !isActive
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : <Icon className="h-4 w-4" />
-                }
-                <span className="leading-none text-center">{cfg.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        {page.updatedAt && (
-          <p className="text-[10px] text-muted-foreground/60 text-right pt-1">
-            Last changed: {new Date(page.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          </p>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }

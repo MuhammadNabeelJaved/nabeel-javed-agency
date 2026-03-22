@@ -30,6 +30,19 @@ const pageStatusSchema = new mongoose.Schema(
             enum: ["active", "maintenance", "coming-soon"],
             default: "active",
         },
+        category: {
+            type: String,
+            enum: ["public", "admin", "user", "team"],
+            default: "public",
+        },
+        isCustom: {
+            type: Boolean,
+            default: false,
+        },
+        isHidden: {
+            type: Boolean,
+            default: false,
+        },
         updatedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

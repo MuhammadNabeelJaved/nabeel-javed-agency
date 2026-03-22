@@ -13,20 +13,27 @@ import { AnnouncementBar } from '../components/AnnouncementBar';
 import { useContent } from '../contexts/ContentContext';
 
 export function PublicLayout() {
-  const { hasActiveAnnouncements } = useContent();
+  const { announcementBars } = useContent();
+  const activeBars = announcementBars.filter(g => g.bar.isActive && g.items.length > 0);
+  const totalBarHeight = activeBars.length * 40; // each bar is 40px tall
 
   return (
     <div className="flex flex-col min-h-screen">
-      <AnnouncementBar />
+      {/* Render stacked announcement bars */}
+      {activeBars.map((barGroup, idx) => (
+        <AnnouncementBar key={barGroup.bar._id} barGroup={barGroup} topOffset={idx * 40} />
+      ))}
       <Navbar />
-      {/* pt accounts for: navbar (64px) + optional announcement bar (40px) */}
-      <main className={`flex-grow transition-[padding] duration-300 ${hasActiveAnnouncements ? 'pt-[6.5rem]' : 'pt-16'}`}>
+      {/* pt: navbar (64px) + all announcement bars */}
+      <main
+        className="flex-grow transition-[padding] duration-300"
+        style={{ paddingTop: `${64 + totalBarHeight}px` }}
+      >
         <PageStatusGate>
           <Outlet />
         </PageStatusGate>
       </main>
       <Footer />
-
       <Chatbot />
       <ScrollToTop />
     </div>

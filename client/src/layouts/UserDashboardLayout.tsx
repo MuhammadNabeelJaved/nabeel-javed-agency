@@ -5,6 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { UserSidebar } from '../components/UserSidebar';
+import { PageStatusGate } from '../components/PageStatusGate';
 import { Bell, Search, Check, AlertCircle, Info, Clock, X, MessageSquare } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -184,7 +185,9 @@ export function UserDashboardLayout() {
         </header>
 
         <main className="p-8 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Outlet />
+          <PageStatusGate hiddenRedirectTo="/user-dashboard">
+            <Outlet />
+          </PageStatusGate>
         </main>
       </div>
     </div>

@@ -14,14 +14,16 @@ Full-stack Agency Website & CMS. Monorepo with `client/` (React 18 + TypeScript)
 ### Backend (server/)
 - Express 5 + MongoDB Atlas (Mongoose), port 8000, prefix `/api/v1/`
 - JWT auth (access + refresh tokens), roles: `admin | team | user`
-- OTP email verification (Resend), file uploads (Multer + Cloudinary)
+- OTP email verification via **Resend SDK**, file uploads via **Multer + Cloudinary**
+- `uploadFile(filePath, folder)` in `server/src/middlewares/Cloudinary.js` — use `resource_type: 'auto'` for PDF/DOC/DOCX uploads (not just images)
+- Seed file: `server/src/seed.js` — run `node src/seed.js` to populate initial data
 
 ## Key Contexts (`client/src/contexts/`)
 | Context | Key exports | Storage |
 |---|---|---|
 | AuthContext.tsx | `user, isAuthenticated, login, logout, updateUser` | localStorage |
 | ThemeContext.tsx | `theme, setTheme` | localStorage |
-| ContentContext.tsx | `logoUrl`, CMS data | fetched from backend |
+| ContentContext.tsx | `logoUrl`, `pageStatuses`, `setPageStatuses`, CMS data | fetched from backend |
 | LanguageContext.tsx | `lang, setLang, t()` | localStorage (EN/ES/FR/DE/JP) |
 
 ## Auth & Routing
@@ -41,6 +43,7 @@ Full-stack Agency Website & CMS. Monorepo with `client/` (React 18 + TypeScript)
 | Hero | components/Hero.tsx | Full-screen, translatable via `t()`, `pb-40` to push content up |
 | ScrollToTop | components/ScrollToTop.tsx | `fixed bottom-[6.5rem] right-6`, `useScroll+useSpring` |
 | Chatbot | components/Chatbot.tsx | `fixed bottom-6 right-6 h-16` |
+| ShareWidget | components/ShareWidget.tsx | Popover with copy link, LinkedIn, Twitter, Facebook share buttons |
 
 ## Translation Pattern
 ```tsx
@@ -55,24 +58,56 @@ const { t } = useLanguage();
 - Primary color via CSS var `--primary` (violet family)
 - Scroll reveals: `whileInView`, mount/unmount: `AnimatePresence`
 
-## Two Project Models — Do Not Confuse
+---
+
+## Models
+
+### Two Project Models — Do Not Confuse
 | Model | File | Purpose | API prefix |
 |---|---|---|---|
 | `Project` | `server/src/models/usersModels/Project.model.js` | **Client project requests** submitted by users | `/api/v1/projects` |
 | `AdminProject` | `server/src/models/adminModels/AdminProject.model.js` | **Agency portfolio** projects managed by admin | `/api/v1/admin/projects` |
 
-## Client Project Requests (`Project` model)
+### Client Project Requests (`Project` model)
 - Fields: `projectName`, `projectType`, `budgetRange`, `projectDetails`, `status` (pending→in_review→approved/rejected→completed), `progress`, `deadline`, `totalCost`, `paidAmount`, `paymentStatus` (auto via pre-save hook), `attachments[]`, `requestedBy` (ref User), `assignedTeam[]` (ref User[]), `isArchived`
 - Role-based filtering in `getAllProjects`: admin sees all, team sees `assignedTeam` contains their ID, user sees `requestedBy` equals their ID
 - File uploads via Multer + Cloudinary; `deleteAttachment` removes from Cloudinary + DB
+
+### JobPosting model (`server/src/models/usersModels/JobPosting.model.js`)
+- Fields: `jobTitle`, `department` (enum: Engineering/Design/Marketing/Sales/HR/Finance/Operations/Product/Other), `employmentType`, `workMode`, `location`, `experienceLevel` (enum: 'Entry Level'/'Mid Level'/'Senior Level'/'Lead'/'Executive'), `salaryRange: { min, max, currency }`, `salaryDisplay` (optional override string), `description`, `responsibilities[]`, `requirements[]`, `benefits[]`, `status` (Active/Draft/Closed/Filled/Paused)
+- API: `GET /api/v1/jobs` (all, admin), `GET /api/v1/jobs/active` (public), `GET /api/v1/jobs/:id` (public)
+- `getAllJobs` returns `{ jobs, pagination }` — always use `data?.jobs || (Array.isArray(data) ? data : [])` to parse
+- `getActiveJobs` returns array directly
+
+### JobApplication model (`server/src/models/usersModels/JobApplication.model.js`)
+- Fields: `job` (ref JobPosting), `firstName`, `lastName`, `email`, `phone`, `desiredRole`, `experienceLevel`, `resumeUrl` (Cloudinary), `coverLetter`, `status` (pending/reviewing/shortlisted/rejected/hired), `adminNotes`
+- Submit: `POST /api/v1/job-applications` (public, multipart/form-data with `resume` file)
+- On submit: resume uploaded to Cloudinary via `uploadFile()`, confirmation email sent to applicant + admin notification (both via `Promise.allSettled` — non-blocking)
+- `GET /api/v1/job-applications/my` — authenticated user sees their own applications (matched by email)
+- `PUT /api/v1/job-applications/:id/status` — admin only; when status = `'hired'`, user role is automatically upgraded to `'team'`
+
+### PageStatus model (`server/src/models/usersModels/PageStatus.model.js`)
+- Fields: `key` (unique), `label`, `path`, `matchPrefix`, `status` (active/maintenance/coming-soon), `category` (public/admin/user/team), `isCustom`, `updatedBy`
+- `PAGE_REGISTRY` in `pageStatus.controller.js` defines **36 built-in pages** across 4 categories
+- Auto-seeds on first load; migrates missing pages on subsequent loads (migration-safe)
+- Old `"team"` key auto-migrated to `"our-team"` on first request after update
+- Built-in pages cannot be deleted; `isCustom: true` pages can be deleted by admin
+- API: `GET /api/v1/page-status` (public), `PUT /:key`, `POST /`, `DELETE /:key` (admin only)
+
+---
 
 ## API Files (`client/src/api/`)
 | File | Base path | Key methods |
 |---|---|---|
 | `projects.api.ts` | `/projects` | `getAll`, `getStats`, `getById`, `create` (FormData), `delete` |
 | `adminProjects.api.ts` | `/admin/projects` | CRUD for portfolio projects |
+| `jobs.api.ts` | `/jobs` | `getAll` (admin), `getActive` (public), `getById`, `create`, `update`, `delete` |
+| `jobApplications.api.ts` | `/job-applications` | `getAll`, `getStats`, `getById`, `updateStatus`, `delete`, `getMyApplications`, `submitJobApplication` (FormData) |
+| `pageStatus.api.ts` | `/page-status` | `getAll`, `update(key, status)`, `create(payload)`, `delete(key)` |
 | `users.api.ts` | `/users` | `update` (FormData or JSON), `updatePassword` |
 | `auth.api.ts` | `/auth` | login, register, refresh |
+
+---
 
 ## Dashboard Pages
 
@@ -81,12 +116,16 @@ const { t } = useLanguage();
 |---|---|---|
 | Overview | `pages/user/UserDashboardHome.tsx` | Live stats from `projectsApi.getStats()`, recent 3 projects |
 | My Projects | `pages/user/UserProjects.tsx` | Full CRUD — create with file upload, list, delete (pending/rejected only) |
+| Applied Jobs | `pages/user/UserAppliedJobs.tsx` | Shows all job applications by the logged-in user; status badges, resume link, admin notes, view job button |
 | Profile | `pages/user/UserProfile.tsx` | Avatar upload, password change via `usersApi.updatePassword` |
 
 ### Admin Dashboard (`/admin`)
 | Page | File | Notes |
 |---|---|---|
-| Client Requests | `pages/admin/ClientProjectRequests.tsx` | Approve/reject/delete requests; assign team members (checkbox picker with stacked avatar display); shows client name, email, submission date |
+| Client Requests | `pages/admin/ClientProjectRequests.tsx` | Approve/reject/delete requests; assign team members (checkbox picker with stacked avatar display) |
+| Job Management | `pages/admin/JobManagement.tsx` | Full CRUD for job postings; department uses Select with enum values; salary uses min/max number inputs; `getAllJobs` returns `{ jobs, pagination }` |
+| Job Applications | `pages/admin/AdminJobApplications.tsx` | Stats cards; table with hire/reject/delete actions; hire upgrades applicant user role to 'team' |
+| Page Manager | `pages/admin/PageManager.tsx` | 5 collapsible categories (Public, Admin, User, Team, Custom); 36 built-in pages + custom URLs; 3-button status toggle per page |
 
 ### Team Dashboard (`/team`)
 | Page | File | Notes |
@@ -95,6 +134,19 @@ const { t } = useLanguage();
 | Client Request Detail | `pages/team/TeamClientRequestDetail.tsx` | Full detail view: description, attachments (clickable links), assigned team list, client info, payment info; route: `/team/client-requests/:id` |
 | Project Detail | `pages/team/TeamProjectDetail.tsx` | Detail view for AdminProject portfolio items; route: `/team/projects/:id` |
 
+---
+
+## Public Pages (Careers)
+| Page | File | Notes |
+|---|---|---|
+| Careers | `pages/public/Careers.tsx` | Uses `jobsApi.getActive()` — returns array directly (not paginated). Field names: `job.jobTitle`, `job.employmentType`, `job.salaryRange` (object). Format salary with helper: `$3k – $6k` |
+| Job Detail | `pages/public/JobDetail.tsx` | Uses `jobsApi.getById(id)`. Salary display: `job.salaryDisplay \|\| (job.salaryRange?.min ? ...)` — never render the object directly. Includes Share widget and Job Privacy Policy link |
+| Job Application | `pages/public/JobApplication.tsx` | Multipart/form-data with `resume` file. Experience level values must match DB enum exactly (e.g. 'Senior Level' not 'Senior') |
+| Job Application Success | `pages/public/JobApplicationSuccess.tsx` | Shown after successful submit |
+| Job Privacy Policy | `pages/public/JobPrivacyPolicy.tsx` | Linked from JobDetail apply card |
+
+---
+
 ## shadcn/ui `Select` — Important Gotcha
 The `Select` component in this codebase is a **native `<select>` wrapper**, NOT Radix UI.
 - **Wrong**: wrapping with `<SelectTrigger>`, `<SelectContent>`, `<SelectValue>` → causes `<div> cannot appear as child of <select>` DOM error
@@ -102,6 +154,12 @@ The `Select` component in this codebase is a **native `<select>` wrapper**, NOT 
 
 ## `Tabs` Component — `onTabChange` Gotcha
 `Tabs` passes `onTabChange` via `React.cloneElement` to ALL children. `TabsContent` must destructure `onTabChange` from props to prevent it being spread to the DOM `<div>`.
+
+## Email System (Resend)
+- Transactional emails sent via Resend SDK from `server/src/utils/emails/`
+- Job application flow: `sendJobApplicationConfirmation` (to applicant) + `sendJobApplicationAdminNotification` (to admin)
+- All email sends wrapped in `Promise.allSettled` — submission succeeds even if email fails
+- OTP verification also uses Resend
 
 ## Git Rules
 - Branch: `main` → remote: `github.com/MuhammadNabeelJaved/nabeel-javed-agency`

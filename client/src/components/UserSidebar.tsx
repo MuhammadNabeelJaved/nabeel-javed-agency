@@ -18,13 +18,14 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
-
 import { useNavigate } from 'react-router-dom';
+import { usePageVisibility } from '../hooks/usePageVisibility';
 
 export function UserSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  
+  const { isVisible } = usePageVisibility();
+
   const links = [
     { name: 'Overview', path: '/user-dashboard', icon: LayoutDashboard },
     { name: 'My Projects', path: '/user-dashboard/projects', icon: FolderKanban },
@@ -33,7 +34,7 @@ export function UserSidebar() {
     { name: 'Applied Jobs', path: '/user-dashboard/applied-jobs', icon: Briefcase },
     { name: 'Profile & Settings', path: '/user-dashboard/profile', icon: User },
     { name: 'Notifications', path: '/user-dashboard/notifications', icon: Bell },
-  ];
+  ].filter(link => isVisible(link.path));
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-20 lg:w-72 bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col">
