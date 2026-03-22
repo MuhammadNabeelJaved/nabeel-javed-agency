@@ -16,6 +16,7 @@ import Service from './models/usersModels/Services.model.js';
 import Task from './models/usersModels/Task.model.js';
 import User from './models/usersModels/User.model.js';
 import Resource from './models/usersModels/Resource.model.js';
+import JobPosting from './models/usersModels/Jobs.model.js';
 
 // ─── Hero Section ─────────────────────────────────────────────────────────────
 
@@ -750,6 +751,168 @@ async function seedResources() {
   console.log(`✓ Resources seeded (${dummyResources.length} dummy files)`);
 }
 
+// ─── Jobs ─────────────────────────────────────────────────────────────────────
+
+async function seedJobs() {
+  const existing = await JobPosting.countDocuments();
+  if (existing > 0) {
+    console.log(`⏭  Jobs already seeded (${existing} found), skipping.`);
+    return;
+  }
+
+  const adminUser = await User.findOne({ role: 'admin' }).lean();
+  if (!adminUser) {
+    console.warn('⚠  No admin user found — skipping job seed. Create an admin account first.');
+    return;
+  }
+
+  const jobs = [
+    {
+      jobTitle: 'Senior Full-Stack Developer',
+      department: 'Engineering',
+      employmentType: 'Full-time',
+      experienceLevel: 'Senior Level',
+      workMode: 'Remote',
+      location: 'Worldwide',
+      salaryRange: { min: 80000, max: 120000, currency: 'USD' },
+      description: 'We are looking for a Senior Full-Stack Developer to join our growing engineering team. You will architect and build scalable web applications using React, Node.js, and MongoDB, collaborating closely with designers and product leads to deliver exceptional digital products.',
+      responsibilities: [
+        'Design and build high-performance full-stack web applications',
+        'Lead technical discussions and code reviews',
+        'Collaborate with designers and product managers on new features',
+        'Optimize application performance and scalability',
+        'Mentor junior developers and promote engineering best practices',
+      ],
+      requirements: [
+        '5+ years of professional full-stack development experience',
+        'Expert-level React and Node.js skills',
+        'Strong experience with MongoDB or PostgreSQL',
+        'Proficiency in TypeScript',
+        'Experience with cloud platforms (AWS, GCP, or Vercel)',
+        'Excellent communication skills in English',
+      ],
+      benefits: [
+        'Fully remote — work from anywhere',
+        'Competitive USD salary',
+        'Flexible working hours',
+        'Annual learning & development budget',
+        'Paid time off + local public holidays',
+        'Latest equipment stipend',
+      ],
+      status: 'Active',
+      featured: true,
+      postedBy: adminUser._id,
+    },
+    {
+      jobTitle: 'UI/UX Designer',
+      department: 'Design',
+      employmentType: 'Full-time',
+      experienceLevel: 'Mid Level',
+      workMode: 'Remote',
+      location: 'Worldwide',
+      salaryRange: { min: 55000, max: 85000, currency: 'USD' },
+      description: 'We are seeking a talented UI/UX Designer who can turn complex problems into elegant, intuitive interfaces. You will own the design process from discovery and wireframing through to high-fidelity Figma prototypes, working hand-in-hand with our engineering team.',
+      responsibilities: [
+        'Create wireframes, prototypes, and high-fidelity UI designs in Figma',
+        'Conduct user research and usability testing',
+        'Define and maintain our design system and component library',
+        'Collaborate with developers to ensure pixel-perfect implementation',
+        'Present design rationale to clients and stakeholders',
+      ],
+      requirements: [
+        '3+ years of professional UI/UX design experience',
+        'Expert-level Figma skills',
+        'Strong portfolio demonstrating product design work',
+        'Experience with design systems and component libraries',
+        'Understanding of HTML/CSS is a plus',
+        'User research and testing experience',
+      ],
+      benefits: [
+        'Fully remote — work from anywhere',
+        'Competitive USD salary',
+        'Flexible working hours',
+        'Annual conference & workshop budget',
+        'Paid time off + local public holidays',
+        'Creative freedom on real-world products',
+      ],
+      status: 'Active',
+      featured: false,
+      postedBy: adminUser._id,
+    },
+    {
+      jobTitle: 'Digital Marketing Specialist',
+      department: 'Marketing',
+      employmentType: 'Full-time',
+      experienceLevel: 'Mid Level',
+      workMode: 'Remote',
+      location: 'Worldwide',
+      salaryRange: { min: 45000, max: 70000, currency: 'USD' },
+      description: 'We are looking for a results-driven Digital Marketing Specialist to help grow our agency brand and our clients\' online presence. You will run multi-channel campaigns across SEO, paid media, social, and email to generate measurable ROI.',
+      responsibilities: [
+        'Plan and execute SEO, SEM, social media, and email marketing campaigns',
+        'Manage Google Ads and Meta Ads campaigns with performance reporting',
+        'Create engaging content for social media and blog channels',
+        'Analyze campaign data and present insights to stakeholders',
+        'Develop and A/B test landing pages and email flows',
+      ],
+      requirements: [
+        '3+ years in digital marketing with a focus on performance',
+        'Hands-on experience with Google Ads, Meta Ads, and analytics tools',
+        'SEO knowledge including on-page, technical, and link building',
+        'Strong data analysis skills (Google Analytics, Looker Studio)',
+        'Excellent written English for content creation',
+      ],
+      benefits: [
+        'Fully remote — work from anywhere',
+        'Competitive USD salary',
+        'Performance bonus structure',
+        'Annual learning budget',
+        'Flexible working hours',
+        'Access to premium marketing tools',
+      ],
+      status: 'Active',
+      featured: false,
+      postedBy: adminUser._id,
+    },
+    {
+      jobTitle: 'React Native Developer',
+      department: 'Engineering',
+      employmentType: 'Contract',
+      experienceLevel: 'Senior Level',
+      workMode: 'Remote',
+      location: 'Worldwide',
+      salaryRange: { min: 60, max: 100, currency: 'USD' },
+      description: 'We need an experienced React Native Developer for a 6-month contract to build and ship a cross-platform mobile application for one of our enterprise clients. You will work within an agile team delivering high-quality iOS and Android experiences.',
+      responsibilities: [
+        'Build cross-platform iOS and Android features in React Native',
+        'Integrate REST and GraphQL APIs',
+        'Write unit and integration tests',
+        'Participate in sprint planning and code reviews',
+        'Ensure performance and UX quality across devices',
+      ],
+      requirements: [
+        '4+ years React Native experience',
+        'Published apps on App Store or Google Play',
+        'Strong TypeScript skills',
+        'Expo and bare workflow experience',
+        'Familiarity with push notifications, deep links, and offline sync',
+      ],
+      benefits: [
+        'Fully remote contract',
+        'Hourly USD rate (contract)',
+        'Flexible schedule within sprint commitments',
+        'Potential to convert to full-time',
+      ],
+      status: 'Active',
+      featured: false,
+      postedBy: adminUser._id,
+    },
+  ];
+
+  await JobPosting.insertMany(jobs);
+  console.log(`✓ Jobs seeded (${jobs.length} positions)`);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -761,6 +924,7 @@ async function main() {
   await seedServices();
   await seedTasks();
   await seedResources();
+  await seedJobs();
 
   console.log('\n✅ Seed complete! All data is now live in the database.\n');
   await mongoose.disconnect();
