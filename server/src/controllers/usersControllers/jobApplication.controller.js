@@ -57,13 +57,18 @@ export const submitApplication = asyncHandler(async (req, res) => {
     const existing = await JobApplication.findOne({ job, email });
     if (existing) throw new AppError("You have already applied for this position", 409);
 
-    // Upload resume to Cloudinary if provided
+    // Upload resume to Cloudinary if provided (non-blocking — failures don't abort submission)
     let resumeUrl = "";
     let resumePublicId = "";
     if (req.file?.path) {
-        const uploaded = await uploadFile(req.file.path, "resumes");
-        resumeUrl = uploaded.secure_url;
-        resumePublicId = uploaded.public_id;
+        try {
+            const uploaded = await uploadFile(req.file.path, "resumes");
+            resumeUrl = uploaded.secure_url;
+            resumePublicId = uploaded.public_id;
+        } catch (uploadErr) {
+            console.error("Resume upload to Cloudinary failed:", uploadErr.message);
+            // Application proceeds without resume URL
+        }
     }
 
     const application = await JobApplication.create({
