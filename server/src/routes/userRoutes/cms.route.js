@@ -14,6 +14,12 @@ import {
     addScrollingCard,
     updateScrollingCard,
     deleteScrollingCard,
+    updateContactInfo,
+    updateSocialLinks,
+    updateTestimonials,
+    addTestimonial,
+    updateTestimonial,
+    deleteTestimonial,
 } from "../../controllers/usersControllers/cms.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 
@@ -45,5 +51,17 @@ router.put("/why-choose-us", updateWhyChooseUs);
 router.post("/why-choose-us/card", addScrollingCard);
 router.put("/why-choose-us/card/:cardId", updateScrollingCard);
 router.delete("/why-choose-us/card/:cardId", deleteScrollingCard);
+
+// Contact Info
+router.put("/contact-info", updateContactInfo);
+
+// Social Links
+router.put("/social-links", updateSocialLinks);
+
+// Testimonials
+router.put("/testimonials", updateTestimonials);
+router.post("/testimonials", addTestimonial);
+router.put("/testimonials/:testimonialId", updateTestimonial);
+router.delete("/testimonials/:testimonialId", deleteTestimonial);
 
 export default router;

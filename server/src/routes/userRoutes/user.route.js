@@ -14,6 +14,7 @@ import {
     resendVerificationEmail,
     refreshAccessToken,
     getPublicTeamMembers,
+    adminCreateTeamMember,
 } from '../../controllers/usersControllers/user.controller.js';
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
 import upload from '../../middlewares/multer.js';
@@ -42,6 +43,7 @@ router.get('/team', getPublicTeamMembers);
 // Protected routes
 router.post('/logout', userAuthenticated, logoutUser);
 router.get('/', userAuthenticated, authorizeRoles('admin'), getAllUserProfile);
+router.post('/create-team-member', userAuthenticated, authorizeRoles('admin'), upload.single('avatar'), adminCreateTeamMember);
 router.get('/profile/:id', userAuthenticated, authorizeRoles('admin', 'user', 'team'), getUserProfile);
 router.put('/update/:id', userAuthenticated, authorizeRoles('admin', 'user', 'team'), upload.single('avatar'), updateUserProfile);
 router.put('/update-password/:id', userAuthenticated, authorizeRoles('admin', 'user', 'team'), updateUserPassword);

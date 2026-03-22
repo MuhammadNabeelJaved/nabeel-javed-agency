@@ -108,6 +108,31 @@ const cmsSchema = new mongoose.Schema(
             scrollingCards: [scrollingCardSchema],
         },
 
+        // ── Contact Information ──
+        contactInfo: {
+            address: { type: String, trim: true, default: "" },
+            email: { type: String, trim: true, default: "" },
+            phone: { type: String, trim: true, default: "" },
+            businessHours: { type: String, trim: true, default: "" },
+        },
+
+        // ── Social Links ──
+        socialLinks: {
+            twitter: { type: String, trim: true, default: "" },
+            linkedin: { type: String, trim: true, default: "" },
+            instagram: { type: String, trim: true, default: "" },
+            github: { type: String, trim: true, default: "" },
+        },
+
+        // ── Testimonials ──
+        testimonials: [{
+            content: { type: String, trim: true, required: true },
+            author: { type: String, trim: true, required: true },
+            role: { type: String, trim: true, default: "" },
+            rating: { type: Number, min: 1, max: 5, default: 5 },
+            order: { type: Number, default: 0 },
+        }],
+
         // Tracks which admin last modified the CMS content
         lastUpdatedBy: {
             type: mongoose.Schema.Types.ObjectId,

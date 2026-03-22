@@ -597,6 +597,69 @@ export const resetPassword = asyncHandler(async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ADMIN – CREATE TEAM MEMBER
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Admin-only: Creates a new user with role 'team' (or 'admin'), pre-verified.
+ * Accepts: name, email, password, role (team|admin), and teamProfile fields.
+ */
+export const adminCreateTeamMember = asyncHandler(async (req, res) => {
+    try {
+        const { name, email, password, role = 'team', teamProfile = {} } = req.body;
+
+        if (!name || !email || !password) {
+            throw new AppError("Name, email, and password are required", 400);
+        }
+
+        if (!['team', 'admin'].includes(role)) {
+            throw new AppError("Role must be 'team' or 'admin'", 400);
+        }
+
+        const existing = await User.findOne({ email });
+        if (existing) throw new AppError("A user with this email already exists", 409);
+
+        let photoUrl;
+        if (req.file?.path) {
+            const uploaded = await uploadImage(req.file.path, "avatars");
+            photoUrl = uploaded?.secure_url;
+        }
+
+        const newUser = await User.create({
+            name,
+            email,
+            password,
+            role,
+            isVerified: true,
+            isActive: true,
+            ...(photoUrl && { photo: photoUrl }),
+            teamProfile: {
+                position: teamProfile.position || name,
+                department: teamProfile.department || 'Other',
+                bio: teamProfile.bio || '',
+                phone: teamProfile.phone || '',
+                skills: teamProfile.skills || [],
+                experience: teamProfile.experience || '',
+                status: teamProfile.status || 'Active',
+                memberRole: teamProfile.memberRole || 'Member',
+                socialLinks: teamProfile.socialLinks || {},
+                featured: teamProfile.featured || false,
+                displayOrder: teamProfile.displayOrder || 0,
+            },
+        });
+
+        const userObj = newUser.toObject();
+        delete userObj.password;
+
+        successResponse(res, "Team member created successfully", userObj, 201);
+    } catch (error) {
+        console.error("Error in adminCreateTeamMember:", error);
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
+        throw new AppError(`Failed to create team member: ${error.message}`, 500);
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC – TEAM MEMBERS
 // ─────────────────────────────────────────────────────────────────────────────
 

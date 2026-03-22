@@ -10,19 +10,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Zap, Twitter, Linkedin, Instagram, Github, Heart } from 'lucide-react';
+import { ArrowUpRight, Twitter, Linkedin, Instagram, Github, Heart } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useContent } from '../contexts/ContentContext';
 
 export function Footer() {
   const { t } = useLanguage();
+  const { socialLinks: cms, contactInfo } = useContent();
   const currentYear = new Date().getFullYear();
 
   const socialLinks = [
-    { name: 'Twitter', icon: Twitter, href: '#' },
-    { name: 'LinkedIn', icon: Linkedin, href: '#' },
-    { name: 'Instagram', icon: Instagram, href: '#' },
-    { name: 'GitHub', icon: Github, href: '#' },
+    { name: 'Twitter', icon: Twitter, href: cms.twitter || '#' },
+    { name: 'LinkedIn', icon: Linkedin, href: cms.linkedin || '#' },
+    { name: 'Instagram', icon: Instagram, href: cms.instagram || '#' },
+    { name: 'GitHub', icon: Github, href: cms.github || '#' },
   ];
 
   const footerLinks = [
@@ -117,8 +119,8 @@ export function Footer() {
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-sm font-medium text-green-500 uppercase tracking-wider">{t('footer.available')}</span>
             </div>
-             <a href="mailto:hello@nabeel.agency" className="text-2xl md:text-3xl text-foreground hover:text-primary transition-colors border-b border-border/50 hover:border-primary pb-1">
-              hello@nabeel.agency
+             <a href={`mailto:${contactInfo.email || 'hello@nabeel.agency'}`} className="text-2xl md:text-3xl text-foreground hover:text-primary transition-colors border-b border-border/50 hover:border-primary pb-1">
+              {contactInfo.email || 'hello@nabeel.agency'}
             </a>
           </div>
         </div>

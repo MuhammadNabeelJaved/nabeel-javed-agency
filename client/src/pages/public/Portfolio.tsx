@@ -23,7 +23,7 @@ export default function Portfolio() {
       setIsLoading(true);
       try {
         const response = await adminProjectsApi.getPortfolio();
-        const data = response.data.data;
+        const data = response.data.data.projects;
         setProjects(Array.isArray(data) ? data : []);
       } catch (err) {
         setHasError(true);
@@ -94,7 +94,7 @@ export default function Portfolio() {
               <AnimatePresence mode="popLayout">
                 {filteredProjects.map((project: any) => {
                   const id = project._id || project.id;
-                  const image = project.coverImage || (project.images && project.images[0]) || 'https://placehold.co/800x600/1a1a2e/ffffff?text=Project';
+                  const image = project.coverImage || (project.projectGallery && project.projectGallery[0]?.url) || 'https://placehold.co/800x600/1a1a2e/ffffff?text=Project';
                   const tags = project.techStack || project.tags || [];
                   return (
                     <motion.div
@@ -107,7 +107,7 @@ export default function Portfolio() {
                       className="h-[400px]"
                     >
                       <ProjectCard
-                        title={project.title}
+                        title={project.projectTitle}
                         category={project.category || 'Project'}
                         image={image}
                         tags={tags}
