@@ -14,10 +14,12 @@ import { ArrowUpRight, Twitter, Linkedin, Instagram, Github, Heart } from 'lucid
 import { Button } from './ui/button';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useContent } from '../contexts/ContentContext';
+import { usePageVisibility } from '../hooks/usePageVisibility';
 
 export function Footer() {
   const { t } = useLanguage();
   const { socialLinks: cms, contactInfo } = useContent();
+  const { isVisible } = usePageVisibility();
   const currentYear = new Date().getFullYear();
 
   const socialLinks = [
@@ -69,7 +71,8 @@ export function Footer() {
         { label: 'Page Loader', href: '/page-loader' },
       ],
     },
-  ];
+  ].map(col => ({ ...col, links: col.links.filter(l => isVisible(l.href)) }))
+   .filter(col => col.links.length > 0);
 
   return (
     <footer className="relative bg-background text-foreground pt-12 sm:pt-16 md:pt-24 pb-8 sm:pb-10 md:pb-12 overflow-hidden border-t border-border/50">

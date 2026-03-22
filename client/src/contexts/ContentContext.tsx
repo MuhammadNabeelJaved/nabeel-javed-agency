@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { cmsApi } from '../api/cms.api';
 import { pageStatusApi, type PageStatusItem } from '../api/pageStatus.api';
 import { announcementsApi, type AnnouncementItem } from '../api/announcements.api';
+import { announcementBarsApi, type AnnouncementBarGroup } from '../api/announcementBars.api';
 
 // --- Types ---
 
@@ -90,6 +91,18 @@ export interface ContentContextType {
   announcements: AnnouncementItem[];
   setAnnouncements: React.Dispatch<React.SetStateAction<AnnouncementItem[]>>;
   hasActiveAnnouncements: boolean;
+  tickerDuration: number;
+  setTickerDuration: React.Dispatch<React.SetStateAction<number>>;
+  scrollEnabled: boolean;
+  setScrollEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  textAlign: 'left' | 'center' | 'right';
+  setTextAlign: React.Dispatch<React.SetStateAction<'left' | 'center' | 'right'>>;
+  separatorVisible: boolean;
+  setSeparatorVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  separatorColor: string;
+  setSeparatorColor: React.Dispatch<React.SetStateAction<string>>;
+  itemSpacing: number;
+  setItemSpacing: React.Dispatch<React.SetStateAction<number>>;
   // Updaters (save to API + local state)
   updateLogoUrl: (url: string) => Promise<void>;
   updateTechStack: (groups: TechGroup[]) => Promise<void>;
@@ -98,6 +111,9 @@ export interface ContentContextType {
   updateContactInfo: (info: ContactInfo) => Promise<void>;
   updateSocialLinks: (links: SocialLinks) => Promise<void>;
   updateTestimonials: (items: Testimonial[]) => Promise<void>;
+  // Multi-bar announcements (new source of truth)
+  announcementBars: AnnouncementBarGroup[];
+  setAnnouncementBars: React.Dispatch<React.SetStateAction<AnnouncementBarGroup[]>>;
   // Refetch from API
   refetch: () => Promise<void>;
 }
@@ -248,6 +264,13 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [pageStatuses, setPageStatuses] = useState<PageStatusItem[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [announcementBars, setAnnouncementBars] = useState<AnnouncementBarGroup[]>([]);
+  const [tickerDuration, setTickerDuration] = useState(30);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [separatorVisible, setSeparatorVisible] = useState(true);
+  const [separatorColor, setSeparatorColor] = useState('');
+  const [itemSpacing, setItemSpacing] = useState(32);
 
   // Hero content stays in localStorage (managed via HomePageHero API separately)
   const [heroContent, setHeroContent] = useState<HeroContent>(() => {
@@ -289,6 +312,20 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
     announcementsApi.getActive()
       .then(res => setAnnouncements((res.data as any).data ?? []))
+      .catch(() => {});
+    announcementBarsApi.getActive()
+      .then(res => setAnnouncementBars((res.data as any).data ?? []))
+      .catch(() => {});
+    announcementsApi.getSettings()
+      .then(res => {
+        const s = (res.data as any).data ?? {};
+        setTickerDuration(s.tickerDuration ?? 30);
+        setScrollEnabled(s.scrollEnabled ?? true);
+        setTextAlign(s.textAlign ?? 'center');
+        setSeparatorVisible(s.separatorVisible ?? true);
+        setSeparatorColor(s.separatorColor ?? '');
+        setItemSpacing(s.itemSpacing ?? 32);
+      })
       .catch(() => {});
   }, []);
 
@@ -357,6 +394,13 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       pageStatuses, setPageStatuses,
       announcements, setAnnouncements,
       hasActiveAnnouncements: announcements.length > 0,
+      announcementBars, setAnnouncementBars,
+      tickerDuration, setTickerDuration,
+      scrollEnabled, setScrollEnabled,
+      textAlign, setTextAlign,
+      separatorVisible, setSeparatorVisible,
+      separatorColor, setSeparatorColor,
+      itemSpacing, setItemSpacing,
       updateLogoUrl, updateTechStack, updateProcessSteps, updateWhyChooseUs,
       updateContactInfo, updateSocialLinks, updateTestimonials,
       refetch: fetchCMS,

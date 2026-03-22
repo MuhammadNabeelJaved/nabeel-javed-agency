@@ -44,10 +44,23 @@ const announcementSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        barId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "AnnouncementBar",
+            default: null,
+        },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
         },
+        // Settings singleton fields (only on _meta: true doc)
+        _meta: { type: Boolean, default: false },
+        tickerDuration: { type: Number, default: 30 },
+        scrollEnabled: { type: Boolean, default: true },
+        textAlign: { type: String, enum: ["left", "center", "right"], default: "center" },
+        separatorVisible: { type: Boolean, default: true },
+        separatorColor: { type: String, default: "" }, // empty = inherit bar text color at 40% opacity
+        itemSpacing: { type: Number, default: 32 },    // px, applied as mx on separator
     },
     { timestamps: true }
 );

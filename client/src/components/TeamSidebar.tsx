@@ -19,10 +19,12 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
+import { usePageVisibility } from '../hooks/usePageVisibility';
 
 export function TeamSidebar() {
   const location = useLocation();
-  
+  const { isVisible } = usePageVisibility();
+
   const links = [
     { name: 'Dashboard', path: '/team', icon: LayoutDashboard },
     { name: 'Projects', path: '/team/projects', icon: FolderKanban },
@@ -33,7 +35,7 @@ export function TeamSidebar() {
     { name: 'Reports', path: '/team/reports', icon: BarChart2 },
     { name: 'Notifications', path: '/team/notifications', icon: Bell },
     { name: 'Settings', path: '/team/settings', icon: Settings },
-  ];
+  ].filter(link => isVisible(link.path));
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-20 lg:w-72 bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col">
