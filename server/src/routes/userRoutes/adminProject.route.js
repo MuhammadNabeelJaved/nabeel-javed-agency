@@ -15,14 +15,14 @@ const router = express.Router();
 // Public route – portfolio page
 router.get("/portfolio", getPublicPortfolio);
 
-// Admin-only routes
-router.use(userAuthenticated, authorizeRoles("admin"));
+// Read routes – admin + team can access
+router.get("/", userAuthenticated, authorizeRoles("admin", "team"), getAllProjects);
+router.get("/:id", userAuthenticated, authorizeRoles("admin", "team"), getProjectById);
 
-router.get("/", getAllProjects);
-router.post("/", createProject);
-router.get("/:id", getProjectById);
-router.put("/:id", updateProject);
-router.patch("/:id/status", updateProjectStatus);
-router.delete("/:id", deleteProject);
+// Write routes – admin only
+router.post("/", userAuthenticated, authorizeRoles("admin"), createProject);
+router.put("/:id", userAuthenticated, authorizeRoles("admin"), updateProject);
+router.patch("/:id/status", userAuthenticated, authorizeRoles("admin", "team"), updateProjectStatus);
+router.delete("/:id", userAuthenticated, authorizeRoles("admin"), deleteProject);
 
 export default router;

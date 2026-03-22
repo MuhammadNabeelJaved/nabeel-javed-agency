@@ -6,35 +6,50 @@
 
 type IconProps = { className?: string };
 
+// Icons that are black by default and need to be inverted in dark mode
+const darkInvertSlugs = new Set(['nextdotjs', 'express', 'vercel', 'github', 'threedotjs']);
+
 const makeSimpleIcon = (slug: string, label: string) =>
   ({ className = 'w-6 h-6' }: IconProps) => (
     <img
       src={`https://cdn.simpleicons.org/${slug}`}
       alt={label}
-      className={className}
+      className={`${className} ${darkInvertSlugs.has(slug) ? 'dark:invert' : ''}`}
       style={{ objectFit: 'contain' }}
     />
   );
 
-export const ReactIcon       = makeSimpleIcon('react',              'React');
-export const NextJsIcon      = makeSimpleIcon('nextdotjs',          'Next.js');
-export const TypeScriptIcon  = makeSimpleIcon('typescript',         'TypeScript');
-export const TailwindIcon    = makeSimpleIcon('tailwindcss',        'Tailwind CSS');
-export const FramerIcon      = makeSimpleIcon('framer',             'Framer');
-export const ThreeJsIcon     = makeSimpleIcon('threedotjs',         'Three.js');
-export const FigmaIcon       = makeSimpleIcon('figma',              'Figma');
-export const NodeJsIcon      = makeSimpleIcon('nodedotjs',          'Node.js');
-export const SupabaseIcon    = makeSimpleIcon('supabase',           'Supabase');
-export const PostgresIcon    = makeSimpleIcon('postgresql',         'PostgreSQL');
-export const GraphQlIcon     = makeSimpleIcon('graphql',            'GraphQL');
-export const PythonIcon      = makeSimpleIcon('python',             'Python');
-export const OpenAIIcon      = makeSimpleIcon('openai',             'OpenAI');
-export const HuggingFaceIcon = makeSimpleIcon('huggingface',        'Hugging Face');
-export const AwsIcon         = makeSimpleIcon('amazonaws',          'AWS');
-export const VercelIcon      = makeSimpleIcon('vercel',             'Vercel');
-export const DockerIcon      = makeSimpleIcon('docker',             'Docker');
-export const KubernetesIcon  = makeSimpleIcon('kubernetes',         'Kubernetes');
-export const TerraformIcon   = makeSimpleIcon('terraform',          'Terraform');
+export const ReactIcon        = makeSimpleIcon('react',             'React');
+export const NextJsIcon       = makeSimpleIcon('nextdotjs',         'Next.js');
+export const TypeScriptIcon   = makeSimpleIcon('typescript',        'TypeScript');
+export const TailwindIcon     = makeSimpleIcon('tailwindcss',       'Tailwind CSS');
+export const FramerIcon       = makeSimpleIcon('framer',            'Framer');
+export const ThreeJsIcon      = makeSimpleIcon('threedotjs',        'Three.js');
+export const FigmaIcon        = makeSimpleIcon('figma',             'Figma');
+export const NodeJsIcon       = makeSimpleIcon('nodedotjs',         'Node.js');
+export const MongoDBIcon      = makeSimpleIcon('mongodb',           'MongoDB');
+export const RedisIcon        = makeSimpleIcon('redis',             'Redis');
+export const ExpressIcon      = makeSimpleIcon('express',           'Express');
+export const SupabaseIcon     = makeSimpleIcon('supabase',          'Supabase');
+export const PostgresIcon     = makeSimpleIcon('postgresql',        'PostgreSQL');
+export const GraphQlIcon      = makeSimpleIcon('graphql',           'GraphQL');
+export const PythonIcon       = makeSimpleIcon('python',            'Python');
+export const OpenAIIcon       = makeSimpleIcon('openai',            'OpenAI');
+export const HuggingFaceIcon  = makeSimpleIcon('huggingface',       'Hugging Face');
+export const AwsIcon          = makeSimpleIcon('amazonaws',         'AWS');
+export const VercelIcon       = makeSimpleIcon('vercel',            'Vercel');
+export const DockerIcon       = makeSimpleIcon('docker',            'Docker');
+export const KubernetesIcon   = makeSimpleIcon('kubernetes',        'Kubernetes');
+export const TerraformIcon    = makeSimpleIcon('terraform',         'Terraform');
+export const CloudinaryIcon   = makeSimpleIcon('cloudinary',        'Cloudinary');
+export const ViteIcon         = makeSimpleIcon('vite',              'Vite');
+export const GitHubIcon       = makeSimpleIcon('github',            'GitHub');
+export const GitIcon          = makeSimpleIcon('git',               'Git');
+export const LinuxIcon        = makeSimpleIcon('linux',             'Linux');
+export const NginxIcon        = makeSimpleIcon('nginx',             'Nginx');
+export const PrismaIcon       = makeSimpleIcon('prisma',            'Prisma');
+export const SanityIcon       = makeSimpleIcon('sanity',            'Sanity');
+export const StripeIcon       = makeSimpleIcon('stripe',            'Stripe');
 
 // Fallback icon (generic clock)
 export const DefaultIcon = ({ className = 'w-6 h-6' }: IconProps) => (

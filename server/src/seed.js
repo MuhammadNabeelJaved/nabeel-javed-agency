@@ -13,6 +13,8 @@ import connectDB from './database/database.js';
 import CMS from './models/usersModels/CMS.model.js';
 import HomePage from './models/usersModels/HomePageHero.js';
 import Service from './models/usersModels/Services.model.js';
+import Task from './models/usersModels/Task.model.js';
+import User from './models/usersModels/User.model.js';
 
 // ─── Hero Section ─────────────────────────────────────────────────────────────
 
@@ -608,6 +610,43 @@ async function seedServices() {
   console.log(`✓ Services seeded (${servicesData.length} services)`);
 }
 
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+
+async function seedTasks() {
+  // Only seed if no tasks exist yet
+  const existing = await Task.countDocuments();
+  if (existing > 0) {
+    console.log(`✓ Tasks already seeded (${existing} found), skipping`);
+    return;
+  }
+
+  // Use first admin user as createdBy (required field)
+  const adminUser = await User.findOne({ role: 'admin' }).lean();
+  if (!adminUser) {
+    console.log('⚠ No admin user found — skipping task seed. Create an admin first.');
+    return;
+  }
+
+  const now = new Date();
+  const d = (days) => new Date(now.getTime() + days * 86400000);
+
+  const dummyTasks = [
+    { title: 'Fix Mobile Navigation', description: 'Fix the broken hamburger menu on mobile viewport (< 768px). Menu closes unexpectedly on iOS Safari.', status: 'todo', priority: 'high', dueDate: d(0), tags: ['bug', 'mobile'], createdBy: adminUser._id },
+    { title: 'Research Competitors', description: 'Analyze top 5 competitor websites — identify gaps in our service offering and pricing.', status: 'todo', priority: 'low', dueDate: d(3), tags: ['research'], createdBy: adminUser._id },
+    { title: 'Update README & Onboarding Docs', description: 'Rewrite setup guide for new team members. Include env variables and local dev steps.', status: 'todo', priority: 'medium', dueDate: d(5), tags: ['docs'], createdBy: adminUser._id },
+    { title: 'Homepage Hero Animation', description: 'Implement scroll-triggered fade-in + stagger animations for the hero section text and CTA buttons.', status: 'in_progress', priority: 'high', dueDate: d(0), tags: ['animation', 'frontend'], createdBy: adminUser._id },
+    { title: 'Client Feedback Meeting', description: 'Prepare slide deck and live demo for FinTech Corp quarterly review. Focus on dashboard KPIs.', status: 'in_progress', priority: 'medium', dueDate: d(1), tags: ['meeting', 'client'], createdBy: adminUser._id },
+    { title: 'Dark Mode Token Audit', description: 'Review all CSS custom properties and ensure dark mode variants are correctly defined across all pages.', status: 'in_progress', priority: 'medium', dueDate: d(4), tags: ['css', 'design-system'], createdBy: adminUser._id },
+    { title: 'Update API Documentation', description: 'Sync Postman collection with latest endpoints. Add request/response examples for all v1 routes.', status: 'in_review', priority: 'low', dueDate: d(2), tags: ['docs', 'api'], createdBy: adminUser._id },
+    { title: 'Setup Project Repo', description: 'Initialized GitHub repo with branch protection rules, CI/CD via GitHub Actions, and ESLint config.', status: 'completed', priority: 'high', tags: ['devops'], createdBy: adminUser._id },
+    { title: 'Design System V1', description: 'Created base Figma component library — colors, typography, spacing tokens, and core UI components.', status: 'completed', priority: 'high', tags: ['design', 'figma'], createdBy: adminUser._id },
+    { title: 'Performance Audit — Lighthouse', description: 'Ran Lighthouse on all public pages. Identified 3 CLS issues and 2 LCP bottlenecks to fix.', status: 'completed', priority: 'medium', tags: ['performance'], createdBy: adminUser._id },
+  ];
+
+  await Task.insertMany(dummyTasks);
+  console.log(`✓ Tasks seeded (${dummyTasks.length} tasks across 4 Kanban columns)`);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -617,6 +656,7 @@ async function main() {
   await seedHero();
   await seedCMS();
   await seedServices();
+  await seedTasks();
 
   console.log('\n✅ Seed complete! All data is now live in the database.\n');
   await mongoose.disconnect();
