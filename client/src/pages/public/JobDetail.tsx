@@ -331,7 +331,9 @@ export default function JobDetail() {
                             <DollarSign className="w-5 h-5 text-muted-foreground mt-0.5" />
                             <div>
                                 <p className="text-sm font-medium">Salary</p>
-                                <p className="text-sm text-muted-foreground">{job.salaryRange || 'Competitive'}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {job.salaryDisplay || (job.salaryRange?.min ? `$${Math.round(job.salaryRange.min/1000)}k – $${Math.round(job.salaryRange.max/1000)}k` : 'Competitive')}
+                                </p>
                             </div>
                         </div>
                     </div>
