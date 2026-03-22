@@ -7,6 +7,7 @@ import {
     updateApplicationStatus,
     deleteApplication,
     getApplicationStats,
+    getMyApplications,
 } from "../../controllers/usersControllers/jobApplication.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // Public – applicants submit
 router.post("/", submitApplication);
+
+// Authenticated user – see their own applications
+router.get("/my", userAuthenticated, getMyApplications);
 
 // Admin only
 router.use(userAuthenticated, authorizeRoles("admin"));

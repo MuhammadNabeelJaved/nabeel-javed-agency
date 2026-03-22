@@ -17,6 +17,10 @@ export const jobApplicationsApi = {
     apiClient.delete(`/job-applications/${id}`),
 };
 
+// Authenticated user — see their own submitted applications
+export const getMyApplications = () =>
+  apiClient.get('/job-applications/my');
+
 // Public — no auth required
 export const submitJobApplication = (formData: FormData) =>
   apiClient.post('/job-applications', formData, {

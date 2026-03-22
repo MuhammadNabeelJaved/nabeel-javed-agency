@@ -4,16 +4,17 @@
  */
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  FolderKanban, 
-  User, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  FolderKanban,
+  User,
+  LogOut,
   Bell,
   ChevronRight,
   PlusCircle,
-  Sparkles
+  Sparkles,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
@@ -29,6 +30,7 @@ export function UserSidebar() {
     { name: 'My Projects', path: '/user-dashboard/projects', icon: FolderKanban },
     { name: 'Messages', path: '/user-dashboard/messages', icon: MessageSquare },
     { name: 'AI Assistant', path: '/user-dashboard/ai-assistant', icon: Sparkles },
+    { name: 'Applied Jobs', path: '/user-dashboard/applied-jobs', icon: Briefcase },
     { name: 'Profile & Settings', path: '/user-dashboard/profile', icon: User },
     { name: 'Notifications', path: '/user-dashboard/notifications', icon: Bell },
   ];
