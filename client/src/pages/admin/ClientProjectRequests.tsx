@@ -1,26 +1,29 @@
 /**
  * Admin — Client Project Requests
  * View, filter, and manage all client-submitted project requests.
- * Admin can update status, progress, totalCost, paidAmount.
+ * Admin can accept, reject, delete, or fully edit any request.
  */
 import React, { useState, useEffect } from 'react';
 import {
-  Search, Loader2, X, ChevronDown, Eye, CheckCircle2,
-  Clock, RefreshCw, AlertCircle, DollarSign, FolderKanban,
-  User, Calendar, FileText, Save,
+  Search, Loader2, X, Eye, CheckCircle2, Clock, RefreshCw,
+  AlertCircle, FolderKanban, FileText, Save, Trash2, Check, XCircle,
+  User, CalendarDays,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Badge } from '../../components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '../../components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../../components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../../components/ui/table';
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 import { toast } from 'sonner';
 import apiClient from '../../api/apiClient';
 
@@ -70,44 +73,113 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const PAYMENT_COLORS: Record<string, string> = {
-  paid:    'bg-green-500/10 text-green-500',
-  partial: 'bg-amber-500/10 text-amber-500',
-  unpaid:  'bg-muted text-muted-foreground',
+  paid:    'text-green-500',
+  partial: 'text-amber-500',
+  unpaid:  'text-muted-foreground',
 };
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export default function ClientProjectRequests() {
-  const [requests, setRequests]       = useState<ProjectRequest[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState<string | null>(null);
-  const [search, setSearch]           = useState('');
+  const [requests, setRequests]         = useState<ProjectRequest[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+  const [search, setSearch]             = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [selected, setSelected]       = useState<ProjectRequest | null>(null);
-  const [saving, setSaving]           = useState(false);
 
-  // Edit fields
-  const [editStatus, setEditStatus]   = useState('');
+  // Edit dialog
+  const [selected, setSelected]         = useState<ProjectRequest | null>(null);
+  const [saving, setSaving]             = useState(false);
+  const [editStatus, setEditStatus]     = useState('');
   const [editProgress, setEditProgress] = useState('');
-  const [editTotalCost, setEditTotalCost] = useState('');
+  const [editTotalCost, setEditTotalCost]   = useState('');
   const [editPaidAmount, setEditPaidAmount] = useState('');
+
+  // Quick-action states
+  const [approvingId, setApprovingId]   = useState<string | null>(null);
+  const [rejectingId, setRejectingId]   = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting]         = useState(false);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
 
   const fetchRequests = async () => {
     setError(null);
+    setLoading(true);
     try {
       const res = await apiClient.get('/projects', { params: { limit: 100 } });
       const list: ProjectRequest[] = res.data.data?.projects ?? res.data.data ?? [];
       setRequests(list);
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to fetch requests');
+      setError(err?.response?.data?.message || 'Failed to fetch requests');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { fetchRequests(); }, []);
+
+  // ── Quick: Approve ────────────────────────────────────────────────────────
+
+  const handleApprove = async (id: string) => {
+    setApprovingId(id);
+    try {
+      const res = await apiClient.patch(`/projects/${id}`, { status: 'approved' });
+      const updated: ProjectRequest = res.data.data;
+      setRequests(prev => prev.map(r => r._id === id ? updated : r));
+      toast.success('Project approved');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to approve');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  // ── Quick: Reject ─────────────────────────────────────────────────────────
+
+  const handleReject = async (id: string) => {
+    setRejectingId(id);
+    try {
+      const res = await apiClient.patch(`/projects/${id}`, { status: 'rejected' });
+      const updated: ProjectRequest = res.data.data;
+      setRequests(prev => prev.map(r => r._id === id ? updated : r));
+      toast.success('Project rejected');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to reject');
+    } finally {
+      setRejectingId(null);
+    }
+  };
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/projects/${deleteTargetId}`);
+      setRequests(prev => prev.filter(r => r._id !== deleteTargetId));
+      toast.success('Project deleted');
+      setDeleteTargetId(null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // ── Open edit dialog ─────────────────────────────────────────────────────
 
@@ -119,45 +191,47 @@ export default function ClientProjectRequests() {
     setEditPaidAmount(req.paidAmount ? String(req.paidAmount) : '');
   };
 
-  // ── Save changes ─────────────────────────────────────────────────────────
+  // ── Save full edit ────────────────────────────────────────────────────────
 
   const handleSave = async () => {
     if (!selected) return;
     setSaving(true);
     try {
       const body: Record<string, any> = {
-        status: editStatus,
+        status:   editStatus,
         progress: parseInt(editProgress) || 0,
       };
-      if (editTotalCost !== '') body.totalCost = parseFloat(editTotalCost);
+      if (editTotalCost !== '')  body.totalCost  = parseFloat(editTotalCost);
       if (editPaidAmount !== '') body.paidAmount = parseFloat(editPaidAmount);
 
       const res = await apiClient.patch(`/projects/${selected._id}`, body);
       const updated: ProjectRequest = res.data.data;
       setRequests(prev => prev.map(r => r._id === updated._id ? updated : r));
-      toast.success('Project updated successfully');
+      toast.success('Project updated');
       setSelected(null);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to update project');
+      toast.error(err?.response?.data?.message || 'Failed to update');
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Stats ────────────────────────────────────────────────────────────────
+  // ── Stats ─────────────────────────────────────────────────────────────────
 
   const total     = requests.length;
   const pending   = requests.filter(r => r.status === 'pending').length;
   const active    = requests.filter(r => r.status === 'approved' || r.status === 'in_review').length;
   const completed = requests.filter(r => r.status === 'completed').length;
 
-  // ── Filter ───────────────────────────────────────────────────────────────
+  // ── Filter ────────────────────────────────────────────────────────────────
 
   const filtered = requests.filter(r =>
     (filterStatus === 'All' || r.status === filterStatus) &&
-    (r.projectName.toLowerCase().includes(search.toLowerCase()) ||
-     r.requestedBy?.name.toLowerCase().includes(search.toLowerCase()) ||
-     r.requestedBy?.email.toLowerCase().includes(search.toLowerCase()))
+    (
+      r.projectName.toLowerCase().includes(search.toLowerCase()) ||
+      (r.requestedBy?.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (r.requestedBy?.email ?? '').toLowerCase().includes(search.toLowerCase())
+    )
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -178,10 +252,10 @@ export default function ClientProjectRequests() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total', value: total,     icon: FolderKanban, color: 'text-primary',   bg: 'bg-primary/10' },
-          { label: 'Pending', value: pending,  icon: Clock,        color: 'text-amber-500', bg: 'bg-amber-500/10' },
-          { label: 'Active',  value: active,   icon: CheckCircle2, color: 'text-blue-500',  bg: 'bg-blue-500/10' },
-          { label: 'Done',    value: completed,icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10' },
+          { label: 'Total',   value: total,     icon: FolderKanban, color: 'text-primary',   bg: 'bg-primary/10' },
+          { label: 'Pending', value: pending,   icon: Clock,        color: 'text-amber-500', bg: 'bg-amber-500/10' },
+          { label: 'Active',  value: active,    icon: CheckCircle2, color: 'text-blue-500',  bg: 'bg-blue-500/10' },
+          { label: 'Done',    value: completed, icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10' },
         ].map(stat => {
           const Icon = stat.icon;
           return (
@@ -205,7 +279,7 @@ export default function ClientProjectRequests() {
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name or client..."
+            placeholder="Search project or client..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9"
@@ -259,75 +333,184 @@ export default function ClientProjectRequests() {
                 <TableHead>Type</TableHead>
                 <TableHead>Budget</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Submitted</TableHead>
-                <TableHead className="w-16" />
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map(req => (
-                <TableRow key={req._id} className="cursor-pointer hover:bg-muted/30" onClick={() => openDetail(req)}>
-                  <TableCell className="font-medium max-w-[180px] truncate">{req.projectName}</TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm font-medium">{req.requestedBy?.name ?? '—'}</p>
-                      <p className="text-xs text-muted-foreground">{req.requestedBy?.email ?? ''}</p>
-                    </div>
+                <TableRow key={req._id} className="hover:bg-muted/20">
+                  {/* Project name */}
+                  <TableCell className="font-semibold max-w-[160px]">
+                    <p className="truncate">{req.projectName}</p>
                   </TableCell>
-                  <TableCell className="text-sm">{req.projectType}</TableCell>
-                  <TableCell className="text-sm">{req.budgetRange}</TableCell>
+
+                  {/* Client info */}
+                  <TableCell>
+                    {req.requestedBy ? (
+                      <div className="flex items-center gap-2 min-w-[140px]">
+                        <Avatar className="h-7 w-7 shrink-0">
+                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">
+                            {req.requestedBy.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{req.requestedBy.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{req.requestedBy.email}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Unknown</span>
+                    )}
+                  </TableCell>
+
+                  {/* Type */}
+                  <TableCell className="text-sm text-muted-foreground">{req.projectType}</TableCell>
+
+                  {/* Budget */}
+                  <TableCell className="text-sm font-medium">{req.budgetRange}</TableCell>
+
+                  {/* Status badge */}
                   <TableCell>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_COLORS[req.status]}`}>
                       {STATUS_LABELS[req.status]}
                     </span>
                   </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${PAYMENT_COLORS[req.paymentStatus]}`}>
-                      {req.paymentStatus}
-                    </span>
-                  </TableCell>
+
+                  {/* Progress */}
                   <TableCell>
                     <div className="flex items-center gap-2 min-w-[80px]">
                       <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
                         <div className="h-full bg-primary rounded-full" style={{ width: `${req.progress}%` }} />
                       </div>
-                      <span className="text-xs text-muted-foreground">{req.progress}%</span>
+                      <span className="text-xs text-muted-foreground w-7 text-right">{req.progress}%</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(req.createdAt).toLocaleDateString()}
-                  </TableCell>
+
+                  {/* Submitted */}
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); openDetail(req); }}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="text-xs">
+                      <p className="font-medium">{new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      <p className="text-muted-foreground">{timeAgo(req.createdAt)}</p>
+                    </div>
+                  </TableCell>
+
+                  {/* Actions */}
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+                      {/* Approve — only if pending or in_review */}
+                      {(req.status === 'pending' || req.status === 'in_review') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                          title="Approve"
+                          disabled={approvingId === req._id}
+                          onClick={() => handleApprove(req._id)}
+                        >
+                          {approvingId === req._id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Check className="h-4 w-4" />
+                          }
+                        </Button>
+                      )}
+
+                      {/* Reject — only if pending or in_review or approved */}
+                      {(req.status === 'pending' || req.status === 'in_review' || req.status === 'approved') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10"
+                          title="Reject"
+                          disabled={rejectingId === req._id}
+                          onClick={() => handleReject(req._id)}
+                        >
+                          {rejectingId === req._id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <XCircle className="h-4 w-4" />
+                          }
+                        </Button>
+                      )}
+
+                      {/* Edit (full dialog) */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        title="Edit"
+                        onClick={() => openDetail(req)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+
+                      {/* Delete */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Delete"
+                        onClick={() => setDeleteTargetId(req._id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+
+          {/* Footer count */}
+          <div className="px-4 py-3 border-t border-border/50 bg-muted/20 text-xs text-muted-foreground">
+            Showing {filtered.length} of {total} request{total !== 1 ? 's' : ''}
+          </div>
         </div>
       )}
 
-      {/* Detail / Edit Dialog */}
+      {/* Full Edit Dialog */}
       <Dialog open={!!selected} onOpenChange={open => !open && !saving && setSelected(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selected?.projectName}</DialogTitle>
             <DialogDescription>
-              Submitted by {selected?.requestedBy?.name ?? 'Unknown'} · {selected?.requestedBy?.email}
+              {selected?.requestedBy
+                ? `Submitted by ${selected.requestedBy.name} (${selected.requestedBy.email}) · ${timeAgo(selected?.createdAt ?? '')}`
+                : `Submitted ${timeAgo(selected?.createdAt ?? '')}`
+              }
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-2 max-h-[65vh] overflow-y-auto pr-1">
-            {/* Details */}
+          <div className="space-y-5 py-2 max-h-[65vh] overflow-y-auto pr-1">
+            {/* Client info card */}
+            {selected?.requestedBy && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 border border-border/50">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                    {selected.requestedBy.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold text-sm">{selected.requestedBy.name}</p>
+                  <p className="text-xs text-muted-foreground">{selected.requestedBy.email}</p>
+                </div>
+                <div className="ml-auto text-right text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 justify-end">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {selected?.createdAt ? new Date(selected.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                  </div>
+                  <p className="text-muted-foreground/70 mt-0.5">{timeAgo(selected?.createdAt ?? '')}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Project details */}
             <div className="space-y-1">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Project Details</p>
               <p className="text-sm text-muted-foreground leading-relaxed">{selected?.projectDetails}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-secondary/30 rounded-lg p-3">
                 <p className="text-xs text-muted-foreground mb-1">Type</p>
                 <p className="font-medium">{selected?.projectType}</p>
@@ -342,14 +525,14 @@ export default function ClientProjectRequests() {
             {selected?.attachments?.length ? (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Attachments</p>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {selected.attachments.map(att => (
                     <a
                       key={att._id}
                       href={att.fileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-2 rounded-lg bg-secondary/20 hover:bg-secondary/40 transition-colors text-sm"
+                      className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/20 hover:bg-secondary/40 transition-colors text-sm"
                     >
                       <FileText className="h-4 w-4 text-primary shrink-0" />
                       <span className="truncate">{att.fileName}</span>
@@ -359,17 +542,14 @@ export default function ClientProjectRequests() {
               </div>
             ) : null}
 
-            {/* Admin Edit Section */}
+            {/* Admin controls */}
             <div className="border-t border-border/50 pt-4 space-y-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admin Controls</p>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Status</Label>
                   <Select value={editStatus} onValueChange={setEditStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="in_review">In Review</SelectItem>
@@ -379,57 +559,47 @@ export default function ClientProjectRequests() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label>Progress (%)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={editProgress}
-                    onChange={e => setEditProgress(e.target.value)}
-                    placeholder="0–100"
-                  />
+                  <Input type="number" min="0" max="100" value={editProgress} onChange={e => setEditProgress(e.target.value)} placeholder="0–100" />
                 </div>
-
                 <div className="space-y-2">
                   <Label>Total Cost ($)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={editTotalCost}
-                    onChange={e => setEditTotalCost(e.target.value)}
-                    placeholder="e.g. 2500"
-                  />
+                  <Input type="number" min="0" value={editTotalCost} onChange={e => setEditTotalCost(e.target.value)} placeholder="e.g. 2500" />
                 </div>
-
                 <div className="space-y-2">
                   <Label>Paid Amount ($)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={editPaidAmount}
-                    onChange={e => setEditPaidAmount(e.target.value)}
-                    placeholder="e.g. 1250"
-                  />
+                  <Input type="number" min="0" value={editPaidAmount} onChange={e => setEditPaidAmount(e.target.value)} placeholder="e.g. 1250" />
                 </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelected(null)} disabled={saving}>
-              Cancel
+          <DialogFooter className="gap-2">
+            <Button
+              variant="destructive"
+              className="mr-auto gap-2"
+              onClick={() => { setSelected(null); setDeleteTargetId(selected?._id ?? null); }}
+              disabled={saving}
+            >
+              <Trash2 className="h-4 w-4" /> Delete
             </Button>
+            <Button variant="outline" onClick={() => setSelected(null)} disabled={saving}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving} className="gap-2">
-              {saving
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
-                : <><Save className="h-4 w-4" /> Save Changes</>
-              }
+              {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <><Save className="h-4 w-4" /> Save Changes</>}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Delete */}
+      <ConfirmDeleteDialog
+        open={!!deleteTargetId}
+        onClose={() => !deleting && setDeleteTargetId(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        description="This will permanently delete the project request and all its attachments."
+      />
     </div>
   );
 }
