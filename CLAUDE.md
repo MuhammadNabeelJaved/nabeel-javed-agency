@@ -183,10 +183,23 @@ The `Select` component in this codebase is a **native `<select>` wrapper**, NOT 
 `Tabs` passes `onTabChange` via `React.cloneElement` to ALL children. `TabsContent` must destructure `onTabChange` from props to prevent it being spread to the DOM `<div>`.
 
 ## Email System (Resend)
-- Transactional emails sent via Resend SDK from `server/src/utils/emails/`
+- Transactional emails sent via Resend SDK from `server/src/utils/sendEmails.js`
 - Job application flow: `sendJobApplicationConfirmation` (to applicant) + `sendJobApplicationAdminNotification` (to admin)
 - All email sends wrapped in `Promise.allSettled` — submission succeeds even if email fails
 - OTP verification also uses Resend
+
+## Email Templates (`server/email-templates/`)
+Responsive HTML email templates — table-based layout, inline CSS, dark brand theme (`#0f0a1e` bg, `#7c3aed` primary). `sendEmails.js` loads them via `fs.readFileSync` and replaces `{{PLACEHOLDER}}` tokens.
+
+| File | Function | Placeholders |
+|---|---|---|
+| `1-verification-email.html` | `sendVerificationEmail` | `{{NAME}}`, `{{CODE}}`, `{{D1}}`–`{{D6}}` |
+| `2-password-reset-email.html` | `sendPasswordResetEmail` | `{{NAME}}`, `{{RESET_URL}}` |
+| `3-job-application-confirmation.html` | `sendJobApplicationConfirmation` | `{{NAME}}`, `{{JOB_TITLE}}`, `{{DEPARTMENT}}`, `{{CLIENT_URL}}` |
+| `4-job-application-admin-notification.html` | `sendJobApplicationAdminNotification` | `{{APPLICANT_NAME}}`, `{{APPLICANT_EMAIL}}`, `{{JOB_TITLE}}`, `{{DEPARTMENT}}`, `{{APPLICATION_ID}}`, `{{ADMIN_URL}}`, `{{SUBMITTED_AT}}` |
+
+- To add a new template: create the HTML file in `server/email-templates/`, use `{{KEY}}` placeholders, call `renderTemplate(filename, vars)` in `sendEmails.js`
+- `renderTemplate` is a private helper — not exported; only the `send*` functions are exported
 
 ## Git Rules
 - Branch: `main` → remote: `github.com/MuhammadNabeelJaved/nabeel-javed-agency`

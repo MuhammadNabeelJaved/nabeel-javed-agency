@@ -254,13 +254,17 @@ export const updateContactInfo = asyncHandler(async (req, res) => {
 // UPDATE SOCIAL LINKS
 // =========================
 export const updateSocialLinks = asyncHandler(async (req, res) => {
-    const { twitter, linkedin, instagram, github } = req.body;
+    const { twitter, linkedin, instagram, github, customSocialLinks } = req.body;
 
     const cms = await CMS.getOrCreate();
     if (twitter !== undefined) cms.socialLinks.twitter = twitter;
     if (linkedin !== undefined) cms.socialLinks.linkedin = linkedin;
     if (instagram !== undefined) cms.socialLinks.instagram = instagram;
     if (github !== undefined) cms.socialLinks.github = github;
+    if (customSocialLinks !== undefined) {
+        if (!Array.isArray(customSocialLinks)) throw new AppError("customSocialLinks must be an array", 400);
+        cms.socialLinks.customSocialLinks = customSocialLinks;
+    }
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
 

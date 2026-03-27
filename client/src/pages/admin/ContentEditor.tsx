@@ -3,14 +3,26 @@
  * Admin interface to manage all dynamic website content via CMS API.
  */
 import React, { useState } from 'react';
-import { useContent, TechItem, ProcessStep, WhyChooseUsFeature, ContactInfo, SocialLinks, Testimonial } from '../../contexts/ContentContext';
+import { useContent, TechItem, ProcessStep, WhyChooseUsFeature, ContactInfo, SocialLinks, CustomSocialLink, Testimonial } from '../../contexts/ContentContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
+import { Select, SelectItem } from '../../components/ui/select';
 import { Plus, Trash2, Save, Star } from 'lucide-react';
+
+const SOCIAL_PLATFORMS = [
+  { value: 'Youtube', label: 'YouTube' },
+  { value: 'Facebook', label: 'Facebook' },
+  { value: 'Twitch', label: 'Twitch' },
+  { value: 'Slack', label: 'Slack' },
+  { value: 'Dribbble', label: 'Dribbble' },
+  { value: 'Figma', label: 'Figma' },
+  { value: 'Codepen', label: 'CodePen' },
+  { value: 'Globe', label: 'Website / Other' },
+];
 import { toast } from 'sonner';
 import { homepageApi } from '../../api/homepage.api';
 
@@ -382,18 +394,99 @@ export default function ContentEditor() {
 
         {/* --- Social Links Tab --- */}
         <TabsContent value="social">
-          <Card>
-            <CardHeader>
-              <CardTitle>Social Media Links</CardTitle>
-              <CardDescription>Shown in the Footer. Changes save automatically. Leave blank to hide.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2"><Label>Twitter / X URL</Label><Input value={socialLinks.twitter} onChange={e => updateSocialLinks({ ...socialLinks, twitter: e.target.value })} placeholder="https://twitter.com/..." /></div>
-              <div className="space-y-2"><Label>LinkedIn URL</Label><Input value={socialLinks.linkedin} onChange={e => updateSocialLinks({ ...socialLinks, linkedin: e.target.value })} placeholder="https://linkedin.com/company/..." /></div>
-              <div className="space-y-2"><Label>Instagram URL</Label><Input value={socialLinks.instagram} onChange={e => updateSocialLinks({ ...socialLinks, instagram: e.target.value })} placeholder="https://instagram.com/..." /></div>
-              <div className="space-y-2"><Label>GitHub URL</Label><Input value={socialLinks.github} onChange={e => updateSocialLinks({ ...socialLinks, github: e.target.value })} placeholder="https://github.com/..." /></div>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            {/* Built-in platforms */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Social Media Links</CardTitle>
+                <CardDescription>Shown in the Footer. Changes save automatically. Leave blank to hide.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2"><Label>Twitter / X URL</Label><Input value={socialLinks.twitter} onChange={e => updateSocialLinks({ ...socialLinks, twitter: e.target.value })} placeholder="https://twitter.com/..." /></div>
+                <div className="space-y-2"><Label>LinkedIn URL</Label><Input value={socialLinks.linkedin} onChange={e => updateSocialLinks({ ...socialLinks, linkedin: e.target.value })} placeholder="https://linkedin.com/company/..." /></div>
+                <div className="space-y-2"><Label>Instagram URL</Label><Input value={socialLinks.instagram} onChange={e => updateSocialLinks({ ...socialLinks, instagram: e.target.value })} placeholder="https://instagram.com/..." /></div>
+                <div className="space-y-2"><Label>GitHub URL</Label><Input value={socialLinks.github} onChange={e => updateSocialLinks({ ...socialLinks, github: e.target.value })} placeholder="https://github.com/..." /></div>
+              </CardContent>
+            </Card>
+
+            {/* Extra / custom social links */}
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between">
+                <div>
+                  <CardTitle>Additional Social Links</CardTitle>
+                  <CardDescription>Add any extra platforms — YouTube, Discord, TikTok, etc.</CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const newLink: CustomSocialLink = { label: '', url: '', icon: 'Globe' };
+                    updateSocialLinks({ ...socialLinks, customSocialLinks: [...(socialLinks.customSocialLinks || []), newLink] });
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Add Link
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(socialLinks.customSocialLinks || []).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No extra links yet. Click "Add Link" to add one.</p>
+                )}
+                {(socialLinks.customSocialLinks || []).map((link, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 items-end">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Label</Label>
+                      <Input
+                        value={link.label}
+                        onChange={e => {
+                          const updated = [...(socialLinks.customSocialLinks || [])];
+                          updated[idx] = { ...updated[idx], label: e.target.value };
+                          updateSocialLinks({ ...socialLinks, customSocialLinks: updated });
+                        }}
+                        placeholder="e.g. YouTube"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">URL</Label>
+                      <Input
+                        value={link.url}
+                        onChange={e => {
+                          const updated = [...(socialLinks.customSocialLinks || [])];
+                          updated[idx] = { ...updated[idx], url: e.target.value };
+                          updateSocialLinks({ ...socialLinks, customSocialLinks: updated });
+                        }}
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Icon</Label>
+                      <Select
+                        value={link.icon}
+                        onValueChange={val => {
+                          const updated = [...(socialLinks.customSocialLinks || [])];
+                          updated[idx] = { ...updated[idx], icon: val };
+                          updateSocialLinks({ ...socialLinks, customSocialLinks: updated });
+                        }}
+                      >
+                        {SOCIAL_PLATFORMS.map(p => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </Select>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => {
+                        const updated = (socialLinks.customSocialLinks || []).filter((_, i) => i !== idx);
+                        updateSocialLinks({ ...socialLinks, customSocialLinks: updated });
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
