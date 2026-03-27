@@ -10,7 +10,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Twitter, Linkedin, Instagram, Github, Heart } from 'lucide-react';
+import { ArrowUpRight, Twitter, Linkedin, Instagram, Github, Heart, Youtube, Facebook, Twitch, Slack, Figma, Dribbble, Codepen, Globe, type LucideIcon } from 'lucide-react';
+
+const SOCIAL_ICON_MAP: Record<string, LucideIcon> = {
+  Youtube, Facebook, Twitch, Slack, Figma, Dribbble, Codepen, Globe,
+  Twitter, Linkedin, Instagram, Github,
+};
 import { Button } from './ui/button';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useContent } from '../contexts/ContentContext';
@@ -23,10 +28,15 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   const socialLinks = [
-    { name: 'Twitter', icon: Twitter, href: cms.twitter || '#' },
-    { name: 'LinkedIn', icon: Linkedin, href: cms.linkedin || '#' },
-    { name: 'Instagram', icon: Instagram, href: cms.instagram || '#' },
-    { name: 'GitHub', icon: Github, href: cms.github || '#' },
+    ...(cms.twitter ? [{ name: 'Twitter', icon: Twitter, href: cms.twitter }] : []),
+    ...(cms.linkedin ? [{ name: 'LinkedIn', icon: Linkedin, href: cms.linkedin }] : []),
+    ...(cms.instagram ? [{ name: 'Instagram', icon: Instagram, href: cms.instagram }] : []),
+    ...(cms.github ? [{ name: 'GitHub', icon: Github, href: cms.github }] : []),
+    ...(cms.customSocialLinks || []).filter(l => l.url).map(l => ({
+      name: l.label || l.icon,
+      icon: SOCIAL_ICON_MAP[l.icon] || Globe,
+      href: l.url,
+    })),
   ];
 
   const footerLinks = [

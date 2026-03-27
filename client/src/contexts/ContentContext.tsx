@@ -58,11 +58,19 @@ export interface ContactInfo {
   businessHours: string;
 }
 
+export interface CustomSocialLink {
+  _id?: string;
+  label: string;
+  url: string;
+  icon: string;
+}
+
 export interface SocialLinks {
   twitter: string;
   linkedin: string;
   instagram: string;
   github: string;
+  customSocialLinks: CustomSocialLink[];
 }
 
 export interface Testimonial {
@@ -182,7 +190,7 @@ const defaultWhyChooseUs: WhyChooseUsContent = {
 };
 
 const defaultContactInfo: ContactInfo = { address: "", email: "", phone: "", businessHours: "" };
-const defaultSocialLinks: SocialLinks = { twitter: "", linkedin: "", instagram: "", github: "" };
+const defaultSocialLinks: SocialLinks = { twitter: "", linkedin: "", instagram: "", github: "", customSocialLinks: [] };
 
 // --- Map CMS API response to frontend types ---
 
@@ -236,6 +244,7 @@ function mapCmsToState(cms: any) {
     linkedin: cms.socialLinks?.linkedin || '',
     instagram: cms.socialLinks?.instagram || '',
     github: cms.socialLinks?.github || '',
+    customSocialLinks: cms.socialLinks?.customSocialLinks || [],
   };
 
   const testimonials: Testimonial[] = (cms.testimonials || [])

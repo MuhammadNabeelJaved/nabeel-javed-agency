@@ -122,6 +122,11 @@ const cmsSchema = new mongoose.Schema(
             linkedin: { type: String, trim: true, default: "" },
             instagram: { type: String, trim: true, default: "" },
             github: { type: String, trim: true, default: "" },
+            customSocialLinks: [{
+                label: { type: String, trim: true, required: true },
+                url: { type: String, trim: true, required: true },
+                icon: { type: String, trim: true, default: "Globe" },
+            }],
         },
 
         // ── Testimonials ──
