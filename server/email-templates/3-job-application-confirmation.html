@@ -7,103 +7,124 @@
   <meta name="x-apple-disable-message-reformatting">
   <title>Application Received — Nabeel Agency</title>
   <!--[if mso]>
-  <noscript>
-    <xml>
-      <o:OfficeDocumentSettings>
-        <o:PixelsPerInch>96</o:PixelsPerInch>
-      </o:OfficeDocumentSettings>
-    </xml>
-  </noscript>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
   <![endif]-->
   <style>
     * { box-sizing: border-box; }
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
-    body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #0f0a1e; }
+    body { margin: 0 !important; padding: 0 !important; background-color: #000000; }
 
     @media only screen and (max-width: 600px) {
-      .email-wrapper { width: 100% !important; }
-      .email-container { padding: 24px 16px !important; }
-      .header-title { font-size: 22px !important; }
-      .greeting { font-size: 20px !important; }
-      .hero-icon { width: 80px !important; height: 80px !important; line-height: 80px !important; font-size: 36px !important; }
-      .step-number { width: 36px !important; height: 36px !important; line-height: 36px !important; font-size: 14px !important; }
-      .step-text { font-size: 13px !important; }
-      .portfolio-btn { padding: 13px 28px !important; font-size: 14px !important; }
-      .job-detail-value { font-size: 15px !important; }
+      .email-card { width: 100% !important; border-radius: 0 !important; }
+      .pad { padding: 32px 20px !important; }
+      .pad-sm { padding: 20px 20px !important; }
+      .h1 { font-size: 26px !important; }
+      .two-col td { display: block !important; width: 100% !important; padding-bottom: 16px !important; }
+      .cta-btn { padding: 14px 28px !important; font-size: 14px !important; }
+      .step-icon { width: 36px !important; height: 36px !important; line-height: 36px !important; font-size: 13px !important; }
     }
   </style>
 </head>
-<body style="margin:0; padding:0; background-color:#0f0a1e;">
+<body style="margin:0;padding:0;background-color:#000000;">
 
   <!-- Preview text -->
-  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
-    Great news, {{NAME}}! We've received your application for {{JOB_TITLE}}. Here's what happens next.&nbsp;‌&nbsp;‌&nbsp;‌
-  </div>
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">Your application for {{JOB_TITLE}} has been received! Here's what happens next.&#847;&#847;&#847;&#847;&#847;</div>
 
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#0f0a1e;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#000000;">
     <tr>
-      <td align="center" style="padding:40px 16px;">
+      <td align="center" style="padding:48px 16px;">
 
         <!-- Card -->
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="560" class="email-wrapper" style="background-color:#1a1033; border-radius:20px; overflow:hidden; border:1px solid rgba(124,58,237,0.25);">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="560" class="email-card" style="background-color:rgba(255,255,255,0.03);border-radius:24px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
 
-          <!-- Green success bar -->
+          <!-- Gradient bar: primary → green (success) -->
           <tr>
-            <td style="background:linear-gradient(90deg,#7c3aed,#10b981,#7c3aed); height:4px; padding:0; line-height:4px; font-size:4px;">&nbsp;</td>
+            <td style="background:linear-gradient(90deg,#7c3aed,#a855f7,#10b981);height:3px;padding:0;line-height:3px;font-size:3px;">&nbsp;</td>
           </tr>
 
-          <!-- Hero section -->
+          <!-- Header -->
           <tr>
-            <td align="center" style="padding:44px 40px 36px 40px; background:linear-gradient(180deg,rgba(124,58,237,0.08) 0%,transparent 100%);" class="email-container">
-              <!-- Success checkmark -->
-              <div class="hero-icon" style="width:96px; height:96px; background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(124,58,237,0.2)); border:2px solid rgba(16,185,129,0.4); border-radius:50%; display:inline-block; line-height:92px; text-align:center; font-size:42px;">
-                ✅
-              </div>
-              <h1 class="header-title" style="margin:20px 0 8px 0; font-family:'Segoe UI',Arial,sans-serif; font-size:28px; font-weight:800; color:#ffffff; letter-spacing:-0.5px;">Application Received!</h1>
-              <p style="margin:0; font-family:Arial,sans-serif; font-size:14px; color:#a78bfa; letter-spacing:1.5px; text-transform:uppercase; font-weight:600;">Nabeel Agency · Careers</p>
+            <td align="center" class="pad" style="padding:44px 48px 36px 48px;background:linear-gradient(180deg,rgba(124,58,237,0.06) 0%,transparent 100%);">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" style="padding-right:12px;vertical-align:middle;">
+                    <div style="width:44px;height:44px;background:linear-gradient(135deg,#7c3aed,#3b82f6);border-radius:12px;display:inline-block;text-align:center;line-height:44px;">
+                      <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:#ffffff;line-height:44px;letter-spacing:-1px;">N</span>
+                    </div>
+                  </td>
+                  <td align="left" style="vertical-align:middle;">
+                    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:20px;font-weight:900;color:#ffffff;letter-spacing:-0.04em;display:block;line-height:1;">NABEEL</span>
+                    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.12em;text-transform:uppercase;display:block;margin-top:2px;">AGENCY</span>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
-          <!-- Greeting -->
+          <!-- Divider -->
+          <tr><td style="padding:0 48px;"><div style="height:1px;background:rgba(255,255,255,0.06);"></div></td></tr>
+
+          <!-- Body -->
           <tr>
-            <td style="padding:0 40px 28px 40px;" class="email-container">
-              <h2 class="greeting" style="margin:0 0 14px 0; font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:700; color:#f3f0ff;">
-                Hi {{NAME}}, 🎉
-              </h2>
-              <p style="margin:0; font-family:Arial,sans-serif; font-size:15px; line-height:1.8; color:#c4b5fd;">
-                Thank you for your interest in joining the Nabeel Agency team! We've successfully received your application. Our hiring team will carefully review your profile and get back to you soon.
+            <td class="pad" style="padding:40px 48px 0 48px;">
+              <!-- Success badge -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:24px;">
+                <tr>
+                  <td style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:50px;padding:6px 14px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding-right:7px;vertical-align:middle;">
+                          <div style="width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;"></div>
+                        </td>
+                        <td style="vertical-align:middle;">
+                          <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;font-weight:500;color:rgba(255,255,255,0.7);letter-spacing:0.02em;">Application Received</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <h1 class="h1" style="margin:0 0 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:32px;font-weight:700;color:#ffffff;letter-spacing:-0.03em;line-height:1.15;">
+                Thanks, {{NAME}}! 🎉
+              </h1>
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.7;color:rgba(255,255,255,0.5);">
+                We've successfully received your application. Our team will review your profile carefully and get back to you soon.
               </p>
             </td>
           </tr>
 
-          <!-- Job detail card -->
+          <!-- Job detail card — glassmorphic card like ServiceCard -->
           <tr>
-            <td style="padding:0 40px 32px 40px;" class="email-container">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.3); border-radius:16px; width:100%; overflow:hidden;">
+            <td class="pad-sm" style="padding:24px 48px 0 48px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;overflow:hidden;">
+                <!-- Card header -->
                 <tr>
-                  <td style="background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.2)); padding:16px 24px; border-bottom:1px solid rgba(124,58,237,0.2);">
-                    <p style="margin:0; font-family:Arial,sans-serif; font-size:11px; color:#a78bfa; text-transform:uppercase; letter-spacing:2px; font-weight:700;">Position Applied For</p>
+                  <td style="padding:16px 24px 14px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.12em;">Position Applied For</p>
                   </td>
                 </tr>
+                <!-- Card body -->
                 <tr>
-                  <td style="padding:20px 24px;">
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <td style="padding:20px 24px 24px 24px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="two-col">
                       <tr>
-                        <td width="50%" style="padding-bottom:16px; vertical-align:top;">
-                          <p style="margin:0 0 4px 0; font-family:Arial,sans-serif; font-size:11px; color:#7c3aed; text-transform:uppercase; letter-spacing:1px; font-weight:600;">Role</p>
-                          <p class="job-detail-value" style="margin:0; font-family:'Segoe UI',Arial,sans-serif; font-size:17px; font-weight:800; color:#f3f0ff;">{{JOB_TITLE}}</p>
+                        <td width="50%" style="vertical-align:top;padding-right:16px;padding-bottom:0;">
+                          <p style="margin:0 0 5px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:500;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;">Role</p>
+                          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;line-height:1.2;">{{JOB_TITLE}}</p>
                         </td>
-                        <td width="50%" style="padding-bottom:16px; vertical-align:top;">
-                          <p style="margin:0 0 4px 0; font-family:Arial,sans-serif; font-size:11px; color:#7c3aed; text-transform:uppercase; letter-spacing:1px; font-weight:600;">Department</p>
-                          <p class="job-detail-value" style="margin:0; font-family:'Segoe UI',Arial,sans-serif; font-size:17px; font-weight:800; color:#f3f0ff;">{{DEPARTMENT}}</p>
+                        <td width="50%" style="vertical-align:top;padding-bottom:0;">
+                          <p style="margin:0 0 5px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:500;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;">Department</p>
+                          <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;line-height:1.2;">{{DEPARTMENT}}</p>
                         </td>
                       </tr>
                       <tr>
-                        <td colspan="2">
-                          <p style="margin:0 0 4px 0; font-family:Arial,sans-serif; font-size:11px; color:#7c3aed; text-transform:uppercase; letter-spacing:1px; font-weight:600;">Application Status</p>
-                          <span style="display:inline-block; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); color:#34d399; padding:4px 14px; border-radius:50px; font-family:Arial,sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Under Review</span>
+                        <td colspan="2" style="padding-top:16px;">
+                          <p style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:500;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;">Status</p>
+                          <!-- Status badge — matches project card badges -->
+                          <span style="display:inline-block;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.2);color:rgba(234,179,8,0.9);padding:4px 14px;border-radius:50px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;letter-spacing:0.03em;">Under Review</span>
                         </td>
                       </tr>
                     </table>
@@ -113,81 +134,62 @@
             </td>
           </tr>
 
-          <!-- What's Next steps -->
+          <!-- What's Next — matches Process component card style -->
           <tr>
-            <td style="padding:0 40px 32px 40px;" class="email-container">
-              <p style="margin:0 0 20px 0; font-family:'Segoe UI',Arial,sans-serif; font-size:16px; font-weight:700; color:#f3f0ff;">What Happens Next?</p>
+            <td class="pad-sm" style="padding:24px 48px 0 48px;">
+              <p style="margin:0 0 20px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">What happens next?</p>
 
               <!-- Step 1 -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:16px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:4px;">
                 <tr>
-                  <td width="44" style="vertical-align:top; padding-right:16px;">
-                    <div class="step-number" style="width:40px; height:40px; background:linear-gradient(135deg,#7c3aed,#a855f7); border-radius:50%; display:inline-block; line-height:40px; text-align:center; font-size:15px; font-weight:800; color:#ffffff; font-family:'Segoe UI',Arial,sans-serif;">1</div>
+                  <td width="44" style="vertical-align:top;padding-right:16px;padding-top:2px;">
+                    <div class="step-icon" style="width:40px;height:40px;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:50%;display:inline-block;line-height:40px;text-align:center;font-size:14px;font-weight:800;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">1</div>
                   </td>
-                  <td style="vertical-align:top; padding-top:8px;">
-                    <p style="margin:0 0 4px 0; font-family:'Segoe UI',Arial,sans-serif; font-size:14px; font-weight:700; color:#e9d5ff;">Application Review</p>
-                    <p class="step-text" style="margin:0; font-family:Arial,sans-serif; font-size:13px; line-height:1.6; color:#9ca3af;">Our hiring team reviews every application thoroughly against the role requirements.</p>
+                  <td style="vertical-align:top;padding:6px 0 16px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <p style="margin:0 0 3px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);letter-spacing:-0.01em;">Application Review</p>
+                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:rgba(255,255,255,0.4);">Our hiring team reviews your profile against the role requirements.</p>
                   </td>
-                </tr>
-              </table>
-
-              <!-- Connector -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:16px;">
-                <tr>
-                  <td width="44" align="center">
-                    <div style="width:2px; height:20px; background:rgba(124,58,237,0.3); margin:0 auto;"></div>
-                  </td>
-                  <td></td>
                 </tr>
               </table>
 
               <!-- Step 2 -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:16px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:4px;">
                 <tr>
-                  <td width="44" style="vertical-align:top; padding-right:16px;">
-                    <div class="step-number" style="width:40px; height:40px; background:linear-gradient(135deg,#2563eb,#7c3aed); border-radius:50%; display:inline-block; line-height:40px; text-align:center; font-size:15px; font-weight:800; color:#ffffff; font-family:'Segoe UI',Arial,sans-serif;">2</div>
+                  <td width="44" style="vertical-align:top;padding-right:16px;padding-top:18px;">
+                    <div class="step-icon" style="width:40px;height:40px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:50%;display:inline-block;line-height:40px;text-align:center;font-size:14px;font-weight:800;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">2</div>
                   </td>
-                  <td style="vertical-align:top; padding-top:8px;">
-                    <p style="margin:0 0 4px 0; font-family:'Segoe UI',Arial,sans-serif; font-size:14px; font-weight:700; color:#e9d5ff;">Screening Call</p>
-                    <p class="step-text" style="margin:0; font-family:Arial,sans-serif; font-size:13px; line-height:1.6; color:#9ca3af;">If your profile matches, we'll reach out to schedule a short 15–20 minute screening call.</p>
+                  <td style="vertical-align:top;padding:22px 0 16px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <p style="margin:0 0 3px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);letter-spacing:-0.01em;">Screening Call</p>
+                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:rgba(255,255,255,0.4);">If shortlisted, we'll schedule a quick 15–20 minute call with you.</p>
                   </td>
-                </tr>
-              </table>
-
-              <!-- Connector -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:16px;">
-                <tr>
-                  <td width="44" align="center">
-                    <div style="width:2px; height:20px; background:rgba(124,58,237,0.3); margin:0 auto;"></div>
-                  </td>
-                  <td></td>
                 </tr>
               </table>
 
               <!-- Step 3 -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
-                  <td width="44" style="vertical-align:top; padding-right:16px;">
-                    <div class="step-number" style="width:40px; height:40px; background:linear-gradient(135deg,#10b981,#2563eb); border-radius:50%; display:inline-block; line-height:40px; text-align:center; font-size:15px; font-weight:800; color:#ffffff; font-family:'Segoe UI',Arial,sans-serif;">3</div>
+                  <td width="44" style="vertical-align:top;padding-right:16px;padding-top:18px;">
+                    <div class="step-icon" style="width:40px;height:40px;background:linear-gradient(135deg,#0ea5e9,#2563eb);border-radius:50%;display:inline-block;line-height:40px;text-align:center;font-size:14px;font-weight:800;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">3</div>
                   </td>
-                  <td style="vertical-align:top; padding-top:8px;">
-                    <p style="margin:0 0 4px 0; font-family:'Segoe UI',Arial,sans-serif; font-size:14px; font-weight:700; color:#e9d5ff;">Final Decision</p>
-                    <p class="step-text" style="margin:0; font-family:Arial,sans-serif; font-size:13px; line-height:1.6; color:#9ca3af;">Decisions are communicated within <strong style="color:#c4b5fd;">2–3 weeks</strong>. We'll notify you regardless of the outcome.</p>
+                  <td style="vertical-align:top;padding-top:22px;">
+                    <p style="margin:0 0 3px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);letter-spacing:-0.01em;">Final Decision</p>
+                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:rgba(255,255,255,0.4);">We'll notify you within <strong style="color:rgba(255,255,255,0.6);">2–3 weeks</strong> — regardless of the outcome.</p>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Portfolio CTA -->
+          <!-- Portfolio CTA — matches footer CTA style (inverted button) -->
           <tr>
-            <td align="center" style="padding:0 40px 36px 40px;" class="email-container">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(168,85,247,0.08)); border:1px solid rgba(124,58,237,0.25); border-radius:16px; width:100%;">
+            <td class="pad-sm" style="padding:24px 48px 0 48px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:20px;">
                 <tr>
-                  <td align="center" style="padding:28px 24px;">
-                    <p style="margin:0 0 8px 0; font-family:'Segoe UI',Arial,sans-serif; font-size:15px; font-weight:700; color:#f3f0ff;">While You Wait</p>
-                    <p style="margin:0 0 20px 0; font-family:Arial,sans-serif; font-size:13px; line-height:1.6; color:#9ca3af;">Explore our portfolio and learn about the amazing work our team does every day.</p>
-                    <a href="{{CLIENT_URL}}/portfolio" class="portfolio-btn" style="display:inline-block; background:linear-gradient(135deg,#7c3aed,#a855f7); color:#ffffff; text-decoration:none; padding:14px 32px; border-radius:50px; font-size:14px; font-weight:700; font-family:'Segoe UI',Arial,sans-serif;">
+                  <td style="padding:28px 28px;text-align:center;">
+                    <p style="margin:0 0 6px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">While you wait</p>
+                    <p style="margin:0 0 20px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:rgba(255,255,255,0.4);line-height:1.6;">See the kind of work you'd be part of.</p>
+                    <!-- Outline button style from frontend -->
+                    <a href="{{CLIENT_URL}}/portfolio" class="cta-btn" style="display:inline-block;background:transparent;color:#ffffff;text-decoration:none;padding:13px 32px;border-radius:50px;border:1px solid rgba(255,255,255,0.2);font-size:14px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:-0.01em;">
                       View Our Portfolio →
                     </a>
                   </td>
@@ -196,25 +198,15 @@
             </td>
           </tr>
 
-          <!-- Divider -->
-          <tr>
-            <td style="padding:0 40px;">
-              <div style="height:1px; background:rgba(124,58,237,0.15);"></div>
-            </td>
-          </tr>
-
           <!-- Footer -->
           <tr>
-            <td align="center" style="padding:28px 40px 36px 40px;" class="email-container">
-              <p style="margin:0 0 6px 0; font-family:'Segoe UI',Arial,sans-serif; font-size:13px; font-weight:700; color:#a78bfa;">The Nabeel Agency Team</p>
-              <p style="margin:0 0 12px 0; font-family:Arial,sans-serif; font-size:12px; color:#6b7280; line-height:1.6;">
-                We appreciate your interest in joining us. Every application is given thoughtful consideration.
+            <td class="pad-sm" style="padding:32px 48px 40px 48px;">
+              <div style="height:1px;background:rgba(255,255,255,0.06);margin-bottom:28px;"></div>
+              <p style="margin:0 0 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.3);line-height:1.6;">
+                The Nabeel Agency Team · We appreciate your interest and consider every application carefully.
               </p>
-              <p style="margin:0; font-family:Arial,sans-serif; font-size:12px; color:#4b5563;">
-                © 2025 Nabeel Agency. All rights reserved.
-              </p>
-              <p style="margin:8px 0 0 0; font-family:Arial,sans-serif; font-size:11px; color:#374151;">
-                This is an automated message — please do not reply.
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.18);">
+                © 2025 Nabeel Agency · This is an automated message — do not reply.
               </p>
             </td>
           </tr>
