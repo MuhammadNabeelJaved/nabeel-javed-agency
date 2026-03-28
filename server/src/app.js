@@ -122,6 +122,7 @@ import announcementRoutes from "./routes/userRoutes/announcement.route.js";
 import chatRoutes from "./routes/userRoutes/chat.route.js";
 import notificationRoutes from "./routes/userRoutes/notification.route.js";
 import databaseRoutes from "./routes/userRoutes/database.route.js";
+import cookieConsentRoutes from "./routes/userRoutes/cookieConsent.route.js";
 
 // ─── Dev-only Utilities ──────────────────────────────────────────────────────
 // These endpoints are BLOCKED in production. They are only registered when
@@ -767,6 +768,7 @@ app.use("/api/v1/announcements", announcementRoutes);  // Announcement bar (publ
 app.use("/api/v1/chat", chatRoutes);                  // Real-time chat (conversations, messages, uploads)
 app.use("/api/v1/notifications", notificationRoutes); // Notification list, mark-read, clear
 app.use("/api/v1/database", databaseRoutes);           // Admin database manager
+app.use("/api/v1/consent", cookieConsentRoutes);       // GDPR cookie consent audit log
 
 // ─── Error Handling ─────────────────────────────────────────────────────────
 

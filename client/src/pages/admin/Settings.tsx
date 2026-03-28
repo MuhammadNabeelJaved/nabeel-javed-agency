@@ -11,13 +11,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import {
   User, Lock, Bell, Globe, Key, Shield, Camera, Save, Loader2,
-  Copy, RefreshCw, Eye, EyeOff, Check,
+  Copy, RefreshCw, Eye, EyeOff, Check, Cookie, Trash2, BarChart3,
+  Users, TrendingUp, AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { usersApi } from '../../api/users.api';
+import apiClient from '../../api/apiClient';
 
-type Tab = 'profile' | 'security' | 'notifications' | 'language' | 'apikeys';
+type Tab = 'profile' | 'security' | 'notifications' | 'language' | 'apikeys' | 'cookies';
 
 const NAV: { id: Tab; label: string; Icon: React.ElementType }[] = [
   { id: 'profile',       label: 'Profile',           Icon: User   },
@@ -25,6 +27,7 @@ const NAV: { id: Tab; label: string; Icon: React.ElementType }[] = [
   { id: 'notifications', label: 'Notifications',      Icon: Bell   },
   { id: 'language',      label: 'Language & Region',  Icon: Globe  },
   { id: 'apikeys',       label: 'API Keys',           Icon: Key    },
+  { id: 'cookies',       label: 'Cookie Consent',     Icon: Cookie },
 ];
 
 // ── Reusable toggle ───────────────────────────────────────────────────────────
@@ -134,6 +137,84 @@ export default function Settings() {
     navigator.clipboard.writeText(apiKey);
     setApiKeyCopied(true);
     setTimeout(() => setApiKeyCopied(false), 2000);
+  };
+
+  // ── Cookie Consent ─────────────────────────────────────────────────────────
+  type ConsentStats = {
+    total: number;
+    last30Days: number;
+    breakdown: {
+      essential:  { count: number; pct: number };
+      functional: { count: number; pct: number };
+      analytics:  { count: number; pct: number };
+      marketing:  { count: number; pct: number };
+    };
+  };
+  type ConsentRecord = {
+    _id: string;
+    userId?: { name: string; email: string } | null;
+    consent: { essential: boolean; functional: boolean; analytics: boolean; marketing: boolean };
+    timestamp: string | null;
+    ipAddress: string | null;
+    createdAt: string;
+  };
+
+  const [consentStats, setConsentStats] = useState<ConsentStats | null>(null);
+  const [consentRecords, setConsentRecords] = useState<ConsentRecord[]>([]);
+  const [consentPage, setConsentPage] = useState(1);
+  const [consentTotal, setConsentTotal] = useState(0);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [clearDays, setClearDays] = useState(90);
+  const [clearing, setClearing] = useState(false);
+
+  const loadConsentData = async (page = 1) => {
+    setConsentLoading(true);
+    try {
+      const [statsRes, recordsRes] = await Promise.all([
+        apiClient.get('/consent/stats'),
+        apiClient.get(`/consent?page=${page}&limit=15`),
+      ]);
+      setConsentStats(statsRes.data.data);
+      setConsentRecords(recordsRes.data.data.records);
+      setConsentTotal(recordsRes.data.data.pagination.total);
+      setConsentPage(page);
+    } catch {
+      toast.error('Failed to load consent data');
+    } finally {
+      setConsentLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (tab === 'cookies') loadConsentData(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const handleDeleteRecord = async (id: string) => {
+    try {
+      await apiClient.delete(`/consent/${id}`);
+      setConsentRecords(prev => prev.filter(r => r._id !== id));
+      setConsentTotal(prev => prev - 1);
+      if (consentStats) {
+        setConsentStats(prev => prev ? { ...prev, total: prev.total - 1 } : prev);
+      }
+      toast.success('Record deleted');
+    } catch {
+      toast.error('Failed to delete record');
+    }
+  };
+
+  const handleClearOld = async () => {
+    setClearing(true);
+    try {
+      const res = await apiClient.delete(`/consent/clear?days=${clearDays}`);
+      toast.success(res.data.message);
+      loadConsentData(1);
+    } catch {
+      toast.error('Failed to clear records');
+    } finally {
+      setClearing(false);
+    }
   };
 
   const photoUrl = avatarPreview ?? user?.photo;
@@ -486,6 +567,232 @@ export default function Settings() {
                       <Save className="h-4 w-4" /> Save Webhook
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* ── Cookie Consent ────────────────────────────────────────── */}
+          {tab === 'cookies' && (
+            <div className="space-y-6">
+              {/* Stats cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {consentLoading && !consentStats ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-24 rounded-xl bg-muted/30 animate-pulse" />
+                  ))
+                ) : consentStats ? (
+                  <>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Users className="h-3 w-3" />Total Records</p>
+                        <p className="text-3xl font-bold">{consentStats.total}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Last 30d: {consentStats.last30Days}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Analytics</p>
+                        <p className="text-3xl font-bold">{consentStats.breakdown.analytics.pct}<span className="text-lg text-muted-foreground">%</span></p>
+                        <p className="text-xs text-muted-foreground mt-1">{consentStats.breakdown.analytics.count} users</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><BarChart3 className="h-3 w-3" />Marketing</p>
+                        <p className="text-3xl font-bold">{consentStats.breakdown.marketing.pct}<span className="text-lg text-muted-foreground">%</span></p>
+                        <p className="text-xs text-muted-foreground mt-1">{consentStats.breakdown.marketing.count} users</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4">
+                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Cookie className="h-3 w-3" />Functional</p>
+                        <p className="text-3xl font-bold">{consentStats.breakdown.functional.pct}<span className="text-lg text-muted-foreground">%</span></p>
+                        <p className="text-xs text-muted-foreground mt-1">{consentStats.breakdown.functional.count} users</p>
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : null}
+              </div>
+
+              {/* Consent breakdown bar */}
+              {consentStats && consentStats.total > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Consent Acceptance Rates</CardTitle>
+                    <CardDescription>Percentage of users who accepted each category</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {(
+                      [
+                        { key: 'essential',  label: 'Essential',  color: 'bg-blue-500'   },
+                        { key: 'functional', label: 'Functional', color: 'bg-purple-500' },
+                        { key: 'analytics',  label: 'Analytics',  color: 'bg-green-500'  },
+                        { key: 'marketing',  label: 'Marketing',  color: 'bg-orange-500' },
+                      ] as const
+                    ).map(({ key, label, color }) => (
+                      <div key={key}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-muted-foreground">{label}</span>
+                          <span className="font-medium">{consentStats.breakdown[key].pct}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${color} transition-all duration-700`}
+                            style={{ width: `${consentStats.breakdown[key].pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Bulk clear */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    Bulk Delete Old Records
+                  </CardTitle>
+                  <CardDescription>Remove consent logs older than a specified number of days. Useful for GDPR data minimisation.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-muted-foreground whitespace-nowrap">Older than</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={clearDays}
+                      onChange={e => setClearDays(Number(e.target.value))}
+                      className="w-20 h-9 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <span className="text-sm text-muted-foreground">days</span>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={clearing}
+                    onClick={handleClearOld}
+                    className="gap-2"
+                  >
+                    {clearing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    {clearing ? 'Clearing…' : 'Clear Old Records'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Records table */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Consent Audit Log</CardTitle>
+                    <CardDescription>{consentTotal} total records</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => loadConsentData(consentPage)} disabled={consentLoading}>
+                    <RefreshCw className={`h-4 w-4 ${consentLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {consentLoading && consentRecords.length === 0 ? (
+                    <div className="space-y-2">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="h-12 rounded-lg bg-muted/30 animate-pulse" />
+                      ))}
+                    </div>
+                  ) : consentRecords.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Cookie className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm">No consent records yet</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 pr-4 text-muted-foreground font-medium">User</th>
+                            <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Essential</th>
+                            <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Functional</th>
+                            <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Analytics</th>
+                            <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Marketing</th>
+                            <th className="text-left py-2 pr-4 text-muted-foreground font-medium">IP</th>
+                            <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Date</th>
+                            <th className="text-right py-2 text-muted-foreground font-medium">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {consentRecords.map(r => (
+                            <tr key={r._id} className="hover:bg-muted/20 transition-colors">
+                              <td className="py-2.5 pr-4">
+                                {r.userId ? (
+                                  <div>
+                                    <p className="font-medium leading-tight">{r.userId.name}</p>
+                                    <p className="text-xs text-muted-foreground">{r.userId.email}</p>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground italic text-xs">Anonymous</span>
+                                )}
+                              </td>
+                              {(['essential', 'functional', 'analytics', 'marketing'] as const).map(k => (
+                                <td key={k} className="py-2.5 pr-4">
+                                  <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
+                                    r.consent[k]
+                                      ? 'bg-emerald-500/15 text-emerald-400'
+                                      : 'bg-muted text-muted-foreground'
+                                  }`}>
+                                    {r.consent[k] ? '✓' : '✕'}
+                                  </span>
+                                </td>
+                              ))}
+                              <td className="py-2.5 pr-4 text-xs text-muted-foreground font-mono">
+                                {r.ipAddress ?? '—'}
+                              </td>
+                              <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap">
+                                {new Date(r.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="py-2.5 text-right">
+                                <button
+                                  onClick={() => handleDeleteRecord(r._id)}
+                                  className="p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
+                                  title="Delete record"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {/* Pagination */}
+                      {consentTotal > 15 && (
+                        <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
+                          <p className="text-xs text-muted-foreground">
+                            Page {consentPage} of {Math.ceil(consentTotal / 15)}
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={consentPage <= 1 || consentLoading}
+                              onClick={() => loadConsentData(consentPage - 1)}
+                            >
+                              Previous
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={consentPage >= Math.ceil(consentTotal / 15) || consentLoading}
+                              onClick={() => loadConsentData(consentPage + 1)}
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

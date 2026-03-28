@@ -1,61 +1,37 @@
 /**
- * Cookie Consent Component
- * Displays a glassmorphism notification to accept or decline cookies.
- * Uses localStorage to persist the user's choice.
+ * CookieConsent Banner
+ * Shows on first visit when no consent decision exists.
+ * All state is managed by CookieConsentContext — this component is UI only.
  */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cookie, X, Settings2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Link } from 'react-router-dom';
-
-const DEFAULT_PREFERENCES = {
-  necessary: true,
-  functional: false,
-  analytics: false,
-  marketing: false,
-};
-
-export type CookiePreferences = typeof DEFAULT_PREFERENCES;
-
-/** Read stored preferences; returns null if user hasn't decided yet */
-export function getCookiePreferences(): CookiePreferences | null {
-  try {
-    const raw = localStorage.getItem('cookie-preferences');
-    if (raw) return JSON.parse(raw) as CookiePreferences;
-    const simple = localStorage.getItem('cookie-consent');
-    if (simple === 'accepted') return { necessary: true, functional: true, analytics: true, marketing: true };
-    if (simple === 'declined') return DEFAULT_PREFERENCES;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function savePreferences(prefs: CookiePreferences) {
-  localStorage.setItem('cookie-preferences', JSON.stringify(prefs));
-  localStorage.setItem('cookie-consent', 'accepted');
-}
+import { useCookieConsent } from '../contexts/CookieConsentContext';
 
 export function CookieConsent() {
+  const { hasDecided, acceptAll, saveConsent, updateConsent } = useCookieConsent();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const hasDecided = getCookiePreferences() !== null;
     if (!hasDecided) {
       const timer = setTimeout(() => setIsVisible(true), 1500);
       return () => clearTimeout(timer);
+    } else {
+      setIsVisible(false);
     }
-  }, []);
+  }, [hasDecided]);
 
   const handleAcceptAll = () => {
-    savePreferences({ necessary: true, functional: true, analytics: true, marketing: true });
+    acceptAll();
     setIsVisible(false);
   };
 
   const handleDecline = () => {
-    savePreferences(DEFAULT_PREFERENCES);
-    localStorage.setItem('cookie-consent', 'declined');
+    // Ensure non-essential are off, then save (essential-only consent)
+    updateConsent({ functional: false, analytics: false, marketing: false });
+    saveConsent();
     setIsVisible(false);
   };
 
