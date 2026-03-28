@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   Database,
@@ -465,11 +466,16 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
     return s.length > 60 ? s.slice(0, 60) + '…' : s;
   }
 
-  return (
-    <>
-      {/* ── Full-screen overlay instead of Dialog to avoid z-index / background issues ── */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-        <div className="relative w-full max-w-7xl max-h-[92vh] flex flex-col rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+  // Detect dark/light class on <html> so portaled content inherits the theme
+  const themeClass = typeof document !== 'undefined'
+    ? document.documentElement.classList.contains('dark') ? 'dark' : ''
+    : '';
+
+  return createPortal(
+    <div className={themeClass}>
+      {/* ── Full-screen overlay — portaled to document.body to escape layout stacking context ── */}
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="relative w-full max-w-7xl max-h-[92vh] flex flex-col rounded-2xl border border-white/10 bg-[hsl(var(--background))] shadow-2xl overflow-hidden" style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}>
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40 shrink-0">
@@ -686,7 +692,7 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
 
       {/* ── JSON Editor Modal ───────────────────────────────────────────────── */}
       {docModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40">
               <div>
@@ -738,7 +744,7 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
 
       {/* ── Delete Confirm ──────────────────────────────────────────────────── */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
             <div className="px-6 py-5 border-b border-border bg-muted/40">
               <div className="flex items-center gap-3">
@@ -770,7 +776,8 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
           </div>
         </div>
       )}
-    </>
+    </div>,
+    document.body
   );
 }
 
