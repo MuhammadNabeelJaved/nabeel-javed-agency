@@ -29,10 +29,12 @@ export default function UserChat() {
     const [typingUser, setTypingUser] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+    const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const scrolledToMsgRef = useRef<string | null>(null);
 
     // ── Load or create the user ↔ admin conversation ────────────────────────
     useEffect(() => {
@@ -116,11 +118,29 @@ export default function UserChat() {
         };
     }, [socket, conversation?._id]);
 
-    // ── Auto-scroll to newest message ────────────────────────────────────────
+    // ── Auto-scroll to newest message (skip when navigating to a specific message) ──
     useEffect(() => {
+        const targetId = searchParams.get('messageId');
+        if (targetId && messages.find((m) => m._id === targetId)) return;
         const el = messagesContainerRef.current;
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages]);
+
+    // ── Scroll to + highlight a specific message from notification ────────────
+    useEffect(() => {
+        const messageId = searchParams.get('messageId');
+        if (!messageId || messages.length === 0) return;
+        if (scrolledToMsgRef.current === messageId) return;
+        const found = messages.find((m) => m._id === messageId);
+        if (!found) return;
+        scrolledToMsgRef.current = messageId;
+        setHighlightedMsgId(messageId);
+        setTimeout(() => {
+            document.querySelector(`[data-message-id="${messageId}"]`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+        setTimeout(() => setHighlightedMsgId(null), 3000);
+    }, [messages, searchParams]);
 
     // ── Typing indicator ─────────────────────────────────────────────────────
     const handleTyping = (value: string) => {
@@ -323,12 +343,14 @@ export default function UserChat() {
                                     </div>
                                 );
                             }
+                            const isHighlighted = highlightedMsgId === msg._id;
                             return (
                                 <motion.div
                                     key={msg._id}
+                                    data-message-id={msg._id}
                                     initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isFirstInGroup ? 'mt-4' : 'mt-0.5'}`}
+                                    className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isFirstInGroup ? 'mt-4' : 'mt-0.5'} ${isHighlighted ? 'rounded-2xl ring-2 ring-primary/50 bg-primary/5 transition-all duration-500' : ''}`}
                                 >
                                     {/* Avatar — left side only, last in group */}
                                     {!isMe && (
