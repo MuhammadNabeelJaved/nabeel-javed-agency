@@ -24,7 +24,8 @@ export default function Messages() {
     const { user } = useAuth();
     const { socket, isConnected } = useSocket();
     const [searchParams] = useSearchParams();
-    const [tab, setTab] = useState<ChatTab>('users');
+    const initialTab = searchParams.get('tab') === 'team' ? 'team' : 'users';
+    const [tab, setTab] = useState<ChatTab>(initialTab);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConvo, setSelectedConvo] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
