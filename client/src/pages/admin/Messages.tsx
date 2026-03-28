@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
     Search, MoreVertical, Phone, Video, Send, Paperclip,
-    CheckCheck, Users, Loader2, Hash
+    CheckCheck, Users, Loader2, Hash, UserX
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
@@ -273,6 +273,7 @@ export default function Messages() {
                     ) : (
                         conversations.map((chat) => {
                             const other = getOtherParticipant(chat);
+                            const isDeleted = !other;
                             return (
                                 <div
                                     key={chat._id}
@@ -285,22 +286,25 @@ export default function Messages() {
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className="relative">
-                                            {other?.photo && other.photo !== 'default.jpg' ? (
+                                            {!isDeleted && other?.photo && other.photo !== 'default.jpg' ? (
                                                 <img
                                                     src={other.photo}
                                                     alt={other.name}
                                                     className="w-10 h-10 rounded-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                                                    {other?.name?.charAt(0) ?? '?'}
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${isDeleted ? 'bg-muted border border-border' : 'bg-gradient-to-br from-primary to-purple-600'}`}>
+                                                    {isDeleted
+                                                        ? <UserX className="h-5 w-5 text-muted-foreground" />
+                                                        : other?.name?.charAt(0)
+                                                    }
                                                 </div>
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-center mb-1">
-                                                <h3 className="font-semibold text-sm truncate">
-                                                    {other?.name ?? 'Unknown'}
+                                                <h3 className={`font-semibold text-sm truncate ${isDeleted ? 'text-muted-foreground italic' : ''}`}>
+                                                    {isDeleted ? 'Deleted Account' : other?.name}
                                                 </h3>
                                                 <span className="text-xs text-muted-foreground">
                                                     {chat.lastMessageAt
@@ -344,27 +348,44 @@ export default function Messages() {
                                         className="w-10 h-10 rounded-full object-cover"
                                     />
                                 ) : (
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                                        {activeParticipant?.name?.charAt(0) ?? '?'}
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${!activeParticipant ? 'bg-muted border border-border' : 'bg-gradient-to-br from-primary to-purple-600'}`}>
+                                        {activeParticipant
+                                            ? activeParticipant.name?.charAt(0)
+                                            : <UserX className="h-5 w-5 text-muted-foreground" />
+                                        }
                                     </div>
                                 )}
                                 <div>
-                                    <h3 className="font-semibold">{activeParticipant?.name ?? 'Unknown'}</h3>
+                                    <h3 className={`font-semibold ${!activeParticipant ? 'text-muted-foreground italic' : ''}`}>
+                                        {activeParticipant?.name ?? 'Deleted Account'}
+                                    </h3>
                                     <p className="text-xs text-muted-foreground capitalize">
-                                        {activeParticipant?.role ?? ''}
+                                        {activeParticipant?.role ?? 'Account no longer exists'}
                                     </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="sm" className="hidden md:flex gap-2 text-primary">
-                                    <Users className="h-4 w-4" /> Assign to Team
-                                </Button>
-                                <div className="h-4 w-px bg-border mx-1 hidden md:block" />
-                                <Button variant="ghost" size="icon"><Phone className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon"><Video className="h-4 w-4" /></Button>
+                                {activeParticipant && (
+                                    <>
+                                        <Button variant="ghost" size="sm" className="hidden md:flex gap-2 text-primary">
+                                            <Users className="h-4 w-4" /> Assign to Team
+                                        </Button>
+                                        <div className="h-4 w-px bg-border mx-1 hidden md:block" />
+                                        <Button variant="ghost" size="icon"><Phone className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon"><Video className="h-4 w-4" /></Button>
+                                    </>
+                                )}
                                 <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                             </div>
                         </div>
+
+                        {/* Deleted user banner */}
+                        {!activeParticipant && (
+                            <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/5 border-b border-destructive/10 text-sm text-destructive/80">
+                                <UserX className="h-4 w-4 shrink-0" />
+                                This user's account has been deleted. Chat history is preserved but no new messages can be sent.
+                            </div>
+                        )}
 
                         {/* Messages */}
                         <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 bg-muted/5">
@@ -451,44 +472,53 @@ export default function Messages() {
 
                         {/* Input */}
                         <div className="border-t bg-card">
-                            {replyTo && (
-                                <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-                                    <div className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-muted border-l-2 border-primary">
-                                        <span className="font-semibold text-primary">{replyTo.senderId.name}</span>
-                                        <p className="truncate text-muted-foreground">{replyTo.messageType === 'file' ? `📎 ${replyTo.fileName}` : replyTo.content}</p>
+                            {activeParticipant ? (
+                                <>
+                                    {replyTo && (
+                                        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                                            <div className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-muted border-l-2 border-primary">
+                                                <span className="font-semibold text-primary">{replyTo.senderId.name}</span>
+                                                <p className="truncate text-muted-foreground">{replyTo.messageType === 'file' ? `📎 ${replyTo.fileName}` : replyTo.content}</p>
+                                            </div>
+                                            <button onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
+                                        </div>
+                                    )}
+                                    <div className="p-4">
+                                        <input type="file" ref={fileInputRef} className="hidden" accept="*/*" onChange={handleFileChange} />
+                                        <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="shrink-0 text-muted-foreground"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={isUploading}
+                                            >
+                                                {isUploading ? (
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                ) : (
+                                                    <Paperclip className="h-5 w-5" />
+                                                )}
+                                            </Button>
+                                            <input
+                                                type="text"
+                                                value={inputMessage}
+                                                onChange={(e) => handleInputChange(e.target.value)}
+                                                placeholder="Type your message…"
+                                                className="flex-1 min-h-[44px] rounded-lg border border-input bg-background px-4 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                            />
+                                            <Button type="submit" size="icon" className="shrink-0" disabled={!inputMessage.trim()}>
+                                                <Send className="h-5 w-5" />
+                                            </Button>
+                                        </form>
                                     </div>
-                                    <button onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
+                                </>
+                            ) : (
+                                <div className="p-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                                    <UserX className="h-4 w-4" />
+                                    Messaging unavailable — this account no longer exists
                                 </div>
                             )}
-                            <div className="p-4">
-                            <input type="file" ref={fileInputRef} className="hidden" accept="*/*" onChange={handleFileChange} />
-                            <form onSubmit={handleSendMessage} className="flex items-end gap-2">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="shrink-0 text-muted-foreground"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isUploading}
-                                >
-                                    {isUploading ? (
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                    ) : (
-                                        <Paperclip className="h-5 w-5" />
-                                    )}
-                                </Button>
-                                <input
-                                    type="text"
-                                    value={inputMessage}
-                                    onChange={(e) => handleInputChange(e.target.value)}
-                                    placeholder="Type your message…"
-                                    className="flex-1 min-h-[44px] rounded-lg border border-input bg-background px-4 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                />
-                                <Button type="submit" size="icon" className="shrink-0" disabled={!inputMessage.trim()}>
-                                    <Send className="h-5 w-5" />
-                                </Button>
-                            </form>
-                            </div>
                         </div>
                     </>
                 ) : (
