@@ -5,7 +5,7 @@
  */
 import express from "express";
 import { userAuthenticated } from "../../middlewares/Auth.js";
-import upload from "../../middlewares/multerAny.js";
+import upload from "../../middlewares/multerChat.js";
 import {
     getConversations,
     getOrCreateConversation,
