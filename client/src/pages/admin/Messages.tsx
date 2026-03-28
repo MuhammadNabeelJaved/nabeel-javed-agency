@@ -36,10 +36,12 @@ export default function Messages() {
     const [typingUser, setTypingUser] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+    const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const scrolledToMsgRef = useRef<string | null>(null);
     // Keep a ref to selectedConvo so reconnect effect can access current value
     const selectedConvoRef = useRef<Conversation | null>(null);
     useEffect(() => { selectedConvoRef.current = selectedConvo; }, [selectedConvo]);
@@ -217,11 +219,29 @@ export default function Messages() {
         };
     }, [socket, selectedConvo?._id]);
 
-    // ── Auto-scroll ──────────────────────────────────────────────────────────
+    // ── Auto-scroll (only when no specific message target) ───────────────────
     useEffect(() => {
+        const targetId = searchParams.get('messageId');
+        if (targetId && messages.find(m => m._id === targetId)) return; // let scroll-to-msg handle it
         const el = messagesContainerRef.current;
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages]);
+
+    // ── Scroll to + highlight a specific message from notification ────────────
+    useEffect(() => {
+        const messageId = searchParams.get('messageId');
+        if (!messageId || messages.length === 0) return;
+        if (scrolledToMsgRef.current === messageId) return;
+        const found = messages.find(m => m._id === messageId);
+        if (!found) return;
+        scrolledToMsgRef.current = messageId;
+        setHighlightedMsgId(messageId);
+        setTimeout(() => {
+            document.querySelector(`[data-message-id="${messageId}"]`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+        setTimeout(() => setHighlightedMsgId(null), 3000);
+    }, [messages, searchParams]);
 
     // ── Typing ───────────────────────────────────────────────────────────────
     const handleInputChange = (val: string) => {
@@ -487,12 +507,14 @@ export default function Messages() {
                                             </div>
                                         );
                                     }
+                                    const isHighlighted = highlightedMsgId === msg._id;
                                     return (
                                         <motion.div
                                             key={msg._id}
+                                            data-message-id={msg._id}
                                             initial={{ opacity: 0, y: 6 }}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isFirstInGroup ? 'mt-4' : 'mt-0.5'}`}
+                                            className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isFirstInGroup ? 'mt-4' : 'mt-0.5'} ${isHighlighted ? 'rounded-2xl ring-2 ring-primary/50 bg-primary/5 transition-all duration-500' : ''}`}
                                         >
                                             {/* Avatar — left side only, visible on last msg of group */}
                                             {!isMe && (

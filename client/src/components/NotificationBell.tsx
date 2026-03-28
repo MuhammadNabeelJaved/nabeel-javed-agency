@@ -112,9 +112,15 @@ export function NotificationBell({ notificationsRoute, chatRoute }: Notification
                                         }`}
                                         onClick={() => {
                                             if (!notif.isRead) markAsRead(notif._id);
-                                            if (notif.type === 'message' && chatRoute && notif.payload?.conversationId) {
+                                            const isChatNotif = notif.type === 'message' || notif.type === 'file_received';
+                                            if (isChatNotif && chatRoute && notif.payload?.conversationId) {
                                                 setOpen(false);
-                                                navigate(`${chatRoute}?convoId=${notif.payload.conversationId as string}`);
+                                                const convoId = notif.payload.conversationId as string;
+                                                const msgId = notif.payload.messageId as string | undefined;
+                                                const url = msgId
+                                                    ? `${chatRoute}?convoId=${convoId}&messageId=${msgId}`
+                                                    : `${chatRoute}?convoId=${convoId}`;
+                                                navigate(url);
                                             }
                                         }}
                                     >
