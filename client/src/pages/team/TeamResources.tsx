@@ -120,8 +120,8 @@ export default function TeamResources() {
       try {
         await resourcesApi.upload(formData);
         successCount++;
-      } catch {
-        toast.error(`Failed to upload ${file.name}`);
+      } catch (err: any) {
+        toast.error(`Failed to upload ${file.name}`, { description: err?.response?.data?.message || 'Please try again.' });
       }
     }
 
@@ -144,8 +144,8 @@ export default function TeamResources() {
       setResources(prev => prev.filter(r => r._id !== deleteTargetId));
       toast.success('File deleted');
       setDeleteTargetId(null);
-    } catch {
-      toast.error('Failed to delete file');
+    } catch (err: any) {
+      toast.error('Failed to delete file', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setDeleting(false);
     }

@@ -135,8 +135,8 @@ export default function AdminJobApplications() {
           rejected:    map.rejected    || 0,
         });
       }
-    } catch {
-      toast.error('Failed to load applications');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to load applications');
     } finally {
       setLoading(false);
     }
@@ -174,8 +174,8 @@ export default function AdminJobApplications() {
       toast.success('Application deleted');
       setDeleteTarget(null);
       fetchApplications();
-    } catch {
-      toast.error('Failed to delete application');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete application');
     } finally {
       setActionLoading(false);
     }

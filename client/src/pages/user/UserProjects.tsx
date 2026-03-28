@@ -177,8 +177,8 @@ export default function UserProjects() {
       setProjects(prev => prev.filter(p => p._id !== deleteTargetId));
       toast.success('Project deleted');
       setDeleteTargetId(null);
-    } catch {
-      toast.error('Failed to delete project');
+    } catch (err: any) {
+      toast.error('Failed to delete project', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setDeleting(false);
     }

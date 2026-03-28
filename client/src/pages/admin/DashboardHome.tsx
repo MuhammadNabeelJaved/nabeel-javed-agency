@@ -145,8 +145,8 @@ export default function DashboardHome() {
       setIsModified(false);
       setSaved(true);
       toast.success('Hero section updated successfully!');
-    } catch {
-      toast.error('Failed to save. Please try again.');
+    } catch (err: any) {
+      toast.error('Failed to save', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setIsSaving(false);
     }

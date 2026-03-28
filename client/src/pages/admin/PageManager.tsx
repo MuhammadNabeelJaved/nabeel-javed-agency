@@ -426,8 +426,8 @@ export default function PageManager() {
     try {
       const res = await pageStatusApi.getAll();
       setPageStatuses(res.data.data ?? []);
-    } catch {
-      toast.error('Failed to refresh', { description: 'Could not load page statuses.' });
+    } catch (err: any) {
+      toast.error('Failed to refresh', { description: err?.response?.data?.message || 'Could not load page statuses.' });
     } finally {
       setIsRefreshing(false);
     }

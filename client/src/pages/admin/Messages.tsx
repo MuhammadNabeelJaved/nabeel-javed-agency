@@ -50,8 +50,8 @@ export default function Messages() {
             const convoType = type === 'users' ? 'user_admin' : 'admin_team';
             const res = await chatApi.adminGetConversations(convoType, search || undefined);
             setConversations(res.data.data || []);
-        } catch {
-            toast.error('Failed to load conversations');
+        } catch (err: any) {
+            toast.error('Failed to load conversations', { description: err?.response?.data?.message || 'Please try again.' });
         } finally {
             setIsLoading(false);
         }
@@ -99,8 +99,8 @@ export default function Messages() {
             setMessages(res.data.data?.messages || []);
             socket?.emit('chat:join_conversation', { conversationId: convo._id });
             socket?.emit('chat:read_messages', { conversationId: convo._id });
-        } catch {
-            toast.error('Failed to load messages');
+        } catch (err: any) {
+            toast.error('Failed to load messages', { description: err?.response?.data?.message || 'Please try again.' });
         } finally {
             setIsMsgsLoading(false);
         }
@@ -202,8 +202,8 @@ export default function Messages() {
                 fileName,
                 fileMime,
             });
-        } catch {
-            toast.error('File upload failed');
+        } catch (err: any) {
+            toast.error('File upload failed', { description: err?.response?.data?.message || 'Please try again.' });
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

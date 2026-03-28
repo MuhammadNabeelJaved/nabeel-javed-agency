@@ -131,8 +131,8 @@ export default function TeamDashboardHome() {
       setTasks(allTasks);
       const pd = projectsRes.data.data;
       setProjects(pd?.projects || pd || []);
-    } catch {
-      toast.error('Failed to load dashboard data');
+    } catch (err: any) {
+      toast.error('Failed to load dashboard data', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -146,8 +146,8 @@ export default function TeamDashboardHome() {
     try {
       await tasksApi.updateStatus(task._id, newStatus);
       setTasks(prev => prev.map(t => t._id === task._id ? { ...t, status: newStatus } : t));
-    } catch {
-      toast.error('Failed to update status');
+    } catch (err: any) {
+      toast.error('Failed to update status', { description: err?.response?.data?.message || 'Please try again.' });
     }
   };
 
