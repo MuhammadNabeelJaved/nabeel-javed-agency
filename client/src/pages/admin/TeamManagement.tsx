@@ -5,6 +5,7 @@
  * - Hiring pipeline (candidates — kept as local state for now)
  */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   UserPlus,
@@ -27,6 +28,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  MessageSquare,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../../components/ui/button';
@@ -39,6 +41,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { usersApi } from '../../api/users.api';
+import { chatApi } from '../../api/chat.api';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -146,6 +149,7 @@ type CandidateStatus = 'Applied' | 'Screening' | 'Interview' | 'Offer' | 'Reject
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function TeamManagement() {
+  const navigate = useNavigate();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +166,7 @@ export default function TeamManagement() {
 
   // View modal
   const [viewMember, setViewMember] = useState<TeamMember | null>(null);
+  const [isChatting, setIsChatting] = useState(false);
 
   // Candidates (local)
   const [candidates, setCandidates] = useState(INITIAL_CANDIDATES);
@@ -721,7 +726,7 @@ export default function TeamManagement() {
                     </div>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setViewMember(null)}>
+                <Button variant="ghost" size="icon" onClick={() => { setViewMember(null); setIsChatting(false); }}>
                   <X className="h-5 w-5" />
                 </Button>
               </div>
@@ -773,11 +778,37 @@ export default function TeamManagement() {
                 )}
               </div>
 
-              <div className="p-4 border-t flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setViewMember(null); handleOpenEdit(viewMember); }}>
-                  <Edit className="h-4 w-4 mr-2" /> Edit Profile
+              <div className="p-4 border-t flex justify-between items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="text-primary border-primary/30 hover:bg-primary/5"
+                  disabled={isChatting || viewMember.role === 'admin'}
+                  onClick={async () => {
+                    if (!viewMember || viewMember.role === 'admin') return;
+                    try {
+                      setIsChatting(true);
+                      const res = await chatApi.getOrCreateConversation(viewMember._id, 'admin_team');
+                      const convoId = res.data.data?._id;
+                      setViewMember(null);
+                      navigate(`/admin/messages?tab=team&convoId=${convoId}`);
+                    } catch (err: any) {
+                      setIsChatting(false);
+                    }
+                  }}
+                >
+                  {isChatting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                  )}
+                  Chat
                 </Button>
-                <Button onClick={() => setViewMember(null)}>Close</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { setViewMember(null); handleOpenEdit(viewMember); }}>
+                    <Edit className="h-4 w-4 mr-2" /> Edit Profile
+                  </Button>
+                  <Button onClick={() => setViewMember(null)}>Close</Button>
+                </div>
               </div>
             </motion.div>
           </div>
