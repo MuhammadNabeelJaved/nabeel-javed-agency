@@ -25,6 +25,7 @@ Full-stack Agency Website & CMS. Monorepo with `client/` (React 18 + TypeScript)
 | ThemeContext.tsx | `theme, setTheme` | localStorage |
 | ContentContext.tsx | `logoUrl`, `pageStatuses`, `setPageStatuses`, `announcements`, `hasActiveAnnouncements`, `tickerDuration`, CMS data | fetched from backend |
 | LanguageContext.tsx | `lang, setLang, t()` | localStorage (EN/ES/FR/DE/JP) |
+| CookieConsentContext.tsx | `consent, updateConsent, saveConsent, resetConsent, acceptAll, hasDecided` | localStorage (`cookie_consent`) + cookie fallback |
 
 ## Auth & Routing
 - Login → JWT in localStorage → role-based dashboard redirect
@@ -200,6 +201,66 @@ Responsive HTML email templates — table-based layout, inline CSS, dark brand t
 
 - To add a new template: create the HTML file in `server/email-templates/`, use `{{KEY}}` placeholders, call `renderTemplate(filename, vars)` in `sendEmails.js`
 - `renderTemplate` is a private helper — not exported; only the `send*` functions are exported
+
+## Cookie Consent System (GDPR)
+
+### Consent Data Structure (exact shape stored in localStorage key `cookie_consent`)
+```json
+{
+  "essential": true,
+  "functional": false,
+  "analytics": false,
+  "marketing": false,
+  "consentGiven": false,
+  "timestamp": null
+}
+```
+
+### Context API — `useCookieConsent()`
+| Method | Description |
+|---|---|
+| `consent` | Current consent object |
+| `updateConsent(updates)` | Update toggles without saving (used by settings page) |
+| `saveConsent()` | Persist, set `consentGiven=true`, trigger scripts, POST to backend |
+| `resetConsent()` | Reset non-essential to `false` (does NOT auto-save) |
+| `acceptAll()` | Set all `true`, save, trigger all scripts |
+| `hasDecided` | `true` when a saved consent exists in storage |
+
+### Storage
+- **Primary**: `localStorage` key `cookie_consent`
+- **Fallback**: `document.cookie` key `cookie_consent` (365 days, SameSite=Lax)
+- **Migration**: old `cookie-preferences` key auto-migrated and removed on first load
+
+### Script Loader (`client/src/lib/scriptLoader.ts`)
+- `loadScript(src, id)` — injects `<script>` once; deduped by DOM id + in-memory Set
+- `removeScript(id)` — removes from DOM + memory (page reload needed for full cleanup)
+- Scripts are never injected before `consentGiven === true`
+- Add env vars to enable real scripts: `VITE_GA_MEASUREMENT_ID`, `VITE_FB_PIXEL_ID`
+
+### Backend API — `/api/v1/consent`
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/` | Public | Log a consent event (called automatically on save/acceptAll) |
+| GET | `/stats` | Admin | Aggregate stats: total, last30Days, breakdown by category with % |
+| GET | `/` | Admin | Paginated audit log (`?page=1&limit=15`) |
+| DELETE | `/clear?days=N` | Admin | Bulk-delete records older than N days (GDPR minimisation) |
+| DELETE | `/:id` | Admin | Delete a single record |
+
+### MongoDB Model — `CookieConsent`
+- Collection: `cookieconsents`
+- Fields: `userId` (ref User, nullable), `consent` (object), `timestamp`, `ipAddress` (last octet stripped), `userAgent` (≤300 chars)
+- Indexed on `createdAt` desc and `userId`
+
+### Admin Dashboard
+- **Settings → Cookie Consent tab** — stats cards, per-category acceptance rate bars, paginated audit table with delete, bulk-clear by age
+- Auto-loads when tab is opened; refresh button available
+
+### Banner (`CookieConsent.tsx`)
+- Shows 1.5s after first visit if `hasDecided === false`
+- "Accept All" → `acceptAll()` | "Decline" → essential-only + `saveConsent()` | "Manage Preferences" → `/cookies`
+- Hides automatically once `hasDecided` becomes `true`
+
+---
 
 ## Git Rules
 - Branch: `main` → remote: `github.com/MuhammadNabeelJaved/nabeel-javed-agency`

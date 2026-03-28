@@ -105,6 +105,7 @@ import UserAppliedJobs from './pages/user/UserAppliedJobs';
 import UserSupport from './pages/user/UserSupport';
 
 import { CookieConsent } from './components/CookieConsent';
+import { CookieConsentProvider } from './contexts/CookieConsentContext';
 
 // Configure Tailwind Theme Extension
 // This must run before rendering
@@ -183,6 +184,7 @@ export default function App() {
 
   return (
     <ThemeProvider defaultTheme="light" storageKey="agency-theme">
+      <CookieConsentProvider>
       <LanguageProvider>
       <AuthProvider>
       <SocketProvider>
@@ -306,6 +308,7 @@ export default function App() {
       </SocketProvider>
       </AuthProvider>
       </LanguageProvider>
+      </CookieConsentProvider>
     </ThemeProvider>
   );
 }
