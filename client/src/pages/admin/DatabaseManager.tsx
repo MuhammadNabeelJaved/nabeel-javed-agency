@@ -467,19 +467,21 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
 
   return (
     <>
-      <Dialog open onOpenChange={onClose}>
-        <DialogContent className="max-w-[95vw] xl:max-w-7xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
+      {/* ── Full-screen overlay instead of Dialog to avoid z-index / background issues ── */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="relative w-full max-w-7xl max-h-[92vh] flex flex-col rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Database className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <h2 className="font-semibold text-base font-mono">{collection.name}</h2>
+                <h2 className="font-semibold text-base font-mono text-foreground">{collection.name}</h2>
                 <p className="text-xs text-muted-foreground">
                   {pagination.total.toLocaleString()} document{pagination.total !== 1 ? 's' : ''}
-                  {search && ` matching "${search}"`}
+                  {search && <span className="text-primary"> · filtered by "{search}"</span>}
                 </p>
               </div>
             </div>
@@ -487,56 +489,60 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
               <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={openAdd}>
                 <Plus className="h-3.5 w-3.5" /> Add Document
               </Button>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors">
+              <button
+                onClick={onClose}
+                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
           </div>
 
           {/* Search bar */}
-          <div className="px-6 py-3 border-b border-border/50 shrink-0">
+          <div className="px-6 py-3 border-b border-border/60 bg-background shrink-0">
             <form onSubmit={handleSearch} className="flex gap-2 max-w-lg">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Search by ID or field value…"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className="pl-9 h-8 text-xs bg-muted/30 border-border"
+                  className="pl-9 h-9 text-sm bg-muted/40 border-border focus:border-primary"
                 />
               </div>
-              <Button type="submit" size="sm" className="h-8 text-xs px-3">Search</Button>
+              <Button type="submit" size="sm" className="h-9 text-xs px-4">Search</Button>
               {search && (
-                <Button type="button" variant="ghost" size="sm" className="h-8 text-xs px-3" onClick={handleClearSearch}>
-                  Clear
+                <Button type="button" variant="ghost" size="sm" className="h-9 text-xs px-3 text-muted-foreground" onClick={handleClearSearch}>
+                  <X className="h-3.5 w-3.5 mr-1" /> Clear
                 </Button>
               )}
             </form>
           </div>
 
           {/* Table */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto bg-background">
             {loading ? (
               <div className="p-6 space-y-2">
-                {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}
+                {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-12" />)}
               </div>
             ) : docs.length === 0 ? (
-              <div className="py-20 text-center text-muted-foreground">
-                <Database className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">{search ? 'No documents match your search.' : 'This collection is empty.'}</p>
+              <div className="py-24 text-center text-muted-foreground">
+                <Database className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p className="text-sm font-medium">{search ? 'No documents match your search.' : 'This collection is empty.'}</p>
+                {!search && <p className="text-xs mt-1 opacity-60">Click "Add Document" to insert the first one.</p>}
               </div>
             ) : (
-              <table className="w-full text-xs border-collapse">
-                <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm border-b border-border">
-                  <tr>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-8">#</th>
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-muted/60 backdrop-blur-sm border-b-2 border-border">
+                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground w-10 shrink-0">#</th>
                     {columns.map((col) => (
-                      <th key={col} className="text-left px-4 py-2.5 font-medium text-muted-foreground font-mono">{col}</th>
+                      <th key={col} className="text-left px-4 py-3 font-semibold text-muted-foreground font-mono whitespace-nowrap">{col}</th>
                     ))}
-                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground w-24">Actions</th>
+                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground w-20 shrink-0">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border/50">
                   {docs.map((doc, i) => {
                     const docId = String(doc._id ?? '');
                     const isExpanded = expandedId === docId;
@@ -544,34 +550,36 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
                     return (
                       <React.Fragment key={docId || i}>
                         <tr
-                          className={`border-b border-border/40 transition-colors cursor-pointer group ${isExpanded ? 'bg-primary/5' : 'hover:bg-muted/40'}`}
+                          className={`transition-colors cursor-pointer group ${isExpanded ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/30'}`}
                           onClick={() => setExpandedId(isExpanded ? null : docId)}
                         >
-                          <td className="px-4 py-2.5 text-muted-foreground font-mono">{rowNum}</td>
+                          <td className="px-4 py-3 text-muted-foreground font-mono shrink-0">{rowNum}</td>
                           {columns.map((col) => (
-                            <td key={col} className="px-4 py-2.5 font-mono max-w-[200px] truncate text-foreground/80">
-                              {col === '_id'
-                                ? <span className="text-muted-foreground">{String(doc[col]).slice(-8)}…</span>
-                                : preview(doc[col])
-                              }
+                            <td key={col} className="px-4 py-3 font-mono max-w-[200px]">
+                              <span className="block truncate text-foreground/80">
+                                {col === '_id'
+                                  ? <span className="text-muted-foreground text-[10px]">…{String(doc[col]).slice(-10)}</span>
+                                  : preview(doc[col])
+                                }
+                              </span>
                             </td>
                           ))}
-                          <td className="px-4 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <td className="px-4 py-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
-                                title="Edit"
+                                title="Edit document"
                                 onClick={() => openEdit(doc)}
-                                className="h-6 w-6 rounded-md bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                                className="h-7 w-7 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
                               >
-                                <Pencil className="h-3 w-3" />
+                                <Pencil className="h-3.5 w-3.5" />
                               </button>
                               {docId && (
                                 <button
-                                  title="Delete"
+                                  title="Delete document"
                                   onClick={() => setDeleteTarget(docId)}
-                                  className="h-6 w-6 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-colors"
+                                  className="h-7 w-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-colors"
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               )}
                             </div>
@@ -580,28 +588,28 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
 
                         {/* Expanded JSON row */}
                         {isExpanded && (
-                          <tr className="border-b border-border">
-                            <td colSpan={columns.length + 2} className="px-4 py-3 bg-muted/20">
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Full Document</p>
-                                <div className="flex gap-1">
+                          <tr className="bg-muted/10">
+                            <td colSpan={columns.length + 2} className="px-6 py-4">
+                              <div className="flex items-center justify-between gap-2 mb-3">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Full Document JSON</p>
+                                <div className="flex items-center gap-3">
                                   <button
                                     onClick={() => openEdit(doc)}
-                                    className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+                                    className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors"
                                   >
                                     <Pencil className="h-3 w-3" /> Edit
                                   </button>
                                   {docId && (
                                     <button
                                       onClick={() => setDeleteTarget(docId)}
-                                      className="flex items-center gap-1 text-[10px] text-red-500 hover:text-red-400 transition-colors ml-2"
+                                      className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-400 font-medium transition-colors"
                                     >
                                       <Trash2 className="h-3 w-3" /> Delete
                                     </button>
                                   )}
                                 </div>
                               </div>
-                              <pre className="bg-muted border border-border rounded-lg p-3 text-[11px] font-mono text-emerald-700 dark:text-green-400 overflow-x-auto max-h-72 whitespace-pre-wrap break-all">
+                              <pre className="bg-muted/80 border border-border rounded-xl p-4 text-[11px] font-mono text-emerald-600 dark:text-emerald-400 overflow-x-auto max-h-64 whitespace-pre leading-relaxed">
                                 {JSON.stringify(doc, null, 2)}
                               </pre>
                             </td>
@@ -616,26 +624,28 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
           </div>
 
           {/* Pagination footer */}
-          {pagination.pages > 1 && (
-            <div className="px-6 py-3 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Page {page} of {pagination.pages} · {pagination.total.toLocaleString()} total
-              </p>
+          <div className="px-6 py-3 border-t border-border bg-muted/30 shrink-0 flex items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground">
+              {pagination.total > 0
+                ? `Page ${page} of ${pagination.pages} · ${pagination.total.toLocaleString()} total document${pagination.total !== 1 ? 's' : ''}`
+                : 'No documents'
+              }
+            </p>
+            {pagination.pages > 1 && (
               <div className="flex items-center gap-1">
                 <Button
                   variant="outline" size="sm" className="h-7 w-7 p-0 border-border"
-                  disabled={page <= 1} onClick={() => changePage(1)}
+                  disabled={page <= 1} onClick={() => changePage(1)} title="First page"
                 >
                   <ChevronLeft className="h-3 w-3" />
                 </Button>
                 <Button
                   variant="outline" size="sm" className="h-7 w-7 p-0 border-border"
-                  disabled={page <= 1} onClick={() => changePage(page - 1)}
+                  disabled={page <= 1} onClick={() => changePage(page - 1)} title="Previous page"
                 >
                   <ChevronLeft className="h-3 w-3" />
                 </Button>
 
-                {/* Page number pills */}
                 {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
                   let p = i + 1;
                   if (pagination.pages > 5) {
@@ -647,7 +657,7 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
                       key={p}
                       variant={p === page ? 'default' : 'outline'}
                       size="sm"
-                      className={`h-7 w-7 p-0 text-xs border-border ${p === page ? 'bg-primary text-primary-foreground' : ''}`}
+                      className={`h-7 w-7 p-0 text-xs border-border ${p === page ? 'bg-primary text-primary-foreground border-primary' : ''}`}
                       onClick={() => changePage(p)}
                     >
                       {p}
@@ -657,74 +667,109 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
 
                 <Button
                   variant="outline" size="sm" className="h-7 w-7 p-0 border-border"
-                  disabled={page >= pagination.pages} onClick={() => changePage(page + 1)}
+                  disabled={page >= pagination.pages} onClick={() => changePage(page + 1)} title="Next page"
                 >
                   <ChevronRight className="h-3 w-3" />
                 </Button>
                 <Button
                   variant="outline" size="sm" className="h-7 w-7 p-0 border-border"
-                  disabled={page >= pagination.pages} onClick={() => changePage(pagination.pages)}
+                  disabled={page >= pagination.pages} onClick={() => changePage(pagination.pages)} title="Last page"
                 >
                   <ChevronRight className="h-3 w-3" />
                 </Button>
               </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ── JSON Editor Modal ───────────────────────────────────────────────── */}
-      <Dialog open={!!docModal} onOpenChange={(o) => { if (!o && !docSaving) setDocModal(null); }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{docModal?.mode === 'add' ? 'Insert Document' : 'Edit Document'}</DialogTitle>
-            <DialogDescription>
-              {docModal?.mode === 'add'
-                ? `Add a new document to "${collection.name}".`
-                : `Edit document in "${collection.name}". The _id field is immutable.`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">JSON Document</label>
-            <textarea
-              value={docJson}
-              onChange={(e) => { setDocJson(e.target.value); setJsonError(''); }}
-              rows={18}
-              spellCheck={false}
-              className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y"
-            />
-            {jsonError && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" /> {jsonError}
-              </p>
             )}
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDocModal(null)} disabled={docSaving}>Cancel</Button>
-            <Button onClick={handleSave} disabled={docSaving} className="gap-2">
-              {docSaving ? <><RefreshCw className="h-4 w-4 animate-spin" /> Saving…</> : docModal?.mode === 'add' ? 'Insert' : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+        </div>
+      </div>
+
+      {/* ── JSON Editor Modal ───────────────────────────────────────────────── */}
+      {docModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40">
+              <div>
+                <h3 className="font-semibold text-base text-foreground">
+                  {docModal.mode === 'add' ? 'Insert Document' : 'Edit Document'}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {docModal.mode === 'add'
+                    ? `Add a new document to "${collection.name}".`
+                    : `Edit document in "${collection.name}". The _id field is read-only.`}
+                </p>
+              </div>
+              <button
+                onClick={() => { if (!docSaving) setDocModal(null); }}
+                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent text-muted-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">JSON Document</label>
+              <textarea
+                value={docJson}
+                onChange={(e) => { setDocJson(e.target.value); setJsonError(''); }}
+                rows={18}
+                spellCheck={false}
+                className="w-full bg-muted/60 border border-border rounded-xl px-4 py-3 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y leading-relaxed"
+              />
+              {jsonError && (
+                <p className="text-xs text-destructive flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {jsonError}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
+              <Button variant="outline" onClick={() => setDocModal(null)} disabled={docSaving} className="border-border">
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={docSaving} className="gap-2 min-w-[120px]">
+                {docSaving
+                  ? <><RefreshCw className="h-4 w-4 animate-spin" /> Saving…</>
+                  : docModal.mode === 'add' ? <><Plus className="h-4 w-4" /> Insert</> : <><Pencil className="h-4 w-4" /> Save Changes</>
+                }
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Delete Confirm ──────────────────────────────────────────────────── */}
-      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !deleting) setDeleteTarget(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Document</DialogTitle>
-            <DialogDescription>
-              Permanently delete document <span className="font-mono text-xs break-all">{deleteTarget}</span> from <strong>{collection.name}</strong>? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
-              {deleting ? <><RefreshCw className="h-4 w-4 animate-spin" /> Deleting…</> : 'Delete'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-border bg-muted/40">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                  <Trash2 className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base text-foreground">Delete Document</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">This action cannot be undone.</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-muted-foreground">
+                Permanently delete document from <span className="font-semibold text-foreground">{collection.name}</span>?
+              </p>
+              <div className="mt-3 bg-muted/50 border border-border rounded-lg px-3 py-2">
+                <p className="font-mono text-xs text-muted-foreground break-all">{deleteTarget}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting} className="border-border">
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2 min-w-[100px]">
+                {deleting ? <><RefreshCw className="h-4 w-4 animate-spin" /> Deleting…</> : <><Trash2 className="h-4 w-4" /> Delete</>}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1388,22 +1433,22 @@ export default function DatabaseManager() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-muted/30 border border-border h-auto p-1 gap-1">
-          <TabsTrigger value="overview" className="text-xs data-[state=active]:bg-primary/20">
-            <Database className="h-3.5 w-3.5 mr-1.5" />Overview
-          </TabsTrigger>
-          <TabsTrigger value="collections" className="text-xs data-[state=active]:bg-primary/20">
-            <Layers className="h-3.5 w-3.5 mr-1.5" />Collections
-          </TabsTrigger>
-          <TabsTrigger value="insights" className="text-xs data-[state=active]:bg-primary/20">
-            <Activity className="h-3.5 w-3.5 mr-1.5" />Insights
-          </TabsTrigger>
-          <TabsTrigger value="query" className="text-xs data-[state=active]:bg-primary/20">
-            <Play className="h-3.5 w-3.5 mr-1.5" />Query
-          </TabsTrigger>
-          <TabsTrigger value="export" className="text-xs data-[state=active]:bg-primary/20">
-            <Download className="h-3.5 w-3.5 mr-1.5" />Export
-          </TabsTrigger>
+        <TabsList className="bg-muted/40 border border-border h-auto p-1 gap-0.5 flex-wrap">
+          {[
+            { value: 'overview',    Icon: Database, label: 'Overview'    },
+            { value: 'collections', Icon: Layers,   label: 'Collections' },
+            { value: 'insights',    Icon: Activity, label: 'Insights'    },
+            { value: 'query',       Icon: Play,     label: 'Query'       },
+            { value: 'export',      Icon: Download, label: 'Export'      },
+          ].map(({ value, Icon, label }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all"
+            >
+              <Icon className="h-3.5 w-3.5" />{label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="overview">
