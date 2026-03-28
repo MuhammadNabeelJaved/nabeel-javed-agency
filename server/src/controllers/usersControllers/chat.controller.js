@@ -131,11 +131,11 @@ export const getMessages = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
 
-    // Verify participant
-    const conversation = await Conversation.findOne({
-        _id: conversationId,
-        participants: req.user._id,
-    });
+    // Verify participant — admin can access any conversation
+    const conversationQuery = req.user.role === "admin"
+        ? { _id: conversationId }
+        : { _id: conversationId, participants: req.user._id };
+    const conversation = await Conversation.findOne(conversationQuery);
     if (!conversation) {
         throw new AppError("Conversation not found or access denied", 404);
     }

@@ -162,13 +162,13 @@ export async function initSocket(httpServer, corsOptions) {
         // CHAT EVENTS
         // ═══════════════════════════════════════════════════════════════════════
 
-        // Join a conversation room (verified participant only)
+        // Join a conversation room (admin can join any; others must be participants)
         socket.on("chat:join_conversation", async ({ conversationId }) => {
             try {
-                const convo = await Conversation.findOne({
-                    _id: conversationId,
-                    participants: user._id,
-                });
+                const convoQuery = user.role === "admin"
+                    ? { _id: conversationId }
+                    : { _id: conversationId, participants: user._id };
+                const convo = await Conversation.findOne(convoQuery);
                 if (!convo) {
                     socket.emit("error:global", { message: "Conversation not found or access denied" });
                     return;
