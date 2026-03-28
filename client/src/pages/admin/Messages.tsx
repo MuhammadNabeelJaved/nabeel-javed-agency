@@ -90,14 +90,37 @@ export default function Messages() {
         return () => { socket.off('admin:new_support_request', onNewRequest); };
     }, [socket, tab]);
 
-    // ── Reconnect recovery: rejoin room + reload messages ────────────────────
+    // ── Reconnect recovery: rejoin room + reload messages + update preview ────
     useEffect(() => {
         if (!isConnected || !socket) return;
         const convo = selectedConvoRef.current;
         if (!convo) return;
         socket.emit('chat:join_conversation', { conversationId: convo._id });
         chatApi.getMessages(convo._id, 1, 50)
-            .then((res) => setMessages(res.data.data?.messages || []))
+            .then((res) => {
+                const msgs = res.data.data?.messages || [];
+                setMessages(msgs);
+                // Update sidebar preview to reflect the latest message
+                const lastMsg = msgs.filter(m => m.messageType !== 'system').pop();
+                if (lastMsg) {
+                    setConversations(prev => prev.map(c =>
+                        c._id === convo._id
+                            ? {
+                                ...c,
+                                lastMessageAt: lastMsg.createdAt,
+                                lastMessage: {
+                                    _id: lastMsg._id,
+                                    content: lastMsg.content,
+                                    messageType: lastMsg.messageType,
+                                    fileName: lastMsg.fileName,
+                                    senderId: lastMsg.senderId as any,
+                                    createdAt: lastMsg.createdAt,
+                                },
+                              }
+                            : c
+                    ));
+                }
+            })
             .catch(() => {});
     }, [isConnected, socket]);
 
@@ -110,7 +133,28 @@ export default function Messages() {
         try {
             setIsMsgsLoading(true);
             const res = await chatApi.getMessages(convo._id, 1, 50);
-            setMessages(res.data.data?.messages || []);
+            const msgs = res.data.data?.messages || [];
+            setMessages(msgs);
+            // Update sidebar preview with the latest real message
+            const lastMsg = msgs.filter((m: any) => m.messageType !== 'system').pop();
+            if (lastMsg) {
+                setConversations(prev => prev.map(c =>
+                    c._id === convo._id
+                        ? {
+                            ...c,
+                            lastMessageAt: lastMsg.createdAt,
+                            lastMessage: {
+                                _id: lastMsg._id,
+                                content: lastMsg.content,
+                                messageType: lastMsg.messageType,
+                                fileName: lastMsg.fileName,
+                                senderId: lastMsg.senderId as any,
+                                createdAt: lastMsg.createdAt,
+                            },
+                          }
+                        : c
+                ));
+            }
             socket?.emit('chat:join_conversation', { conversationId: convo._id });
             socket?.emit('chat:read_messages', { conversationId: convo._id });
         } catch (err: any) {
@@ -415,28 +459,29 @@ export default function Messages() {
                         )}
 
                         {/* Messages */}
-                        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 bg-muted/5">
-                            <div className="flex justify-center my-4">
-                                <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
-                                    Today
-                                </span>
-                            </div>
-
+                        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 bg-muted/5">
                             {isMsgsLoading ? (
                                 <div className="flex justify-center py-8">
                                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                                 </div>
                             ) : messages.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                <div className="flex flex-col items-center justify-center h-full py-12 text-muted-foreground">
                                     <p>No messages yet. Start the conversation!</p>
                                 </div>
                             ) : (
-                                messages.map((msg) => {
+                                messages.map((msg, index) => {
                                     const isMe = msg.senderId?._id === user?._id;
+                                    const prevMsg = messages[index - 1];
+                                    const nextMsg = messages[index + 1];
+                                    const isFirstInGroup = !prevMsg || prevMsg.messageType === 'system' || prevMsg.senderId?._id !== msg.senderId?._id;
+                                    const isLastInGroup = !nextMsg || nextMsg.messageType === 'system' || nextMsg.senderId?._id !== msg.senderId?._id;
+                                    const senderName = msg.senderId?.name ?? 'Deleted User';
+                                    const senderPhoto = (msg.senderId as any)?.photo;
+
                                     if (msg.messageType === 'system') {
                                         return (
-                                            <div key={msg._id} className="flex justify-center">
-                                                <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
+                                            <div key={msg._id} className="flex justify-center my-4">
+                                                <span className="text-xs bg-muted text-muted-foreground px-3 py-1 rounded-full">
                                                     {msg.content}
                                                 </span>
                                             </div>
@@ -445,54 +490,84 @@ export default function Messages() {
                                     return (
                                         <motion.div
                                             key={msg._id}
-                                            initial={{ opacity: 0, y: 8 }}
+                                            initial={{ opacity: 0, y: 6 }}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                                            className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isFirstInGroup ? 'mt-4' : 'mt-0.5'}`}
                                         >
-                                            <div className="max-w-[70%]">
-                                            <SwipeableMessage msg={msg} isMe={isMe} onReply={setReplyTo} onDelete={handleDelete}>
-                                                <div
-                                                    className={`rounded-2xl px-4 py-3 shadow-sm ${
-                                                        isMe
-                                                            ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                            : 'bg-card text-card-foreground border rounded-tl-none'
-                                                    }`}
-                                                >
-                                                    {msg.replyTo && (
-                                                        <div className={`mb-2 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${isMe ? 'border-white/40 bg-white/10' : 'border-primary/40 bg-muted/50'}`}>
-                                                            <span className="font-semibold">{msg.replyTo.senderId?.name ?? 'Deleted User'}</span>
-                                                            <p className="truncate">{msg.replyTo.isDeleted ? 'Deleted message' : (msg.replyTo.messageType === 'file' ? `📎 ${msg.replyTo.fileName}` : msg.replyTo.content)}</p>
-                                                        </div>
-                                                    )}
-                                                    {msg.isDeleted ? (
-                                                        <p className="text-sm italic opacity-50">Message deleted</p>
-                                                    ) : msg.messageType === 'file' ? (
-                                                        <ChatFileMessage
-                                                            fileUrl={msg.fileUrl ?? ''}
-                                                            fileName={msg.fileName ?? 'File'}
-                                                            fileMime={msg.fileMime}
-                                                            isMe={isMe}
-                                                        />
+                                            {/* Avatar — left side only, visible on last msg of group */}
+                                            {!isMe && (
+                                                <div className="w-8 h-8 shrink-0">
+                                                    {isLastInGroup ? (
+                                                        senderPhoto && senderPhoto !== 'default.jpg' ? (
+                                                            <img src={senderPhoto} alt={senderName} className="w-8 h-8 rounded-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                                                                {senderName.charAt(0).toUpperCase()}
+                                                            </div>
+                                                        )
                                                     ) : (
-                                                        <p className="text-sm">{msg.content}</p>
+                                                        <div className="w-8 h-8" />
                                                     )}
+                                                </div>
+                                            )}
+
+                                            <div className={`max-w-[65%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                                {/* Sender name — first msg in group, non-me */}
+                                                {isFirstInGroup && !isMe && (
+                                                    <span className="text-[11px] font-semibold text-muted-foreground mb-1 px-1">
+                                                        {senderName}
+                                                    </span>
+                                                )}
+
+                                                <SwipeableMessage msg={msg} isMe={isMe} onReply={setReplyTo} onDelete={handleDelete}>
                                                     <div
-                                                        className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                                                            isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                                        className={`px-4 py-2.5 shadow-sm text-sm ${
+                                                            isMe
+                                                                ? `bg-primary text-primary-foreground ${isFirstInGroup ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl'}`
+                                                                : `bg-card text-card-foreground border ${isFirstInGroup ? 'rounded-2xl rounded-tl-sm' : 'rounded-2xl'}`
                                                         }`}
                                                     >
-                                                        <span>{formatTime(msg.createdAt)}</span>
-                                                        {isMe && <CheckCheck className="h-3 w-3" />}
+                                                        {msg.replyTo && (
+                                                            <div className={`mb-2 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${isMe ? 'border-white/40 bg-white/10' : 'border-primary/40 bg-muted/50'}`}>
+                                                                <span className="font-semibold">{msg.replyTo.senderId?.name ?? 'Deleted User'}</span>
+                                                                <p className="truncate">{msg.replyTo.isDeleted ? 'Deleted message' : (msg.replyTo.messageType === 'file' ? `📎 ${msg.replyTo.fileName}` : msg.replyTo.content)}</p>
+                                                            </div>
+                                                        )}
+                                                        {msg.isDeleted ? (
+                                                            <p className="italic opacity-50">Message deleted</p>
+                                                        ) : msg.messageType === 'file' ? (
+                                                            <ChatFileMessage
+                                                                fileUrl={msg.fileUrl ?? ''}
+                                                                fileName={msg.fileName ?? 'File'}
+                                                                fileMime={msg.fileMime}
+                                                                isMe={isMe}
+                                                            />
+                                                        ) : (
+                                                            <p>{msg.content}</p>
+                                                        )}
+                                                        <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                                                            <span>{formatTime(msg.createdAt)}</span>
+                                                            {isMe && <CheckCheck className="h-3 w-3" />}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </SwipeableMessage>
+                                                </SwipeableMessage>
                                             </div>
                                         </motion.div>
                                     );
                                 })
                             )}
                             {isTyping && (
-                                <p className="text-xs text-muted-foreground">{typingUser} is typing…</p>
+                                <div className="flex items-end gap-2 mt-2">
+                                    <div className="w-8 h-8 shrink-0" />
+                                    <div className="bg-card border rounded-2xl rounded-tl-sm px-4 py-2.5 shadow-sm">
+                                        <div className="flex gap-1 items-center">
+                                            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:0ms]" />
+                                            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:150ms]" />
+                                            <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:300ms]" />
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground mt-0.5 block">{typingUser} is typing</span>
+                                    </div>
+                                </div>
                             )}
                             <div ref={messagesEndRef} />
                         </div>

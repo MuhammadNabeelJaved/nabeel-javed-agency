@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
-import { Send, Paperclip, Phone, Video, MoreVertical, Loader2 } from 'lucide-react';
+import { Send, Paperclip, Phone, Video, MoreVertical, Loader2, CheckCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -244,7 +244,9 @@ export default function UserChat() {
                                 </div>
                                 <p className="text-xs text-muted-foreground truncate">
                                     {messages.length > 0
-                                        ? messages[messages.length - 1].content || 'File attachment'
+                                        ? messages[messages.length - 1].messageType === 'file'
+                                            ? '📎 File attachment'
+                                            : messages[messages.length - 1].content || 'Start a conversation'
                                         : 'Start a conversation'}
                                 </p>
                             </div>
@@ -262,15 +264,21 @@ export default function UserChat() {
                 {/* Header */}
                 <div className="p-4 border-b border-border/50 flex justify-between items-center bg-secondary/20 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                            A
+                        <div className="relative">
+                            {adminParticipant?.photo && adminParticipant.photo !== 'default.jpg' ? (
+                                <img src={adminParticipant.photo} alt={adminParticipant.name} className="h-10 w-10 rounded-full object-cover" />
+                            ) : (
+                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                    {adminParticipant?.name?.charAt(0) ?? 'A'}
+                                </div>
+                            )}
+                            <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
                         </div>
                         <div>
                             <h3 className="font-bold text-sm">
                                 {adminParticipant?.name || 'Admin Support'}
                             </h3>
-                            <p className="text-xs text-green-500 flex items-center gap-1">
-                                <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                            <p className={`text-xs flex items-center gap-1 ${isConnected ? 'text-green-500' : 'text-muted-foreground'}`}>
                                 {isConnected ? 'Online' : 'Offline'}
                             </p>
                         </div>
@@ -289,7 +297,7 @@ export default function UserChat() {
                 </div>
 
                 {/* Messages */}
-                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 bg-muted/20">
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 bg-muted/20">
                     {isLoadingConvo ? (
                         <div className="flex justify-center items-center h-full">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -299,73 +307,100 @@ export default function UserChat() {
                             <p className="text-sm">No messages yet. Say hello!</p>
                         </div>
                     ) : (
-                        messages.map((msg) => {
-                            const isMe = msg.senderId._id === user?._id;
+                        messages.map((msg, index) => {
+                            const isMe = msg.senderId?._id === user?._id;
+                            const prevMsg = messages[index - 1];
+                            const nextMsg = messages[index + 1];
+                            const isFirstInGroup = !prevMsg || prevMsg.messageType === 'system' || prevMsg.senderId?._id !== msg.senderId?._id;
+                            const isLastInGroup = !nextMsg || nextMsg.messageType === 'system' || nextMsg.senderId?._id !== msg.senderId?._id;
+                            const senderName = msg.senderId?.name ?? 'Support';
+                            const senderPhoto = (msg.senderId as any)?.photo;
+
                             if (msg.messageType === 'system') {
                                 return (
-                                    <div key={msg._id} className="flex justify-center">
-                                        <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">{msg.content}</span>
+                                    <div key={msg._id} className="flex justify-center my-4">
+                                        <span className="text-xs bg-muted text-muted-foreground px-3 py-1 rounded-full">{msg.content}</span>
                                     </div>
                                 );
                             }
                             return (
                                 <motion.div
                                     key={msg._id}
-                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${isFirstInGroup ? 'mt-4' : 'mt-0.5'}`}
                                 >
+                                    {/* Avatar — left side only, last in group */}
                                     {!isMe && (
-                                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-bold text-xs mr-2 shrink-0 self-end">
-                                            {msg.senderId.name.charAt(0)}
+                                        <div className="w-8 h-8 shrink-0">
+                                            {isLastInGroup ? (
+                                                senderPhoto && senderPhoto !== 'default.jpg' ? (
+                                                    <img src={senderPhoto} alt={senderName} className="w-8 h-8 rounded-full object-cover" />
+                                                ) : (
+                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                                                        {senderName.charAt(0).toUpperCase()}
+                                                    </div>
+                                                )
+                                            ) : (
+                                                <div className="w-8 h-8" />
+                                            )}
                                         </div>
                                     )}
-                                    <div className="max-w-[70%]">
-                                    <SwipeableMessage msg={msg} isMe={isMe} onReply={setReplyTo} onDelete={handleDelete}>
-                                        <div
-                                            className={`rounded-2xl p-3 shadow-sm ${
-                                                isMe
-                                                    ? 'bg-primary text-primary-foreground rounded-br-none'
-                                                    : 'bg-card border border-border/50 rounded-bl-none'
-                                            }`}
-                                        >
-                                            {msg.replyTo && (
-                                                <div className={`mb-2 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${isMe ? 'border-white/40 bg-white/10' : 'border-primary/40 bg-muted/50'}`}>
-                                                    <span className="font-semibold">{msg.replyTo.senderId.name}</span>
-                                                    <p className="truncate">{msg.replyTo.isDeleted ? 'Deleted message' : (msg.replyTo.messageType === 'file' ? `📎 ${msg.replyTo.fileName}` : msg.replyTo.content)}</p>
-                                                </div>
-                                            )}
-                                            {msg.isDeleted ? (
-                                                <p className="text-sm italic opacity-50">Message deleted</p>
-                                            ) : msg.messageType === 'file' ? (
-                                                <ChatFileMessage
-                                                    fileUrl={msg.fileUrl ?? ''}
-                                                    fileName={msg.fileName ?? 'File'}
-                                                    fileMime={msg.fileMime}
-                                                    isMe={isMe}
-                                                />
-                                            ) : (
-                                                <p className="text-sm leading-relaxed">{msg.content}</p>
-                                            )}
-                                            <p
-                                                className={`text-[10px] mt-1 text-right ${
+
+                                    <div className={`max-w-[65%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                        {isFirstInGroup && !isMe && (
+                                            <span className="text-[11px] font-semibold text-muted-foreground mb-1 px-1">{senderName}</span>
+                                        )}
+                                        <SwipeableMessage msg={msg} isMe={isMe} onReply={setReplyTo} onDelete={handleDelete}>
+                                            <div
+                                                className={`px-4 py-2.5 shadow-sm text-sm ${
                                                     isMe
-                                                        ? 'text-primary-foreground/70'
-                                                        : 'text-muted-foreground'
+                                                        ? `bg-primary text-primary-foreground ${isFirstInGroup ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl'}`
+                                                        : `bg-card border border-border/50 ${isFirstInGroup ? 'rounded-2xl rounded-tl-sm' : 'rounded-2xl'}`
                                                 }`}
                                             >
-                                                {formatTime(msg.createdAt)}
-                                            </p>
-                                        </div>
-                                    </SwipeableMessage>
+                                                {msg.replyTo && (
+                                                    <div className={`mb-2 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${isMe ? 'border-white/40 bg-white/10' : 'border-primary/40 bg-muted/50'}`}>
+                                                        <span className="font-semibold">{msg.replyTo.senderId?.name ?? 'Deleted User'}</span>
+                                                        <p className="truncate">{msg.replyTo.isDeleted ? 'Deleted message' : (msg.replyTo.messageType === 'file' ? `📎 ${msg.replyTo.fileName}` : msg.replyTo.content)}</p>
+                                                    </div>
+                                                )}
+                                                {msg.isDeleted ? (
+                                                    <p className="italic opacity-50">Message deleted</p>
+                                                ) : msg.messageType === 'file' ? (
+                                                    <ChatFileMessage
+                                                        fileUrl={msg.fileUrl ?? ''}
+                                                        fileName={msg.fileName ?? 'File'}
+                                                        fileMime={msg.fileMime}
+                                                        isMe={isMe}
+                                                    />
+                                                ) : (
+                                                    <p className="leading-relaxed">{msg.content}</p>
+                                                )}
+                                                <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                                                    <span>{formatTime(msg.createdAt)}</span>
+                                                    {isMe && <CheckCheck className="h-3 w-3" />}
+                                                </div>
+                                            </div>
+                                        </SwipeableMessage>
                                     </div>
                                 </motion.div>
                             );
                         })
                     )}
                     {isTyping && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{typingUser} is typing…</span>
+                        <div className="flex items-end gap-2 mt-2">
+                            <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                                {adminParticipant?.name?.charAt(0) ?? 'A'}
+                            </div>
+                            <div className="bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-2.5 shadow-sm">
+                                <div className="flex gap-1 items-center">
+                                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:0ms]" />
+                                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:150ms]" />
+                                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:300ms]" />
+                                </div>
+                                <span className="text-[10px] text-muted-foreground mt-0.5 block">{typingUser} is typing</span>
+                            </div>
                         </div>
                     )}
                     <div ref={messagesEndRef} />
@@ -376,7 +411,7 @@ export default function UserChat() {
                     {replyTo && (
                         <div className="flex items-center gap-2 px-4 pt-3 pb-1">
                             <div className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-muted border-l-2 border-primary">
-                                <span className="font-semibold text-primary">{replyTo.senderId.name}</span>
+                                <span className="font-semibold text-primary">{replyTo.senderId?.name ?? 'Deleted User'}</span>
                                 <p className="truncate text-muted-foreground">{replyTo.messageType === 'file' ? `📎 ${replyTo.fileName}` : replyTo.content}</p>
                             </div>
                             <button onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
