@@ -7,8 +7,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
     Search, MoreVertical, Phone, Video, Send, Paperclip,
-    CheckCheck, Users, Loader2, Hash, UserX
+    CheckCheck, Users, Loader2, Hash, UserX, MessageSquarePlus, X
 } from 'lucide-react';
+import { useNotifications } from '../../hooks/useNotifications';
 import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -38,6 +39,16 @@ export default function Messages() {
     const [isUploading, setIsUploading] = useState(false);
     const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
     const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+    // Per-conversation unread counts (incremented on new msg when not selected, cleared on select)
+    const [convoUnread, setConvoUnread] = useState<Record<string, number>>({});
+    // Team tab unread badge (increments when on users tab and team msg arrives)
+    const [teamTabUnread, setTeamTabUnread] = useState(0);
+    // New team DM modal
+    const [showNewDmModal, setShowNewDmModal] = useState(false);
+    const [teamMembers, setTeamMembers] = useState<Array<{ _id: string; name: string; photo: string; teamProfile?: { position?: string } }>>([]);
+    const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+    const [isStartingDm, setIsStartingDm] = useState<string | null>(null);
+    const { chatUnreadCount } = useNotifications();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,6 +76,7 @@ export default function Messages() {
 
     useEffect(() => {
         if (user?.role === 'admin') loadConversations(tab);
+        if (tab === 'team') setTeamTabUnread(0); // clear badge when switching to team tab
     }, [tab, user]);
 
     // Re-filter on search change
@@ -82,6 +94,40 @@ export default function Messages() {
         const match = conversations.find((c) => c._id === convoId);
         if (match && selectedConvo?._id !== convoId) selectConversation(match);
     }, [conversations, searchParams]);
+
+    // ── Load team members for New DM modal ───────────────────────────────────
+    const loadTeamMembers = useCallback(async () => {
+        try {
+            setIsLoadingMembers(true);
+            const res = await chatApi.getTeamMembersForChat();
+            setTeamMembers(res.data.data || []);
+        } catch { /* silent */ } finally {
+            setIsLoadingMembers(false);
+        }
+    }, []);
+
+    const startTeamDm = async (memberId: string) => {
+        try {
+            setIsStartingDm(memberId);
+            const res = await chatApi.getOrCreateConversation(memberId, 'admin_team');
+            const convo = res.data.data;
+            setShowNewDmModal(false);
+            // Switch to team tab if needed and select the conversation
+            if (tab !== 'team') {
+                setTab('team');
+                // loadConversations('team') will be triggered by the tab effect
+                // Wait for conversations to load then select
+                setTimeout(() => selectConversation(convo), 600);
+            } else {
+                await loadConversations('team');
+                selectConversation(convo);
+            }
+        } catch (err: any) {
+            toast.error('Failed to start conversation');
+        } finally {
+            setIsStartingDm(null);
+        }
+    };
 
     // ── Socket new support request alert ─────────────────────────────────────
     useEffect(() => {
@@ -132,6 +178,8 @@ export default function Messages() {
             socket?.emit('chat:leave_conversation', { conversationId: selectedConvo._id });
         }
         setSelectedConvo(convo);
+        // Clear unread count for this conversation
+        setConvoUnread(prev => ({ ...prev, [convo._id]: 0 }));
         setMessages([]);
         try {
             setIsMsgsLoading(true);
@@ -178,9 +226,21 @@ export default function Messages() {
                     return [...prev, msg];
                 });
                 socket.emit('chat:read_messages', { conversationId: msg.conversationId });
+            } else {
+                // Increment per-conversation unread
+                setConvoUnread(prev => ({ ...prev, [msg.conversationId]: (prev[msg.conversationId] ?? 0) + 1 }));
+                // If this is a team message and admin is on 'users' tab, bump teamTabUnread
+                // We detect team msg by checking if it's in the current conversations list
+                setTeamTabUnread(prev => {
+                    // Only increment if we're viewing users tab and convo isn't in current list
+                    // (meaning it belongs to the other tab)
+                    return prev + 1;
+                });
             }
-            setConversations((prev) =>
-                prev.map((c) =>
+            setConversations((prev) => {
+                const exists = prev.find(c => c._id === msg.conversationId);
+                if (!exists) return prev; // belongs to other tab
+                return prev.map((c) =>
                     c._id === msg.conversationId
                         ? {
                             ...c,
@@ -195,8 +255,8 @@ export default function Messages() {
                             },
                           }
                         : c
-                )
-            );
+                );
+            });
         };
 
         const onTyping = ({ userName, isTyping: typing }: { userId: string; userName: string; isTyping: boolean }) => {
@@ -320,29 +380,52 @@ export default function Messages() {
                         <Button
                             size="sm"
                             variant={tab === 'users' ? 'default' : 'outline'}
-                            className="flex-1"
+                            className="flex-1 relative"
                             onClick={() => setTab('users')}
                         >
                             User Chats
+                            {tab !== 'users' && chatUnreadCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-[9px] text-white font-bold flex items-center justify-center">
+                                    {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+                                </span>
+                            )}
                         </Button>
                         <Button
                             size="sm"
                             variant={tab === 'team' ? 'default' : 'outline'}
-                            className="flex-1"
+                            className="flex-1 relative"
                             onClick={() => setTab('team')}
                         >
                             Team DMs
+                            {tab !== 'team' && teamTabUnread > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-primary text-[9px] text-primary-foreground font-bold flex items-center justify-center shadow-[0_0_6px_rgba(139,92,246,0.6)]">
+                                    {teamTabUnread > 9 ? '9+' : teamTabUnread}
+                                </span>
+                            )}
                         </Button>
                     </div>
-                    <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <input
-                            type="text"
-                            placeholder="Search conversations…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full h-9 pl-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        />
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Search conversations…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full h-9 pl-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                        </div>
+                        {tab === 'team' && (
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-9 w-9 shrink-0"
+                                title="New Team DM"
+                                onClick={() => { loadTeamMembers(); setShowNewDmModal(true); }}
+                            >
+                                <MessageSquarePlus className="h-4 w-4" />
+                            </Button>
+                        )}
                     </div>
                     <div className="flex items-center gap-1.5">
                         <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
@@ -366,6 +449,7 @@ export default function Messages() {
                         conversations.map((chat) => {
                             const other = getOtherParticipant(chat);
                             const isDeleted = !other;
+                            const unreadForConvo = convoUnread[chat._id] ?? 0;
                             return (
                                 <div
                                     key={chat._id}
@@ -373,6 +457,8 @@ export default function Messages() {
                                     className={`p-4 border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors ${
                                         selectedConvo?._id === chat._id
                                             ? 'bg-muted/50 border-l-4 border-l-primary'
+                                            : unreadForConvo > 0
+                                            ? 'bg-primary/5 border-l-4 border-l-primary/50'
                                             : 'border-l-4 border-l-transparent'
                                     }`}
                                 >
@@ -395,14 +481,19 @@ export default function Messages() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-center mb-1">
-                                                <h3 className={`font-semibold text-sm truncate ${isDeleted ? 'text-muted-foreground italic' : ''}`}>
+                                                <h3 className={`font-semibold text-sm truncate ${isDeleted ? 'text-muted-foreground italic' : ''} ${unreadForConvo > 0 ? 'text-foreground' : ''}`}>
                                                     {isDeleted ? 'Deleted Account' : other?.name}
                                                 </h3>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {chat.lastMessageAt
-                                                        ? formatTime(chat.lastMessageAt)
-                                                        : ''}
-                                                </span>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {chat.lastMessageAt ? formatTime(chat.lastMessageAt) : ''}
+                                                    </span>
+                                                    {unreadForConvo > 0 && (
+                                                        <span className="h-5 min-w-[20px] px-1 rounded-full bg-primary text-[10px] text-primary-foreground font-bold flex items-center justify-center shadow-[0_0_6px_rgba(139,92,246,0.5)]">
+                                                            {unreadForConvo > 99 ? '99+' : unreadForConvo}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <p className="text-sm text-muted-foreground truncate pr-2">
                                                 {chat.lastMessage
@@ -657,5 +748,59 @@ export default function Messages() {
                 )}
             </div>
         </div>
+
+        {/* ── New Team DM Modal ── */}
+        {showNewDmModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-card w-full max-w-sm rounded-xl shadow-2xl border overflow-hidden"
+                >
+                    <div className="p-4 border-b flex items-center justify-between">
+                        <h3 className="font-semibold">New Team Message</h3>
+                        <button onClick={() => setShowNewDmModal(false)} className="p-1 rounded-full hover:bg-accent text-muted-foreground">
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                    <div className="p-2 max-h-80 overflow-y-auto">
+                        {isLoadingMembers ? (
+                            <div className="flex justify-center py-8">
+                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            </div>
+                        ) : teamMembers.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-6">No team members found</p>
+                        ) : (
+                            teamMembers.map((member) => (
+                                <button
+                                    key={member._id}
+                                    onClick={() => startTeamDm(member._id)}
+                                    disabled={isStartingDm === member._id}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/60 transition-colors text-left"
+                                >
+                                    {member.photo && member.photo !== 'default.jpg' ? (
+                                        <img src={member.photo} alt={member.name} className="h-9 w-9 rounded-full object-cover shrink-0" />
+                                    ) : (
+                                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                                            {member.name.charAt(0)}
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{member.name}</p>
+                                        {member.teamProfile?.position && (
+                                            <p className="text-xs text-muted-foreground truncate">{member.teamProfile.position}</p>
+                                        )}
+                                    </div>
+                                    {isStartingDm === member._id && (
+                                        <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                                    )}
+                                </button>
+                            ))
+                        )}
+                    </div>
+                </motion.div>
+            </div>
+        )}
     );
 }
