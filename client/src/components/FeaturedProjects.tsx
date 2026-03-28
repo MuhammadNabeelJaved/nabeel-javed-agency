@@ -98,9 +98,12 @@ export function FeaturedProjects() {
   );
 }
 
+const PLACEHOLDER = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop';
+
 function AccordionItem({ project, isActive, onHover }: { project: any, isActive: boolean, onHover: () => void }) {
   const title = project.projectTitle || project.title || 'Untitled';
-  const image = project.projectGallery?.[0] || project.image || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop';
+  const rawImage = project.projectGallery?.find((u: unknown) => typeof u === 'string' && u.trim() !== '') || project.image || '';
+  const image = rawImage || PLACEHOLDER;
   const tags: string[] = project.techStack || project.tags || [];
   const year = project.endDate ? new Date(project.endDate).getFullYear().toString() : (project.year || '');
   const slug = project._id || project.slug;
@@ -114,10 +117,13 @@ function AccordionItem({ project, isActive, onHover }: { project: any, isActive:
       }`}
     >
       <Link to={`/portfolio/${slug}`} className="absolute inset-0 z-10" aria-label={title} />
+      {/* Fallback gradient background when no image */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-purple-900/40 to-slate-900" />
       <img
         src={image}
         alt={title}
-        className="absolute inset-0 w-full h-full object-cover transform transition-transform duration-1000 scale-110"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER; }}
+        className="absolute inset-0 w-full h-full object-cover transform transition-transform duration-1000"
         style={{ transform: isActive ? 'scale(1.1)' : 'scale(1.3)' }}
       />
       <div className={`absolute inset-0 bg-gradient-to-b from-black/0 via-black/20 to-black/90 transition-opacity duration-500 ${isActive ? 'opacity-80' : 'opacity-60'}`} />

@@ -5,13 +5,15 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
-import { Search, Menu } from 'lucide-react';
+import { Menu, Sun, Moon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DashboardSearch } from '../components/DashboardSearch';
 import { useTheme } from '../contexts/ThemeContext';
 import { NotificationBell } from '../components/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 
 export function DashboardLayout() {
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { user } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,36 +37,53 @@ export function DashboardLayout() {
         <header className="h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-background/50 border-b border-border/50">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Hamburger — mobile only */}
-            <button
+            <motion.button
               onClick={() => setSidebarOpen(true)}
-              className="sm:hidden p-2 rounded-lg hover:bg-accent text-muted-foreground shrink-0"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              className="sm:hidden p-2 rounded-xl hover:bg-accent text-muted-foreground shrink-0 transition-colors"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
-            </button>
-            <div className="relative hidden sm:block flex-1 max-w-xl group">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <input
-                type="text"
-                placeholder="Search anything..."
-                className="w-full pl-10 pr-12 py-2.5 rounded-full bg-muted/50 border border-border/50 focus:border-primary/50 focus:bg-muted focus:ring-0 text-sm transition-all outline-none placeholder:text-muted-foreground"
-              />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border/50">⌘</span>
-                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border/50">K</span>
-              </div>
-            </div>
+            </motion.button>
+            <DashboardSearch role="admin" />
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-            <NotificationBell notificationsRoute="/admin/notifications" />
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* Theme toggle with animated icon swap */}
+            <motion.button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              className="p-2 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground transition-colors relative overflow-hidden"
+              aria-label="Toggle theme"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={theme}
+                  initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                >
+                  {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </motion.div>
+              </AnimatePresence>
+            </motion.button>
 
-            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-6 border-l border-border/50">
+            <NotificationBell notificationsRoute="/admin/notifications" chatRoute="/admin/messages" />
+
+            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-border/50">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-medium text-foreground">{user?.name ?? 'Admin'}</p>
+                <p className="text-sm font-medium text-foreground leading-tight">{user?.name ?? 'Admin'}</p>
                 <p className="text-xs text-muted-foreground capitalize">{user?.role ?? 'Admin'}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-600 p-[2px]">
+              <motion.div
+                className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-600 p-[2px] cursor-pointer shrink-0"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              >
                 <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
                   {user?.photo && user.photo !== 'default.jpg' ? (
                     <img src={user.photo} alt={user.name} className="h-full w-full object-cover" />
@@ -72,7 +91,7 @@ export function DashboardLayout() {
                     <span className="text-sm font-bold text-primary">{user?.name?.charAt(0) ?? 'A'}</span>
                   )}
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </header>

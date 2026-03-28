@@ -11,6 +11,8 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Play,
   AlertTriangle,
   Layers,
@@ -20,6 +22,10 @@ import {
   Bell,
   Briefcase,
   FileJson,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -28,6 +34,9 @@ import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
 import { Select, SelectItem } from '../../components/ui/select';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '../../components/ui/dialog';
 import {
   BarChart,
   Bar,
@@ -124,7 +133,7 @@ interface QueryResult {
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-white/10 rounded-lg ${className ?? ''}`} />;
+  return <div className={`animate-pulse bg-muted rounded-lg ${className ?? ''}`} />;
 }
 
 // ─── Tab 1: Overview ─────────────────────────────────────────────────────────
@@ -161,7 +170,7 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       {/* 4 stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div>
@@ -176,7 +185,7 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div>
@@ -191,7 +200,7 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div>
@@ -206,7 +215,7 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div>
@@ -224,7 +233,7 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Server Health */}
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Server className="h-4 w-4 text-primary" />
@@ -257,7 +266,7 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
                 <span className="text-muted-foreground">Connections</span>
                 <span className="font-medium">{connCurrent} / {totalConnections}</span>
               </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-primary to-purple-400 rounded-full transition-all"
                   style={{ width: `${connPct}%` }}
@@ -268,11 +277,11 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
 
             {/* Memory */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/5 rounded-xl p-3">
+              <div className="bg-muted/30 rounded-xl p-3">
                 <p className="text-xs text-muted-foreground">Resident RAM</p>
                 <p className="font-semibold text-sm mt-0.5">{server?.mem?.resident ?? '—'} MB</p>
               </div>
-              <div className="bg-white/5 rounded-xl p-3">
+              <div className="bg-muted/30 rounded-xl p-3">
                 <p className="text-xs text-muted-foreground">Virtual RAM</p>
                 <p className="font-semibold text-sm mt-0.5">{server?.mem?.virtual ?? '—'} MB</p>
               </div>
@@ -280,11 +289,11 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
 
             {/* Network */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/5 rounded-xl p-3">
+              <div className="bg-muted/30 rounded-xl p-3">
                 <p className="text-xs text-muted-foreground">Network In</p>
                 <p className="font-semibold text-sm mt-0.5">{server?.network?.bytesIn != null ? formatBytes(server.network.bytesIn) : '—'}</p>
               </div>
-              <div className="bg-white/5 rounded-xl p-3">
+              <div className="bg-muted/30 rounded-xl p-3">
                 <p className="text-xs text-muted-foreground">Network Out</p>
                 <p className="font-semibold text-sm mt-0.5">{server?.network?.bytesOut != null ? formatBytes(server.network.bytesOut) : '—'}</p>
               </div>
@@ -293,7 +302,7 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
         </Card>
 
         {/* Operations */}
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary" />
@@ -303,7 +312,7 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
           <CardContent>
             <div className="grid grid-cols-2 gap-3 mb-4">
               {opcData.map((op) => (
-                <div key={op.name} className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
+                <div key={op.name} className="bg-muted/30 rounded-xl p-3 flex items-center justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground">{op.name}</p>
                     <p className="font-bold text-lg mt-0.5">{(op.value ?? 0).toLocaleString()}</p>
@@ -319,8 +328,8 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#888' }} axisLine={false} tickLine={false} />
                 <YAxis hide />
                 <Tooltip
-                  contentStyle={{ background: '#1a1040', border: '1px solid #7c3aed33', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: '#ccc' }}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
+                  labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
                   cursor={{ fill: 'rgba(124,58,237,0.08)' }}
                 />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
@@ -335,33 +344,397 @@ function OverviewTab({ stats }: { stats: DbStats | null }) {
   );
 }
 
+// ─── Document Browser Dialog ──────────────────────────────────────────────────
+interface DocBrowserProps {
+  collection: CollectionInfo;
+  onClose: () => void;
+}
+
+function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
+  const [docs, setDocs] = useState<Record<string, unknown>[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 20 });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // ── JSON editor modal ─────────────────────────────────────────────────────
+  const [docModal, setDocModal] = useState<{ mode: 'add' | 'edit'; doc?: Record<string, unknown> } | null>(null);
+  const [docJson, setDocJson] = useState('');
+  const [docSaving, setDocSaving] = useState(false);
+  const [jsonError, setJsonError] = useState('');
+
+  // ── Delete confirm ────────────────────────────────────────────────────────
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function fetchDocs(p = page, s = search) {
+    setLoading(true);
+    try {
+      const res = await apiClient.get(`/database/collections/${collection.name}/documents`, {
+        params: { page: p, limit: 20, search: s || undefined },
+      });
+      const data = res.data?.data;
+      setDocs(data?.documents ?? []);
+      setPagination(data?.pagination ?? { total: 0, pages: 1, limit: 20 });
+    } catch {
+      toast.error('Failed to load documents');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchDocs(1, ''); }, []);
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    setSearch(searchInput);
+    setPage(1);
+    fetchDocs(1, searchInput);
+  }
+
+  function handleClearSearch() {
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+    fetchDocs(1, '');
+  }
+
+  function changePage(p: number) {
+    setPage(p);
+    fetchDocs(p, search);
+  }
+
+  function openAdd() {
+    setDocJson('{\n  \n}');
+    setJsonError('');
+    setDocModal({ mode: 'add' });
+  }
+
+  function openEdit(doc: Record<string, unknown>) {
+    setDocJson(JSON.stringify(doc, null, 2));
+    setJsonError('');
+    setDocModal({ mode: 'edit', doc });
+  }
+
+  async function handleSave() {
+    if (!docModal) return;
+    let parsed: Record<string, unknown>;
+    try { parsed = JSON.parse(docJson); }
+    catch { setJsonError('Invalid JSON — fix before saving.'); return; }
+    setDocSaving(true);
+    try {
+      if (docModal.mode === 'add') {
+        await apiClient.post(`/database/collections/${collection.name}/documents`, parsed);
+        toast.success('Document inserted');
+      } else {
+        const id = String((docModal.doc as any)?._id);
+        await apiClient.put(`/database/collections/${collection.name}/documents/${id}`, parsed);
+        toast.success('Document updated');
+      }
+      setDocModal(null);
+      fetchDocs(page, search);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Save failed');
+    } finally { setDocSaving(false); }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/database/collections/${collection.name}/documents/${deleteTarget}`);
+      toast.success('Document deleted');
+      setDeleteTarget(null);
+      fetchDocs(page, search);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Delete failed');
+    } finally { setDeleting(false); }
+  }
+
+  // Auto-detect columns from the first visible doc
+  const columns: string[] = docs.length > 0
+    ? Object.keys(docs[0]).slice(0, 6) // show up to 6 columns
+    : [];
+
+  function preview(val: unknown): string {
+    if (val === null || val === undefined) return '—';
+    if (typeof val === 'object') return JSON.stringify(val).slice(0, 60) + (JSON.stringify(val).length > 60 ? '…' : '');
+    const s = String(val);
+    return s.length > 60 ? s.slice(0, 60) + '…' : s;
+  }
+
+  return (
+    <>
+      <Dialog open onOpenChange={onClose}>
+        <DialogContent className="max-w-[95vw] xl:max-w-7xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Database className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-base font-mono">{collection.name}</h2>
+                <p className="text-xs text-muted-foreground">
+                  {pagination.total.toLocaleString()} document{pagination.total !== 1 ? 's' : ''}
+                  {search && ` matching "${search}"`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={openAdd}>
+                <Plus className="h-3.5 w-3.5" /> Add Document
+              </Button>
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="px-6 py-3 border-b border-border/50 shrink-0">
+            <form onSubmit={handleSearch} className="flex gap-2 max-w-lg">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search by ID or field value…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-9 h-8 text-xs bg-muted/30 border-border"
+                />
+              </div>
+              <Button type="submit" size="sm" className="h-8 text-xs px-3">Search</Button>
+              {search && (
+                <Button type="button" variant="ghost" size="sm" className="h-8 text-xs px-3" onClick={handleClearSearch}>
+                  Clear
+                </Button>
+              )}
+            </form>
+          </div>
+
+          {/* Table */}
+          <div className="flex-1 overflow-auto">
+            {loading ? (
+              <div className="p-6 space-y-2">
+                {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10" />)}
+              </div>
+            ) : docs.length === 0 ? (
+              <div className="py-20 text-center text-muted-foreground">
+                <Database className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">{search ? 'No documents match your search.' : 'This collection is empty.'}</p>
+              </div>
+            ) : (
+              <table className="w-full text-xs border-collapse">
+                <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm border-b border-border">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-8">#</th>
+                    {columns.map((col) => (
+                      <th key={col} className="text-left px-4 py-2.5 font-medium text-muted-foreground font-mono">{col}</th>
+                    ))}
+                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground w-24">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {docs.map((doc, i) => {
+                    const docId = String(doc._id ?? '');
+                    const isExpanded = expandedId === docId;
+                    const rowNum = (page - 1) * pagination.limit + i + 1;
+                    return (
+                      <React.Fragment key={docId || i}>
+                        <tr
+                          className={`border-b border-border/40 transition-colors cursor-pointer group ${isExpanded ? 'bg-primary/5' : 'hover:bg-muted/40'}`}
+                          onClick={() => setExpandedId(isExpanded ? null : docId)}
+                        >
+                          <td className="px-4 py-2.5 text-muted-foreground font-mono">{rowNum}</td>
+                          {columns.map((col) => (
+                            <td key={col} className="px-4 py-2.5 font-mono max-w-[200px] truncate text-foreground/80">
+                              {col === '_id'
+                                ? <span className="text-muted-foreground">{String(doc[col]).slice(-8)}…</span>
+                                : preview(doc[col])
+                              }
+                            </td>
+                          ))}
+                          <td className="px-4 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                title="Edit"
+                                onClick={() => openEdit(doc)}
+                                className="h-6 w-6 rounded-md bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              {docId && (
+                                <button
+                                  title="Delete"
+                                  onClick={() => setDeleteTarget(docId)}
+                                  className="h-6 w-6 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-colors"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Expanded JSON row */}
+                        {isExpanded && (
+                          <tr className="border-b border-border">
+                            <td colSpan={columns.length + 2} className="px-4 py-3 bg-muted/20">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Full Document</p>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => openEdit(doc)}
+                                    className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+                                  >
+                                    <Pencil className="h-3 w-3" /> Edit
+                                  </button>
+                                  {docId && (
+                                    <button
+                                      onClick={() => setDeleteTarget(docId)}
+                                      className="flex items-center gap-1 text-[10px] text-red-500 hover:text-red-400 transition-colors ml-2"
+                                    >
+                                      <Trash2 className="h-3 w-3" /> Delete
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <pre className="bg-muted border border-border rounded-lg p-3 text-[11px] font-mono text-emerald-700 dark:text-green-400 overflow-x-auto max-h-72 whitespace-pre-wrap break-all">
+                                {JSON.stringify(doc, null, 2)}
+                              </pre>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Pagination footer */}
+          {pagination.pages > 1 && (
+            <div className="px-6 py-3 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Page {page} of {pagination.pages} · {pagination.total.toLocaleString()} total
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline" size="sm" className="h-7 w-7 p-0 border-border"
+                  disabled={page <= 1} onClick={() => changePage(1)}
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="outline" size="sm" className="h-7 w-7 p-0 border-border"
+                  disabled={page <= 1} onClick={() => changePage(page - 1)}
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+
+                {/* Page number pills */}
+                {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+                  let p = i + 1;
+                  if (pagination.pages > 5) {
+                    const start = Math.max(1, Math.min(page - 2, pagination.pages - 4));
+                    p = start + i;
+                  }
+                  return (
+                    <Button
+                      key={p}
+                      variant={p === page ? 'default' : 'outline'}
+                      size="sm"
+                      className={`h-7 w-7 p-0 text-xs border-border ${p === page ? 'bg-primary text-primary-foreground' : ''}`}
+                      onClick={() => changePage(p)}
+                    >
+                      {p}
+                    </Button>
+                  );
+                })}
+
+                <Button
+                  variant="outline" size="sm" className="h-7 w-7 p-0 border-border"
+                  disabled={page >= pagination.pages} onClick={() => changePage(page + 1)}
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="outline" size="sm" className="h-7 w-7 p-0 border-border"
+                  disabled={page >= pagination.pages} onClick={() => changePage(pagination.pages)}
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── JSON Editor Modal ───────────────────────────────────────────────── */}
+      <Dialog open={!!docModal} onOpenChange={(o) => { if (!o && !docSaving) setDocModal(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{docModal?.mode === 'add' ? 'Insert Document' : 'Edit Document'}</DialogTitle>
+            <DialogDescription>
+              {docModal?.mode === 'add'
+                ? `Add a new document to "${collection.name}".`
+                : `Edit document in "${collection.name}". The _id field is immutable.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">JSON Document</label>
+            <textarea
+              value={docJson}
+              onChange={(e) => { setDocJson(e.target.value); setJsonError(''); }}
+              rows={18}
+              spellCheck={false}
+              className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y"
+            />
+            {jsonError && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> {jsonError}
+              </p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDocModal(null)} disabled={docSaving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={docSaving} className="gap-2">
+              {docSaving ? <><RefreshCw className="h-4 w-4 animate-spin" /> Saving…</> : docModal?.mode === 'add' ? 'Insert' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirm ──────────────────────────────────────────────────── */}
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !deleting) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Document</DialogTitle>
+            <DialogDescription>
+              Permanently delete document <span className="font-mono text-xs break-all">{deleteTarget}</span> from <strong>{collection.name}</strong>? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
+              {deleting ? <><RefreshCw className="h-4 w-4 animate-spin" /> Deleting…</> : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ─── Tab 2: Collections ───────────────────────────────────────────────────────
 function CollectionsTab({ collections, loading }: { collections: CollectionInfo[]; loading: boolean }) {
   const [search, setSearch] = useState('');
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [detail, setDetail] = useState<CollectionDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [browserTarget, setBrowserTarget] = useState<CollectionInfo | null>(null);
 
   const filtered = collections.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
-
-  async function handleRowClick(name: string) {
-    if (expandedRow === name) {
-      setExpandedRow(null);
-      setDetail(null);
-      return;
-    }
-    setExpandedRow(name);
-    setDetail(null);
-    setDetailLoading(true);
-    try {
-      const res = await apiClient.get(`/database/collections/${name}`);
-      setDetail(res.data?.data ?? null);
-    } catch {
-      toast.error(`Failed to load details for ${name}`);
-    } finally {
-      setDetailLoading(false);
-    }
-  }
 
   function formatSize(kb: number): string {
     if (kb >= 1024) return (kb / 1024).toFixed(1) + ' MB';
@@ -378,21 +751,24 @@ function CollectionsTab({ collections, loading }: { collections: CollectionInfo[
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search collections..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 bg-white/5 border-white/10"
-        />
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter collections…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-muted/30 border-border"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground shrink-0">{filtered.length} collection{filtered.length !== 1 ? 's' : ''}</p>
       </div>
 
-      <Card className="bg-white/5 border-white/10 overflow-hidden">
+      <Card className="bg-muted/30 border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10 text-muted-foreground">
+              <tr className="border-b border-border text-muted-foreground bg-muted/20">
                 <th className="text-left px-4 py-3 font-medium">Collection</th>
                 <th className="text-right px-4 py-3 font-medium">Documents</th>
                 <th className="text-right px-4 py-3 font-medium">Size</th>
@@ -403,88 +779,38 @@ function CollectionsTab({ collections, loading }: { collections: CollectionInfo[
             </thead>
             <tbody>
               {filtered.map((col) => (
-                <React.Fragment key={col.name}>
-                  <tr
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
-                    onClick={() => handleRowClick(col.name)}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Database className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <span className="font-medium">{col.name}</span>
+                <tr key={col.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Database className="h-3.5 w-3.5 text-primary" />
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">{col.count.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">{formatSize(col.sizeKB)}</td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">{formatBytes(col.avgObjSize)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Badge variant="outline" className="border-white/20 text-xs">{col.indexCount}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {expandedRow === col.name ? (
-                        <ChevronUp className="h-4 w-4 ml-auto text-primary" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
-                      )}
-                    </td>
-                  </tr>
-
-                  {expandedRow === col.name && (
-                    <tr>
-                      <td colSpan={6} className="bg-white/[0.03] border-b border-white/10 px-4 py-4">
-                        {detailLoading ? (
-                          <div className="space-y-2">
-                            <Skeleton className="h-6 w-1/3" />
-                            <Skeleton className="h-20" />
-                          </div>
-                        ) : detail ? (
-                          <div className="space-y-4">
-                            {/* Indexes */}
-                            <div>
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Indexes</p>
-                              <div className="flex flex-wrap gap-2">
-                                {detail.indexes.map((idx) => (
-                                  <div key={idx.name} className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs">
-                                    <span className="font-mono font-medium">{idx.name}</span>
-                                    {idx.unique && <Badge className="bg-primary/20 text-primary border-0 text-[10px] h-4 px-1">unique</Badge>}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Sample Docs */}
-                            <div>
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                Sample Documents ({Math.min(detail.sampleDocs.length, 5)})
-                              </p>
-                              <div className="space-y-2">
-                                {detail.sampleDocs.slice(0, 5).map((doc, i) => (
-                                  <pre
-                                    key={i}
-                                    className="bg-black/30 border border-white/10 rounded-lg p-3 text-xs font-mono overflow-x-auto overflow-y-auto max-h-[200px] text-green-300/80"
-                                  >
-                                    {JSON.stringify(doc, null, 2)}
-                                  </pre>
-                                ))}
-                              </div>
-                            </div>
-
-                            <Button variant="outline" size="sm" className="border-white/20" onClick={() => { setExpandedRow(null); setDetail(null); }}>
-                              Close
-                            </Button>
-                          </div>
-                        ) : null}
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
+                      <span className="font-mono font-medium text-sm">{col.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{col.count.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{formatSize(col.sizeKB)}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">{formatBytes(col.avgObjSize)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Badge variant="outline" className="border-border text-xs">{col.indexCount}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary"
+                      onClick={() => setBrowserTarget(col)}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" /> Browse
+                    </Button>
+                  </td>
+                </tr>
               ))}
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">
+                  <td colSpan={6} className="text-center py-14 text-muted-foreground text-sm">
+                    <Database className="h-8 w-8 mx-auto mb-3 opacity-20" />
                     No collections found.
                   </td>
                 </tr>
@@ -493,6 +819,14 @@ function CollectionsTab({ collections, loading }: { collections: CollectionInfo[
           </table>
         </div>
       </Card>
+
+      {/* Document Browser Dialog */}
+      {browserTarget && (
+        <DocBrowserDialog
+          collection={browserTarget}
+          onClose={() => setBrowserTarget(null)}
+        />
+      )}
     </motion.div>
   );
 }
@@ -555,7 +889,7 @@ function InsightsTab() {
         {totalCards.map((card) => {
           const Icon = card.icon;
           return (
-            <Card key={card.label} className="bg-white/5 border-white/10">
+            <Card key={card.label} className="bg-muted/30 border-border">
               <CardContent className="p-4 flex items-center gap-4">
                 <div className={`p-3 rounded-xl ${card.bg}`}>
                   <Icon className={`h-5 w-5 ${card.color}`} />
@@ -571,7 +905,7 @@ function InsightsTab() {
       </div>
 
       {/* Signups chart */}
-      <Card className="bg-white/5 border-white/10">
+      <Card className="bg-muted/30 border-border">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">User Signups by Month</CardTitle>
         </CardHeader>
@@ -582,7 +916,7 @@ function InsightsTab() {
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ background: '#1a1040', border: '1px solid #7c3aed33', borderRadius: 8, fontSize: 12 }}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
                   cursor={{ fill: 'rgba(124,58,237,0.08)' }}
                 />
                 <Bar dataKey="count" fill="#7c3aed" radius={[4, 4, 0, 0]} />
@@ -597,7 +931,7 @@ function InsightsTab() {
       {/* Pie charts row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Users by Role */}
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Users by Role</CardTitle>
           </CardHeader>
@@ -619,7 +953,7 @@ function InsightsTab() {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ background: '#1a1040', border: '1px solid #7c3aed33', borderRadius: 8, fontSize: 12 }}
+                    contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
                     formatter={(value: number, name: string) => [value, name]}
                   />
                 </PieChart>
@@ -638,7 +972,7 @@ function InsightsTab() {
         </Card>
 
         {/* Projects by Status */}
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Projects by Status</CardTitle>
           </CardHeader>
@@ -648,7 +982,7 @@ function InsightsTab() {
                 <XAxis type="number" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
                 <YAxis dataKey="_id" type="category" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} width={80} />
                 <Tooltip
-                  contentStyle={{ background: '#1a1040', border: '1px solid #7c3aed33', borderRadius: 8, fontSize: 12 }}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
                   cursor={{ fill: 'rgba(124,58,237,0.08)' }}
                 />
                 <Bar dataKey="count" radius={[0, 4, 4, 0]}>
@@ -661,7 +995,7 @@ function InsightsTab() {
       </div>
 
       {/* Job Apps by Status */}
-      <Card className="bg-white/5 border-white/10">
+      <Card className="bg-muted/30 border-border">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Job Applications by Status</CardTitle>
         </CardHeader>
@@ -671,7 +1005,7 @@ function InsightsTab() {
               <XAxis type="number" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} />
               <YAxis dataKey="_id" type="category" tick={{ fontSize: 10, fill: '#888' }} axisLine={false} tickLine={false} width={80} />
               <Tooltip
-                contentStyle={{ background: '#1a1040', border: '1px solid #7c3aed33', borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
                 cursor={{ fill: 'rgba(124,58,237,0.08)' }}
               />
               <Bar dataKey="count" fill="#7c3aed" radius={[0, 4, 4, 0]} />
@@ -740,7 +1074,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <Card className="bg-white/5 border-white/10">
+      <Card className="bg-muted/30 border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Play className="h-4 w-4 text-primary" />
@@ -755,7 +1089,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
               <Select
                 value={collection}
                 onValueChange={setCollection}
-                className="bg-white/5 border-white/10"
+                className="bg-muted/30 border-border"
               >
                 <SelectItem value="">-- Select collection --</SelectItem>
                 {collections.map((c) => (
@@ -772,7 +1106,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
                 max={50}
                 value={limit}
                 onChange={(e) => setLimit(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
-                className="bg-white/5 border-white/10"
+                className="bg-muted/30 border-border"
               />
             </div>
           </div>
@@ -784,7 +1118,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 rows={4}
-                className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 spellCheck={false}
               />
             </div>
@@ -794,7 +1128,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
                 value={projection}
                 onChange={(e) => setProjection(e.target.value)}
                 rows={4}
-                className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 spellCheck={false}
               />
             </div>
@@ -804,7 +1138,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
                 rows={4}
-                className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 spellCheck={false}
               />
             </div>
@@ -824,12 +1158,12 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
 
       {/* Results */}
       {result ? (
-        <Card className="bg-white/5 border-white/10 overflow-hidden">
+        <Card className="bg-muted/30 border-border overflow-hidden">
           <CardHeader className="pb-3 flex-row items-center justify-between">
             <CardTitle className="text-sm">
               Results: {result.count} document{result.count !== 1 ? 's' : ''}
             </CardTitle>
-            <Badge variant="outline" className="border-white/20 text-xs">
+            <Badge variant="outline" className="border-border text-xs">
               <Clock className="h-3 w-3 mr-1" />
               {result.executionTimeMs}ms
             </Badge>
@@ -844,7 +1178,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-white/10 text-muted-foreground">
+                    <tr className="border-b border-border text-muted-foreground">
                       <th className="px-3 py-2 text-left w-10">#</th>
                       {columns.map((col) => (
                         <th key={col} className="px-3 py-2 text-left font-medium">{col}</th>
@@ -855,7 +1189,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
                   <tbody>
                     {result.results.map((row, i) => (
                       <React.Fragment key={i}>
-                        <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <tr className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                           <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                           {columns.map((col) => (
                             <td key={col} className="px-3 py-2 font-mono max-w-[180px] truncate">
@@ -874,9 +1208,9 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
                           </td>
                         </tr>
                         {expandedRows.has(i) && (
-                          <tr className="border-b border-white/10">
+                          <tr className="border-b border-border">
                             <td colSpan={columns.length + 2} className="px-3 py-2">
-                              <pre className="bg-black/30 border border-white/10 rounded-lg p-3 text-[11px] font-mono text-green-300/80 overflow-x-auto max-h-60">
+                              <pre className="bg-muted border border-border rounded-lg p-3 text-[11px] font-mono text-emerald-700 dark:text-green-400 overflow-x-auto max-h-60">
                                 {JSON.stringify(row, null, 2)}
                               </pre>
                             </td>
@@ -891,7 +1225,7 @@ function QueryTab({ collections }: { collections: CollectionInfo[] }) {
           </CardContent>
         </Card>
       ) : !executing && (
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-muted/30 border-border">
           <CardContent className="py-12 text-center">
             <Database className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
             <p className="text-muted-foreground text-sm">Execute a query to see results</p>
@@ -936,14 +1270,14 @@ function ExportTab({ collections }: { collections: CollectionInfo[] }) {
       {/* Warning */}
       <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
         <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-amber-200/80">
+        <p className="text-sm text-amber-800 dark:text-amber-200">
           Exports include up to <strong>1,000 documents</strong> per collection. For full exports, use mongodump directly.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {collections.map((col) => (
-          <Card key={col.name} className="bg-white/5 border-white/10 hover:border-white/20 transition-colors">
+          <Card key={col.name} className="bg-muted/30 border-border hover:border-border transition-colors">
             <CardContent className="p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -959,7 +1293,7 @@ function ExportTab({ collections }: { collections: CollectionInfo[] }) {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-white/20 gap-1.5 flex-shrink-0"
+                className="border-border gap-1.5 flex-shrink-0"
                 disabled={downloading === col.name}
                 onClick={() => handleExport(col.name)}
               >
@@ -1043,7 +1377,7 @@ export default function DatabaseManager() {
         </div>
         <Button
           variant="outline"
-          className="gap-2 border-white/20"
+          className="gap-2 border-border"
           onClick={handleRefresh}
           disabled={refreshing}
         >
@@ -1054,7 +1388,7 @@ export default function DatabaseManager() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-white/5 border border-white/10 h-auto p-1 gap-1">
+        <TabsList className="bg-muted/30 border border-border h-auto p-1 gap-1">
           <TabsTrigger value="overview" className="text-xs data-[state=active]:bg-primary/20">
             <Database className="h-3.5 w-3.5 mr-1.5" />Overview
           </TabsTrigger>

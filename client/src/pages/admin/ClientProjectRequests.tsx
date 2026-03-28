@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Search, Loader2, X, Eye, CheckCircle2, Clock, RefreshCw,
   AlertCircle, FolderKanban, FileText, Save, Trash2, Check, XCircle,
-  CalendarDays, UserPlus, Users,
+  CalendarDays, UserPlus, Users, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -110,6 +110,10 @@ export default function ClientProjectRequests() {
   const [editTotalCost, setEditTotalCost]   = useState('');
   const [editPaidAmount, setEditPaidAmount] = useState('');
   const [editAssignedTeam, setEditAssignedTeam] = useState<string[]>([]);
+
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Quick-action states
   const [approvingId, setApprovingId]   = useState<string | null>(null);
@@ -254,7 +258,7 @@ export default function ClientProjectRequests() {
   const active    = requests.filter(r => r.status === 'approved' || r.status === 'in_review').length;
   const completed = requests.filter(r => r.status === 'completed').length;
 
-  // ── Filter ────────────────────────────────────────────────────────────────
+  // ── Filter + Pagination ───────────────────────────────────────────────────
 
   const filtered = requests.filter(r =>
     (filterStatus === 'All' || r.status === filterStatus) &&
@@ -264,6 +268,12 @@ export default function ClientProjectRequests() {
       (r.requestedBy?.email ?? '').toLowerCase().includes(search.toLowerCase())
     )
   );
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated  = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // Reset to page 1 whenever filter/search changes
+  React.useEffect(() => { setCurrentPage(1); }, [search, filterStatus]);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -371,7 +381,7 @@ export default function ClientProjectRequests() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(req => (
+              {paginated.map(req => (
                 <TableRow key={req._id} className="hover:bg-muted/20">
                   {/* Project */}
                   <TableCell className="font-semibold max-w-[150px]">
@@ -498,8 +508,29 @@ export default function ClientProjectRequests() {
               ))}
             </TableBody>
           </Table>
-          <div className="px-4 py-3 border-t border-border/50 bg-muted/20 text-xs text-muted-foreground">
-            Showing {filtered.length} of {total} request{total !== 1 ? 's' : ''}
+          <div className="px-4 py-3 border-t border-border/50 bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} request{filtered.length !== 1 ? 's' : ''}
+            </span>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                  className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="px-2 font-medium">{currentPage} / {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage === totalPages}
+                  className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

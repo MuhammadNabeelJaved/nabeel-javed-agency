@@ -13,9 +13,11 @@ import { useNotifications } from '../hooks/useNotifications';
 interface NotificationBellProps {
     /** Route for the "See all" link. E.g. "/admin/notifications" */
     notificationsRoute: string;
+    /** Route for the chat page. When provided, message notifications navigate to it with ?convoId= param. */
+    chatRoute?: string;
 }
 
-export function NotificationBell({ notificationsRoute }: NotificationBellProps) {
+export function NotificationBell({ notificationsRoute, chatRoute }: NotificationBellProps) {
     const navigate = useNavigate();
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
     const [open, setOpen] = React.useState(false);
@@ -110,6 +112,10 @@ export function NotificationBell({ notificationsRoute }: NotificationBellProps) 
                                         }`}
                                         onClick={() => {
                                             if (!notif.isRead) markAsRead(notif._id);
+                                            if (notif.type === 'message' && chatRoute && notif.payload?.conversationId) {
+                                                setOpen(false);
+                                                navigate(`${chatRoute}?convoId=${notif.payload.conversationId as string}`);
+                                            }
                                         }}
                                     >
                                         <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center shrink-0 bg-background border`}>

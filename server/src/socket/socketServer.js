@@ -187,7 +187,7 @@ export async function initSocket(httpServer, corsOptions) {
         // ── Send a message ────────────────────────────────────────────────────
         socket.on(
             "chat:send_message",
-            async ({ conversationId, content, messageType = "text", fileUrl, fileName, fileMime }) => {
+            async ({ conversationId, content, messageType = "text", fileUrl, fileName, fileMime, replyToId }) => {
                 try {
                     // Verify participant
                     const convo = await Conversation.findOne({
@@ -210,6 +210,8 @@ export async function initSocket(httpServer, corsOptions) {
                         fileUrl: fileUrl || null,
                         fileName: fileName || null,
                         fileType,
+                        fileMime: fileMime || null,
+                        replyTo: replyToId || null,
                         readBy: [user._id],
                     });
 
@@ -219,11 +221,13 @@ export async function initSocket(httpServer, corsOptions) {
                         lastMessageAt: new Date(),
                     });
 
-                    // Populate sender for the client
-                    const populated = await Message.findById(msg._id).populate(
-                        "senderId",
-                        "name photo role"
-                    );
+                    // Populate sender + replyTo for the client
+                    const populated = await Message.findById(msg._id)
+                        .populate("senderId", "name photo role")
+                        .populate({
+                            path: "replyTo",
+                            populate: { path: "senderId", select: "name" },
+                        });
 
                     // Broadcast to conversation room (includes sender — for multi-tab)
                     io.to(`conversation:${conversationId}`).emit("chat:new_message", populated);
@@ -282,6 +286,24 @@ export async function initSocket(httpServer, corsOptions) {
                 }
             }
         );
+
+        // ── Delete a message (soft delete, sender only) ───────────────────────
+        socket.on("chat:delete_message", async ({ messageId }) => {
+            try {
+                const msg = await Message.findById(messageId);
+                if (!msg) return;
+                if (msg.senderId.toString() !== user._id.toString()) {
+                    socket.emit("error:global", { message: "Cannot delete another user's message" });
+                    return;
+                }
+                msg.isDeleted = true;
+                msg.content = "";
+                await msg.save();
+                io.to(`conversation:${msg.conversationId}`).emit("chat:message_deleted", { messageId });
+            } catch {
+                socket.emit("error:global", { message: "Failed to delete message" });
+            }
+        });
 
         // ── Typing indicator ──────────────────────────────────────────────────
         socket.on("chat:typing", ({ conversationId, isTyping }) => {

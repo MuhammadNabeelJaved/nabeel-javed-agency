@@ -3,7 +3,7 @@
  * All data fetched from real APIs — no hardcoded values.
  */
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -11,7 +11,7 @@ import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import {
   CreditCard, Users, FolderKanban, Save, LayoutTemplate, CheckCircle2,
-  Briefcase, MessageSquare, TrendingUp, Clock, ArrowUpRight, ExternalLink,
+  Briefcase, MessageSquare, TrendingUp, Clock, ArrowUpRight,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { homepageApi } from '../../api/homepage.api';
@@ -86,6 +86,7 @@ const defaultHero = { statusBadge: '', titleLine1: '', titleLine2: '', subtitle:
 
 export default function DashboardHome() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Hero edit state
   const [heroForm, setHeroForm] = useState(defaultHero);
@@ -178,10 +179,8 @@ export default function DashboardHome() {
             Welcome back, {user?.name?.split(' ')[0] ?? 'Admin'}. Here's what's happening.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/admin/client-requests">
-            <ExternalLink className="h-4 w-4 mr-2" /> View All Requests
-          </Link>
+        <Button onClick={() => navigate('/admin/client-requests')} className="gap-2">
+          <ArrowUpRight className="h-4 w-4" /> View All Requests
         </Button>
       </div>
 
@@ -342,8 +341,8 @@ export default function DashboardHome() {
               <CardTitle>Recent Project Requests</CardTitle>
               <CardDescription>Latest 5 client requests from the database.</CardDescription>
             </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/client-requests"><ArrowUpRight className="h-4 w-4" /></Link>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/admin/client-requests')}>
+              <ArrowUpRight className="h-4 w-4" />
             </Button>
           </CardHeader>
           <CardContent>
@@ -386,8 +385,8 @@ export default function DashboardHome() {
               <CardTitle>Recent Contacts</CardTitle>
               <CardDescription>Latest contact form submissions.</CardDescription>
             </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/contacts"><ArrowUpRight className="h-4 w-4" /></Link>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/admin/contacts')}>
+              <ArrowUpRight className="h-4 w-4" />
             </Button>
           </CardHeader>
           <CardContent>

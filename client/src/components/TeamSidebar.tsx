@@ -64,58 +64,106 @@ export function TeamSidebar({ isOpen = false, onClose }: TeamSidebarProps) {
         "lg:w-72"
       )}>
       {isOpen && (
-        <button onClick={onClose} className="absolute top-4 right-4 sm:hidden p-1.5 rounded-lg hover:bg-accent text-muted-foreground">
+        <motion.button
+          onClick={onClose}
+          whileHover={{ scale: 1.1, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
+          className="absolute top-4 right-4 sm:hidden p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
+        >
           <X className="h-4 w-4" />
-        </button>
+        </motion.button>
       )}
+
       {/* Logo */}
       <div className="h-16 sm:h-20 flex items-center justify-center lg:justify-start lg:px-6 border-b border-border/50">
-         <Link to="/" className="flex items-center gap-3 group">
-             <img 
-                src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png" 
-                alt="Nabeel Logo" 
-                className="h-10 w-auto dark:invert" 
-              />
-            <div className="hidden lg:block">
-              <span className="font-bold text-xl tracking-tight text-foreground">TEAM<span className="text-primary">DASH</span></span>
-            </div>
-          </Link>
+        <Link to="/" className="flex items-center gap-3 group">
+          <motion.img
+            src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png"
+            alt="Nabeel Logo"
+            className="h-10 w-auto dark:invert"
+            whileHover={{ scale: 1.08, rotate: -3 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+          />
+          <div className="hidden lg:block">
+            <span className="font-bold text-xl tracking-tight text-foreground">
+              TEAM<span className="text-primary group-hover:text-primary/80 transition-colors duration-200">DASH</span>
+            </span>
+          </div>
+        </Link>
       </div>
-      
+
       {/* Navigation */}
-      <div className="flex-grow py-8 px-3 space-y-2 overflow-y-auto no-scrollbar">
-        <div className="px-3 mb-2 hidden lg:block">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Team Workspace</h3>
+      <div className="flex-grow py-8 px-3 space-y-1 overflow-y-auto no-scrollbar">
+        <div className="px-3 mb-3 hidden lg:block">
+          <h3 className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest">Team Workspace</h3>
         </div>
-        {links.map((link) => {
+
+        {links.map((link, i) => {
           const Icon = link.icon;
-          const isActive = link.path === '/team' 
+          const isActive = link.path === '/team'
             ? location.pathname === '/team'
             : location.pathname.startsWith(link.path);
-          
+
           return (
-            <Link
+            <motion.div
               key={link.path}
-              to={link.path}
-              className="relative group block"
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.03, duration: 0.2 }}
             >
-              {isActive && (
-                <motion.div 
-                  layoutId="activeTeamTab"
-                  className="absolute inset-0 bg-primary/10 rounded-xl"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <div className={cn(
-                "relative flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl transition-all duration-300 group-hover:bg-accent",
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              )}>
-                <Icon className={cn("h-5 w-5 transition-colors", isActive && "fill-primary/20")} />
-                <span className="hidden lg:block font-medium">{link.name}</span>
-                {isActive && <ChevronRight className="hidden lg:block ml-auto h-4 w-4 opacity-50" />}
-              </div>
-            </Link>
+              <Link
+                to={link.path}
+                title={link.name}
+                className="relative group block"
+              >
+                {isActive && (
+                  <>
+                    <motion.div
+                      layoutId="activeTeamTab"
+                      className="absolute inset-0 bg-primary/10 rounded-xl border border-primary/20"
+                      initial={false}
+                      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                    />
+                    <motion.div
+                      layoutId="activeTeamBar"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_8px_rgba(139,92,246,0.7)]"
+                      initial={false}
+                      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                    />
+                  </>
+                )}
+
+                <motion.div
+                  whileHover={{ x: 2 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  className={cn(
+                    "relative flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl transition-colors duration-150",
+                    "group-hover:bg-accent/80",
+                    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className={cn(
+                    "h-5 w-5 shrink-0 transition-all duration-200",
+                    "group-hover:scale-110",
+                    isActive
+                      ? "drop-shadow-[0_0_5px_rgba(139,92,246,0.5)]"
+                      : "group-hover:text-foreground"
+                  )} />
+
+                  <span className="hidden lg:block font-medium text-sm">{link.name}</span>
+
+                  {isActive && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="hidden lg:block ml-auto"
+                    >
+                      <ChevronRight className="h-4 w-4 opacity-40" />
+                    </motion.div>
+                  )}
+                </motion.div>
+              </Link>
+            </motion.div>
           );
         })}
       </div>
@@ -124,10 +172,11 @@ export function TeamSidebar({ isOpen = false, onClose }: TeamSidebarProps) {
       <div className="p-4 border-t border-border/50 mt-auto">
         <Link
           to="/"
-          className="flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors group"
+          title="Sign Out"
+          className="flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 group"
         >
-          <LogOut className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-          <span className="hidden lg:block font-medium">Sign Out</span>
+          <LogOut className="h-5 w-5 shrink-0 group-hover:-translate-x-1 group-hover:scale-110 transition-all duration-200" />
+          <span className="hidden lg:block font-medium text-sm">Sign Out</span>
         </Link>
       </div>
     </aside>

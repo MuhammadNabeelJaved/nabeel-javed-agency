@@ -3,7 +3,10 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 const apiClient = axios.create({
   baseURL: '/api/v1',
   withCredentials: true, // send HTTP-only cookies automatically
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',  // CSRF mitigation: distinguishes XHR from browser-nav requests
+  },
 });
 
 // ── Token refresh logic ──────────────────────────────────────────────────────

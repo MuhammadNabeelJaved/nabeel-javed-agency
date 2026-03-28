@@ -146,6 +146,7 @@ export const getMessages = asyncHandler(async (req, res) => {
     // Fetch in reverse (newest first), then flip for ascending display order
     const messages = await Message.find({ conversationId })
         .populate("senderId", "name photo role")
+        .populate({ path: "replyTo", populate: { path: "senderId", select: "name" } })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

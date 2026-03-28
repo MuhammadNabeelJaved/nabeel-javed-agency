@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2, Search, UserCheck, XCircle, Trash2, Eye,
-  Briefcase, ChevronDown, Mail, Phone, FileText, ExternalLink,
+  Briefcase, ChevronDown, ChevronLeft, ChevronRight, Mail, Phone, FileText, ExternalLink,
   Calendar, Users
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -95,6 +95,10 @@ export default function AdminJobApplications() {
   const [statusFilter, setStatusFilter] = useState('');
   const [stats, setStats]               = useState({ total: 0, pending: 0, reviewing: 0, shortlisted: 0, hired: 0, rejected: 0 });
 
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Detail dialog
   const [viewApp, setViewApp]           = useState<Application | null>(null);
 
@@ -143,6 +147,9 @@ export default function AdminJobApplications() {
     return () => clearTimeout(t);
   }, [fetchApplications]);
 
+  // Reset to page 1 when filter/search changes
+  useEffect(() => { setCurrentPage(1); }, [search, statusFilter]);
+
   // ── Actions ──────────────────────────────────────────────────────────────
   const updateStatus = async (id: string, status: string, label: string) => {
     try {
@@ -173,6 +180,10 @@ export default function AdminJobApplications() {
       setActionLoading(false);
     }
   };
+
+  // ─── Pagination ──────────────────────────────────────────────────────────
+  const totalPages = Math.ceil(applications.length / PAGE_SIZE);
+  const paginated  = applications.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // ─── Render ─────────────────────────────────────────────────────────────
   return (
@@ -245,7 +256,7 @@ export default function AdminJobApplications() {
                 </tr>
               </thead>
               <tbody>
-                {applications.map((app) => {
+                {paginated.map((app) => {
                   const sc = statusConfig[app.status] ?? { label: app.status, className: '' };
                   return (
                     <tr key={app._id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -339,6 +350,30 @@ export default function AdminJobApplications() {
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="px-4 py-3 border-t flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, applications.length)}–{Math.min(currentPage * PAGE_SIZE, applications.length)} of {applications.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                  className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="px-2 font-medium">{currentPage} / {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage === totalPages}
+                  className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
       )}
 

@@ -3,6 +3,7 @@ import asyncHandler from "../../middlewares/asyncHandler.js"
 import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import validator from "validator";
+import { escapeRegex } from "../../middlewares/sanitize.js";
 
 // =========================
 // CREATE CONTACT
@@ -67,12 +68,13 @@ export const getAllContacts = asyncHandler(async (req, res) => {
         // Build search query
         const query = {};
         if (search) {
+            const safeSearch = escapeRegex(search);
             query.$or = [
-                { firstName: { $regex: search, $options: "i" } },
-                { lastName: { $regex: search, $options: "i" } },
-                { email: { $regex: search, $options: "i" } },
-                { subject: { $regex: search, $options: "i" } },
-                { message: { $regex: search, $options: "i" } },
+                { firstName: { $regex: safeSearch, $options: "i" } },
+                { lastName:  { $regex: safeSearch, $options: "i" } },
+                { email:     { $regex: safeSearch, $options: "i" } },
+                { subject:   { $regex: safeSearch, $options: "i" } },
+                { message:   { $regex: safeSearch, $options: "i" } },
             ];
         }
 
@@ -290,7 +292,7 @@ export const searchContactByEmail = asyncHandler(async (req, res) => {
         }
 
         const contacts = await Contact.find({
-            email: { $regex: email, $options: "i" },
+            email: { $regex: escapeRegex(email), $options: "i" },
         }).sort({ createdAt: -1 });
 
         if (!contacts || contacts.length === 0) {
