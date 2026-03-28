@@ -22,6 +22,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { usePageVisibility } from '../hooks/usePageVisibility';
+import { useAuth } from '../contexts/AuthContext';
 
 interface UserSidebarProps {
   isOpen?: boolean;
@@ -32,6 +33,12 @@ export function UserSidebar({ isOpen = false, onClose }: UserSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isVisible } = usePageVisibility();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/', { replace: true });
+  };
 
   const links = [
     { name: 'Overview', path: '/user-dashboard', icon: LayoutDashboard },
@@ -98,11 +105,15 @@ export function UserSidebar({ isOpen = false, onClose }: UserSidebarProps) {
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
         >
           <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" alt="User Profile" className="h-full w-full object-cover" />
+            {user?.photo && user.photo !== 'default.jpg' ? (
+              <img src={user.photo} alt={user.name} className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-xl font-bold text-primary">{user?.name?.charAt(0) ?? 'U'}</span>
+            )}
           </div>
         </motion.div>
-        <h3 className="font-semibold text-lg">Alex Morgan</h3>
-        <p className="text-xs text-muted-foreground">Client Account</p>
+        <h3 className="font-semibold text-lg">{user?.name ?? 'User'}</h3>
+        <p className="text-xs text-muted-foreground capitalize">{user?.role ?? 'Client Account'}</p>
       </div>
 
       {/* Navigation */}
@@ -196,14 +207,14 @@ export function UserSidebar({ isOpen = false, onClose }: UserSidebarProps) {
 
       {/* Footer Actions */}
       <div className="p-4 border-t border-border/50 mt-auto">
-        <Link
-          to="/"
+        <button
+          onClick={handleLogout}
           title="Sign Out"
-          className="flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 group"
+          className="w-full flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 group"
         >
           <LogOut className="h-5 w-5 shrink-0 group-hover:-translate-x-1 group-hover:scale-110 transition-all duration-200" />
           <span className="hidden lg:block font-medium text-sm">Sign Out</span>
-        </Link>
+        </button>
       </div>
     </aside>
     </>
