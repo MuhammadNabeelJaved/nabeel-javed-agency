@@ -67,8 +67,8 @@ export const getOrCreateConversation = asyncHandler(async (req, res) => {
         throw new AppError("Invalid conversation type", 400);
     }
 
-    // For user_admin conversations, if no participantId is given, find the first admin
-    if (type === "user_admin" && !participantId) {
+    // For user_admin or admin_team conversations, if no participantId is given, find the first admin
+    if ((type === "user_admin" || type === "admin_team") && !participantId) {
         const admin = await User.findOne({ role: "admin", isActive: true }).select("_id");
         if (!admin) throw new AppError("No admin available", 404);
         participantId = admin._id;
