@@ -28,6 +28,8 @@ import {
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -37,6 +39,13 @@ interface SidebarProps {
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const location = useLocation();
   const { theme } = useTheme();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/', { replace: true });
+  };
 
   const links = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -187,14 +196,14 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
       {/* Footer Actions */}
       <div className="p-4 border-t border-border/50 mt-auto">
-        <Link
-          to="/"
+        <button
+          onClick={handleLogout}
           title="Sign Out"
-          className="flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 group"
+          className="w-full flex items-center gap-3 px-3 lg:px-4 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 group"
         >
           <LogOut className="h-5 w-5 shrink-0 group-hover:-translate-x-1 group-hover:scale-110 transition-all duration-200" />
           <span className="hidden lg:block font-medium text-sm">Sign Out</span>
-        </Link>
+        </button>
       </div>
     </aside>
     </>
