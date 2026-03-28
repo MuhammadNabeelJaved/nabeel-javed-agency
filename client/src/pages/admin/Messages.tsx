@@ -120,7 +120,20 @@ export default function Messages() {
             }
             setConversations((prev) =>
                 prev.map((c) =>
-                    c._id === msg.conversationId ? { ...c, lastMessageAt: msg.createdAt } : c
+                    c._id === msg.conversationId
+                        ? {
+                            ...c,
+                            lastMessageAt: msg.createdAt,
+                            lastMessage: {
+                                _id: msg._id,
+                                content: msg.content,
+                                messageType: msg.messageType,
+                                fileName: msg.fileName,
+                                senderId: msg.senderId as any,
+                                createdAt: msg.createdAt,
+                            },
+                          }
+                        : c
                 )
             );
         };
@@ -405,7 +418,7 @@ export default function Messages() {
                                 </div>
                             ) : (
                                 messages.map((msg) => {
-                                    const isMe = msg.senderId._id === user?._id;
+                                    const isMe = msg.senderId?._id === user?._id;
                                     if (msg.messageType === 'system') {
                                         return (
                                             <div key={msg._id} className="flex justify-center">
@@ -433,7 +446,7 @@ export default function Messages() {
                                                 >
                                                     {msg.replyTo && (
                                                         <div className={`mb-2 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${isMe ? 'border-white/40 bg-white/10' : 'border-primary/40 bg-muted/50'}`}>
-                                                            <span className="font-semibold">{msg.replyTo.senderId.name}</span>
+                                                            <span className="font-semibold">{msg.replyTo.senderId?.name ?? 'Deleted User'}</span>
                                                             <p className="truncate">{msg.replyTo.isDeleted ? 'Deleted message' : (msg.replyTo.messageType === 'file' ? `📎 ${msg.replyTo.fileName}` : msg.replyTo.content)}</p>
                                                         </div>
                                                     )}
@@ -477,7 +490,7 @@ export default function Messages() {
                                     {replyTo && (
                                         <div className="flex items-center gap-2 px-4 pt-3 pb-1">
                                             <div className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-muted border-l-2 border-primary">
-                                                <span className="font-semibold text-primary">{replyTo.senderId.name}</span>
+                                                <span className="font-semibold text-primary">{replyTo.senderId?.name ?? 'Deleted User'}</span>
                                                 <p className="truncate text-muted-foreground">{replyTo.messageType === 'file' ? `📎 ${replyTo.fileName}` : replyTo.content}</p>
                                             </div>
                                             <button onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
