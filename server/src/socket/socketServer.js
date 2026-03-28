@@ -314,20 +314,36 @@ export async function initSocket(httpServer, corsOptions) {
             });
         });
 
-        // ── Mark messages as read ─────────────────────────────────────────────
+        // ── Mark messages as read + clear chat notifications ─────────────────
         socket.on("chat:read_messages", async ({ conversationId }) => {
             try {
+                // Mark all unread messages in this conversation as read
                 await Message.updateMany(
-                    {
-                        conversationId,
-                        readBy: { $ne: user._id },
-                    },
+                    { conversationId, readBy: { $ne: user._id } },
                     { $addToSet: { readBy: user._id } }
                 );
                 io.to(`conversation:${conversationId}`).emit("chat:messages_read", {
                     conversationId,
                     readBy: user._id,
                 });
+
+                // Clear chat-related notifications for this conversation
+                await Notification.updateMany(
+                    {
+                        recipientId: user._id,
+                        isRead: false,
+                        type: { $in: ["message", "file_received"] },
+                        "payload.conversationId": conversationId,
+                    },
+                    { isRead: true }
+                );
+
+                // Emit updated unread count so badge updates immediately
+                const unreadCount = await Notification.countDocuments({
+                    recipientId: user._id,
+                    isRead: false,
+                });
+                socket.emit("notification:unread_count", { count: unreadCount });
             } catch {
                 socket.emit("error:global", { message: "Failed to mark messages as read" });
             }
