@@ -14,7 +14,7 @@
  * Usage:
  *   const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotifications();
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useSocket } from '../contexts/SocketContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -75,6 +75,8 @@ export function useNotifications() {
         // Server sends the accurate count (on reconnect / after mark-read via socket)
         const onUnreadCount = ({ count }: { count: number }) => {
             setUnreadCount(count);
+            // Re-fetch notification list to sync isRead status on chat notifications
+            fetchNotifications();
         };
 
         socket.on('notification:new', onNew);
@@ -134,9 +136,16 @@ export function useNotifications() {
         }
     }, []);
 
+    // Count of unread chat notifications (message + file_received) — drives sidebar badge
+    const chatUnreadCount = useMemo(
+        () => notifications.filter(n => !n.isRead && (n.type === 'message' || n.type === 'file_received')).length,
+        [notifications]
+    );
+
     return {
         notifications,
         unreadCount,
+        chatUnreadCount,
         isLoading,
         markAsRead,
         markAllAsRead,

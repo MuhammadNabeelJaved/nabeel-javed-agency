@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -41,6 +42,8 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { theme } = useTheme();
   const { logout } = useAuth();
   const navigate = useNavigate();
+
+  const { chatUnreadCount } = useNotifications();
 
   const handleLogout = async () => {
     await logout();
@@ -168,15 +171,29 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                     isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Icon className={cn(
-                    "h-5 w-5 shrink-0 transition-all duration-200",
-                    "group-hover:scale-110",
-                    isActive
-                      ? "drop-shadow-[0_0_5px_rgba(139,92,246,0.5)]"
-                      : "group-hover:text-foreground"
-                  )} />
+                  <div className="relative shrink-0">
+                    <Icon className={cn(
+                      "h-5 w-5 transition-all duration-200",
+                      "group-hover:scale-110",
+                      isActive
+                        ? "drop-shadow-[0_0_5px_rgba(139,92,246,0.5)]"
+                        : "group-hover:text-foreground"
+                    )} />
+                    {link.path === '/admin/messages' && chatUnreadCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-primary text-[9px] text-primary-foreground font-bold flex items-center justify-center shadow-[0_0_6px_rgba(var(--primary),0.6)]">
+                        {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+                      </span>
+                    )}
+                  </div>
 
-                  <span className="hidden lg:block font-medium text-sm">{link.name}</span>
+                  <span className="hidden lg:flex items-center gap-2 font-medium text-sm flex-1">
+                    {link.name}
+                    {link.path === '/admin/messages' && chatUnreadCount > 0 && (
+                      <span className="ml-auto h-5 min-w-[20px] px-1 rounded-full bg-primary text-[10px] text-primary-foreground font-bold flex items-center justify-center">
+                        {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                      </span>
+                    )}
+                  </span>
 
                   {isActive && (
                     <motion.div
