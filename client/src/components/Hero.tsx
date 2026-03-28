@@ -100,10 +100,10 @@ export function Hero() {
           {/* Floating Cards (Decorative) */}
           <div className="absolute w-full h-full top-0 left-0 pointer-events-none -z-10 overflow-hidden">
              {/* Left Card */}
-             <motion.div 
+             <motion.div
                animate={{ y: [0, -20, 0], rotate: [-6, -8, -6] }}
                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-               className="absolute top-1/3 left-[10%] bg-card/80 dark:bg-card/40 backdrop-blur-xl border border-border p-4 rounded-2xl hidden lg:block shadow-2xl dark:shadow-[0_0_30px_rgba(0,0,0,0.2)]"
+               className="absolute top-1/3 left-[4%] bg-card/80 dark:bg-card/40 backdrop-blur-xl border border-border p-4 rounded-2xl hidden lg:block shadow-2xl dark:shadow-[0_0_30px_rgba(0,0,0,0.2)]"
              >
                <div className="flex items-center gap-3 mb-2">
                  <div className="p-2 bg-blue-500/20 rounded-lg">
@@ -117,10 +117,10 @@ export function Hero() {
              </motion.div>
 
              {/* Right Card */}
-             <motion.div 
+             <motion.div
                animate={{ y: [0, 30, 0], rotate: [12, 10, 12] }}
                transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-               className="absolute top-1/4 right-[10%] bg-card/80 dark:bg-card/40 backdrop-blur-xl border border-border p-4 rounded-2xl hidden lg:block shadow-2xl dark:shadow-[0_0_30px_rgba(0,0,0,0.2)]"
+               className="absolute top-1/4 right-[4%] bg-card/80 dark:bg-card/40 backdrop-blur-xl border border-border p-4 rounded-2xl hidden lg:block shadow-2xl dark:shadow-[0_0_30px_rgba(0,0,0,0.2)]"
              >
                <div className="flex items-center gap-3 mb-2">
                  <div className="p-2 bg-yellow-500/20 rounded-lg">
@@ -137,7 +137,7 @@ export function Hero() {
              <motion.div 
                animate={{ y: [0, -25, 0], x: [0, 10, 0] }}
                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-               className="absolute bottom-1/4 left-[15%] bg-card/80 dark:bg-card/40 backdrop-blur-xl border border-border p-3 rounded-2xl hidden lg:flex items-center gap-3 shadow-2xl dark:shadow-[0_0_30px_rgba(0,0,0,0.2)]"
+               className="absolute bottom-1/4 left-[8%] bg-card/80 dark:bg-card/40 backdrop-blur-xl border border-border p-3 rounded-2xl hidden lg:flex items-center gap-3 shadow-2xl dark:shadow-[0_0_30px_rgba(0,0,0,0.2)]"
              >
                <div className="p-2 bg-green-500/20 rounded-lg">
                  <BarChart3 className="h-5 w-5 text-green-500" />
@@ -149,7 +149,7 @@ export function Hero() {
              <motion.div 
                animate={{ y: [0, 20, 0], x: [0, -10, 0] }}
                transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-               className="absolute bottom-1/3 right-[15%] bg-card/80 dark:bg-card/40 backdrop-blur-xl border border-border p-4 rounded-2xl hidden lg:block shadow-2xl dark:shadow-[0_0_30px_rgba(0,0,0,0.2)]"
+               className="absolute bottom-1/3 right-[8%] bg-card/80 dark:bg-card/40 backdrop-blur-xl border border-border p-4 rounded-2xl hidden lg:block shadow-2xl dark:shadow-[0_0_30px_rgba(0,0,0,0.2)]"
              >
                <div className="flex flex-col items-center gap-2">
                  <Smartphone className="h-6 w-6 text-purple-500" />
@@ -161,7 +161,7 @@ export function Hero() {
              <motion.div 
                animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] }}
                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-               className="absolute top-[20%] left-[25%] hidden lg:block"
+               className="absolute top-[20%] left-[18%] hidden lg:block"
              >
                <div className="p-3 bg-red-500/10 rounded-full border border-red-500/20 backdrop-blur-md">
                  <Fingerprint className="h-6 w-6 text-red-500" />
@@ -172,7 +172,7 @@ export function Hero() {
              <motion.div 
                animate={{ x: [0, 30, 0] }}
                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-               className="absolute bottom-[20%] right-[25%] hidden lg:block"
+               className="absolute bottom-[20%] right-[18%] hidden lg:block"
              >
                <div className="p-3 bg-cyan-500/10 rounded-full border border-cyan-500/20 backdrop-blur-md">
                  <Cloud className="h-6 w-6 text-cyan-500" />
@@ -183,7 +183,7 @@ export function Hero() {
              <motion.div 
                animate={{ rotate: [0, 360] }}
                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-               className="absolute top-[15%] right-[30%] hidden lg:block opacity-30"
+               className="absolute top-[15%] right-[22%] hidden lg:block opacity-30"
              >
                <Bot className="h-12 w-12 text-foreground" />
              </motion.div>
