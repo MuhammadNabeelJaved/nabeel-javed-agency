@@ -25,15 +25,12 @@ import {
   Filter,
   MoreVertical,
   Edit2,
-  Trash2,
   Briefcase,
   MapPin,
   Clock,
   X,
   Save,
   CheckCircle2,
-  Users,
-  Building,
   DollarSign,
   Loader2
 } from 'lucide-react';
@@ -129,7 +126,7 @@ export default function JobManagement() {
     setIsSaving(true);
     try {
       if (isEditing) {
-        const id = (currentJob as any)._id || currentJob.id;
+        const id = (currentJob as any)._id;
         await jobsApi.update(id, currentJob);
         toast.success('Job updated', { description: 'Changes have been saved.' });
       } else {
@@ -183,12 +180,12 @@ export default function JobManagement() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search jobs..."
-            className="pl-10 bg-white border-border/60 h-11"
+            className="pl-10 border-border/60 h-11"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="gap-2 h-11 px-6 border-border/60 bg-white">
+        <Button variant="outline" className="gap-2 h-11 px-6 border-border/60">
           <Filter className="w-4 h-4" />
           Filters
         </Button>
@@ -212,7 +209,7 @@ export default function JobManagement() {
             return (
               <div
                 key={jobId}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-white hover:shadow-md border border-border/40 rounded-xl transition-all"
+                className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-card hover:shadow-md border border-border/40 rounded-xl transition-all"
               >
                 <div className="space-y-3 mb-4 sm:mb-0 w-full">
                   <div className="flex items-center gap-3 flex-wrap">

@@ -358,6 +358,175 @@ export const executeQuery = asyncHandler(async (req, res) => {
 // 6. GET /export/:name
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// 7. GET /collections/:name/documents — paginated document browser
+// ---------------------------------------------------------------------------
+
+export const getDocuments = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  const { name } = req.params;
+  if (!isValidCollectionName(name)) {
+    throw new AppError("Invalid collection name", 400);
+  }
+
+  const db = mongoose.connection.db;
+  const allCollections = await db.listCollections().toArray();
+  if (!allCollections.some((c) => c.name === name)) {
+    throw new AppError(`Collection '${name}' not found`, 404);
+  }
+
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+  const skip  = (page - 1) * limit;
+  const search = (req.query.search || "").toString().trim();
+
+  let filter = {};
+  if (search) {
+    const { ObjectId } = mongoose.Types;
+    // If it looks like a valid ObjectId, search by _id
+    if (ObjectId.isValid(search)) {
+      filter = { _id: new ObjectId(search) };
+    } else {
+      // Regex search on all top-level string fields
+      // Build a $or by sampling the first doc to discover string fields
+      const sample = await db.collection(name).findOne({});
+      if (sample) {
+        const stringFields = Object.keys(sample).filter(
+          (k) => k !== "_id" && typeof sample[k] === "string"
+        );
+        if (stringFields.length > 0) {
+          filter = {
+            $or: stringFields.map((field) => ({
+              [field]: { $regex: search, $options: "i" },
+            })),
+          };
+        }
+      }
+    }
+  }
+
+  const [documents, total] = await Promise.all([
+    db.collection(name).find(filter).sort({ _id: -1 }).skip(skip).limit(limit).toArray(),
+    db.collection(name).countDocuments(filter),
+  ]);
+
+  return successResponse(res, "Documents fetched", {
+    documents,
+    pagination: {
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      limit,
+      hasMore: page * limit < total,
+    },
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. POST /collections/:name/documents — insertOne
+// ---------------------------------------------------------------------------
+
+export const insertDocument = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  const { name } = req.params;
+  if (!isValidCollectionName(name)) {
+    throw new AppError("Invalid collection name", 400);
+  }
+
+  const doc = req.body;
+  if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
+    throw new AppError("Request body must be a JSON object", 400);
+  }
+
+  const db = mongoose.connection.db;
+  const result = await db.collection(name).insertOne(doc);
+
+  return successResponse(res, "Document inserted successfully", {
+    insertedId: result.insertedId,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. PUT /collections/:name/documents/:id — updateOne by _id
+// ---------------------------------------------------------------------------
+
+export const updateDocument = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  const { name, id } = req.params;
+  if (!isValidCollectionName(name)) {
+    throw new AppError("Invalid collection name", 400);
+  }
+
+  const { ObjectId } = mongoose.Types;
+  let objectId;
+  try {
+    objectId = new ObjectId(id);
+  } catch {
+    throw new AppError("Invalid document ID", 400);
+  }
+
+  const update = req.body;
+  if (!update || typeof update !== "object" || Array.isArray(update)) {
+    throw new AppError("Request body must be a JSON object", 400);
+  }
+
+  // Remove _id to avoid immutable field error
+  const { _id, ...fields } = update;
+
+  const db = mongoose.connection.db;
+  const result = await db
+    .collection(name)
+    .updateOne({ _id: objectId }, { $set: fields });
+
+  if (result.matchedCount === 0) {
+    throw new AppError("Document not found", 404);
+  }
+
+  return successResponse(res, "Document updated successfully", {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. DELETE /collections/:name/documents/:id — deleteOne by _id
+// ---------------------------------------------------------------------------
+
+export const deleteDocument = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  const { name, id } = req.params;
+  if (!isValidCollectionName(name)) {
+    throw new AppError("Invalid collection name", 400);
+  }
+
+  const { ObjectId } = mongoose.Types;
+  let objectId;
+  try {
+    objectId = new ObjectId(id);
+  } catch {
+    throw new AppError("Invalid document ID", 400);
+  }
+
+  const db = mongoose.connection.db;
+  const result = await db.collection(name).deleteOne({ _id: objectId });
+
+  if (result.deletedCount === 0) {
+    throw new AppError("Document not found", 404);
+  }
+
+  return successResponse(res, "Document deleted successfully", {
+    deletedCount: result.deletedCount,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. GET /export/:name
+// ---------------------------------------------------------------------------
+
 export const exportCollection = asyncHandler(async (req, res) => {
   requireAdmin(req);
 

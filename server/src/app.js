@@ -18,43 +18,85 @@ import path from "path";
 import cors from "cors"
 import cookieParser from "cookie-parser"
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import errorHandler from "./middlewares/errorHandler.js";
 import notFound from "./middlewares/notFound.js";
+import { globalLimiter } from "./middlewares/rateLimiter.js";
+import { sanitizeMongo, trimBody, preventHPP } from "./middlewares/sanitize.js";
+import { requestLogger } from "./middlewares/requestLogger.js";
 
 
 dotenv.config();
 const app = express()
 
+// Trust the first proxy hop (needed for accurate IP in rate-limiter behind Nginx/LB)
+app.set("trust proxy", 1);
 
-// ─── Security & Cross-Origin ────────────────────────────────────────────────
+
+// ─── Security Headers (Helmet) ───────────────────────────────────────────────
+// Helmet sets a suite of protective HTTP headers in one call.
+// We customise Content-Security-Policy instead of using the aggressive default
+// so that our own CDN assets and Socket.IO still work.
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc:     ["'self'"],
+            scriptSrc:      ["'self'", "'unsafe-inline'"],   // vite dev needs unsafe-inline
+            styleSrc:       ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc:        ["'self'", "https://fonts.gstatic.com"],
+            imgSrc:         ["'self'", "data:", "https:", "blob:"],
+            connectSrc:     ["'self'", "wss:", "https:"],    // websocket + API calls
+            frameSrc:       ["'none'"],
+            objectSrc:      ["'none'"],
+            upgradeInsecureRequests: [],
+        },
+    },
+    crossOriginEmbedderPolicy: false,  // required for Cloudinary images
+    hsts: {
+        maxAge:            31536000,   // 1 year
+        includeSubDomains: true,
+        preload:           true,
+    },
+}));
+
+// ─── CORS ───────────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
 
 app.use(cors({
-    origin: process.env.CORS_ORIGIN,
-    credentials: true   // Allow cookies to be sent with cross-origin requests
-}))
-
-// Set secure HTTP headers (X-Content-Type-Options, HSTS, etc.)
-app.use(helmet());
-
-// Rate limiter – 100 requests per 15 minutes per IP
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // limit each IP to 1000 requests per windowMs
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (req) => {
-        // Skip rate limiting for authenticated API requests (dashboard usage)
-        return !!req.headers.authorization || !!req.cookies?.accessToken;
+    origin: (origin, cb) => {
+        // Allow server-to-server requests (no origin) in non-production
+        if (!origin && process.env.NODE_ENV !== "production") return cb(null, true);
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+        cb(new Error(`CORS: origin '${origin}' is not allowed`));
     },
-});
-app.use(limiter);
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    exposedHeaders: ["RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"],
+}));
+
+// ─── Global Rate Limiter ─────────────────────────────────────────────────────
+// Applied to ALL routes — authenticated users are NOT exempt.
+// Specific, tighter limiters are added at the route level (see rateLimiter.js).
+app.use(globalLimiter);
+
+// ─── Request Logging ─────────────────────────────────────────────────────────
+app.use(requestLogger);
 
 // ─── Request Parsing ────────────────────────────────────────────────────────
-
 app.use(cookieParser())
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
+
+// ─── Input Sanitization ──────────────────────────────────────────────────────
+// Strip MongoDB operators ($, .) from body/query/params → NoSQL injection guard
+app.use(sanitizeMongo);
+// Trim leading/trailing whitespace from all top-level string body fields
+app.use(trimBody);
+// Collapse duplicate query params → HTTP Parameter Pollution guard
+app.use(preventHPP);
 
 // Serve files from the local upload directory (temp files before Cloudinary push)
 app.use("/uploads", express.static(path.join(process.cwd(), "src/public/uploads")));
@@ -81,9 +123,12 @@ import chatRoutes from "./routes/userRoutes/chat.route.js";
 import notificationRoutes from "./routes/userRoutes/notification.route.js";
 import databaseRoutes from "./routes/userRoutes/database.route.js";
 
-// ⚠️ TEMP DEV-ONLY — REMOVE BEFORE PROD
+// ─── Dev-only Utilities ──────────────────────────────────────────────────────
+// These endpoints are BLOCKED in production. They are only registered when
+// NODE_ENV === "development" so they can never be called in a live environment.
+if (process.env.NODE_ENV === "development") {
+
 // Seed endpoint — populates CMS, Hero, and Services with default data
-// Only runs if each collection is currently empty (safe to call multiple times)
 app.post("/api/v1/devseed", async (req, res) => {
     try {
         const CMS = (await import("./models/usersModels/CMS.model.js")).default;
@@ -701,6 +746,8 @@ app.post("/api/v1/devpromote", async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.json({ success: true, message: `${email} -> ${role}`, role: user.role });
 });
+
+} // end NODE_ENV === "development" block
 
 app.use("/api/v1/users", userRoutes);               // Auth, profile, team
 app.use("/api/v1/projects", projectRoutes);         // Client project requests

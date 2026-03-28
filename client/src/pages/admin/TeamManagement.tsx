@@ -25,6 +25,8 @@ import {
   Loader2,
   X,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../../components/ui/button';
@@ -280,12 +282,19 @@ export default function TeamManagement() {
     setSelectedCandidate(prev => prev ? { ...prev, status } : null);
   };
 
-  // ── Filtering ──
+  // ── Filtering + Pagination ──
 
   const filteredMembers = members.filter(m =>
     m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (m.teamProfile?.position || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const PAGE_SIZE      = 10;
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const totalPages     = Math.ceil(filteredMembers.length / PAGE_SIZE);
+  const paginatedMembers = filteredMembers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  React.useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   const filteredCandidates = candidates.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -387,7 +396,7 @@ export default function TeamManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMembers.map(member => (
+                    {paginatedMembers.map(member => (
                       <TableRow key={member._id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -452,6 +461,30 @@ export default function TeamManagement() {
                     )}
                   </TableBody>
                 </Table>
+              )}
+              {!isLoading && totalPages > 1 && (
+                <div className="px-4 py-3 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredMembers.length)}–{Math.min(currentPage * PAGE_SIZE, filteredMembers.length)} of {filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCurrentPage(p => p - 1)}
+                      disabled={currentPage === 1}
+                      className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="px-2 font-medium">{currentPage} / {totalPages}</span>
+                    <button
+                      onClick={() => setCurrentPage(p => p + 1)}
+                      disabled={currentPage === totalPages}
+                      className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

@@ -19,6 +19,7 @@ import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import Client from "../../models/usersModels/Client.model.js";
 import Project from "../../models/usersModels/Project.model.js";
+import { escapeRegex } from "../../middlewares/sanitize.js";
 
 // =========================
 // CREATE CLIENT
@@ -69,10 +70,11 @@ export const getAllClients = asyncHandler(async (req, res) => {
     if (status) filter.status = status;
     if (accountManager) filter.accountManager = accountManager;
     if (search) {
+        const safeSearch = escapeRegex(search);
         filter.$or = [
-            { companyName: { $regex: search, $options: "i" } },
-            { contactName: { $regex: search, $options: "i" } },
-            { email: { $regex: search, $options: "i" } },
+            { companyName: { $regex: safeSearch, $options: "i" } },
+            { contactName: { $regex: safeSearch, $options: "i" } },
+            { email:       { $regex: safeSearch, $options: "i" } },
         ];
     }
 

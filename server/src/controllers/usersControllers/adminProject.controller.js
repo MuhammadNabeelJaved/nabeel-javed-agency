@@ -18,6 +18,7 @@ import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import adminProject from "../../models/usersModels/AdminProject.model.js";
 import mongoose from "mongoose";
+import { escapeRegex } from "../../middlewares/sanitize.js";
 
 
 // =========================
@@ -245,10 +246,13 @@ export const getPublicPortfolio = asyncHandler(async (req, res) => {
 
     const filter = {};
     if (category) filter.category = category;
-    if (search) filter.$or = [
-        { projectTitle: { $regex: search, $options: "i" } },
-        { projectDescription: { $regex: search, $options: "i" } },
-    ];
+    if (search) {
+        const safeSearch = escapeRegex(search);
+        filter.$or = [
+            { projectTitle:       { $regex: safeSearch, $options: "i" } },
+            { projectDescription: { $regex: safeSearch, $options: "i" } },
+        ];
+    }
 
     const projects = await adminProject.getPublicPortfolio(filter);
     successResponse(res, "Portfolio fetched successfully", { projects, total: projects.length });

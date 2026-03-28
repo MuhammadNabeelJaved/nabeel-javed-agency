@@ -129,7 +129,7 @@ function AnnouncementFormDialog({
               />
             </div>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20">
+          <div className="flex items-center justify-between p-3 rounded-xl border border-white/10 bg-white/5">
             <p className="text-sm font-medium">Show on website</p>
             <button
               type="button"
@@ -233,7 +233,7 @@ function CreateBarDialog({
               {name || 'Preview Bar'}
             </div>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20">
+          <div className="flex items-center justify-between p-3 rounded-xl border border-white/10 bg-white/5">
             <div>
               <p className="text-sm font-medium">Scroll Animation</p>
               <p className="text-xs text-muted-foreground">
@@ -284,7 +284,7 @@ function BarSettingsPanel({ bar, onSave }: {
   };
 
   return (
-    <div className="space-y-4 p-4 bg-muted/10 rounded-xl border border-border/40">
+    <div className="space-y-4 p-4 bg-white/5 rounded-xl border border-white/10">
       {/* Colors */}
       <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bar Colors</p>
@@ -336,7 +336,7 @@ function BarSettingsPanel({ bar, onSave }: {
       </div>
 
       {/* Scroll Animation */}
-      <div className="flex items-center justify-between p-2.5 rounded-lg border border-border/50">
+      <div className="flex items-center justify-between p-2.5 rounded-lg border border-white/10 bg-white/5">
         <div className="flex items-center gap-2">
           {local.scrollEnabled
             ? <Play className="h-3.5 w-3.5 text-primary" />
@@ -376,7 +376,7 @@ function BarSettingsPanel({ bar, onSave }: {
                 key={p.l}
                 type="button"
                 onClick={() => set('tickerDuration', p.v)}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${local.tickerDuration === p.v ? 'border-primary bg-primary/10 text-primary' : 'border-border/50 text-muted-foreground'}`}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${local.tickerDuration === p.v ? 'border-primary bg-primary/10 text-primary' : 'border-white/15 text-muted-foreground'}`}
               >
                 {p.l}
               </button>
@@ -396,7 +396,7 @@ function BarSettingsPanel({ bar, onSave }: {
                 key={v}
                 type="button"
                 onClick={() => set('textAlign', v)}
-                className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium transition-all ${local.textAlign === v ? 'border-primary bg-primary/10 text-primary' : 'border-border/50 text-muted-foreground'}`}
+                className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium transition-all ${local.textAlign === v ? 'border-primary bg-primary/10 text-primary' : 'border-white/15 text-muted-foreground'}`}
               >
                 <Icon className="h-3.5 w-3.5" />{l}
               </button>
@@ -406,7 +406,7 @@ function BarSettingsPanel({ bar, onSave }: {
       )}
 
       {/* Separator */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between p-2.5 rounded-lg border border-white/10 bg-white/5">
         <p className="text-xs font-medium text-muted-foreground">Separator ◆</p>
         <button
           type="button"
@@ -458,7 +458,7 @@ function BarSettingsPanel({ bar, onSave }: {
               key={p.l}
               type="button"
               onClick={() => set('itemSpacing', p.v)}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${local.itemSpacing === p.v ? 'border-primary bg-primary/10 text-primary' : 'border-border/50 text-muted-foreground'}`}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${local.itemSpacing === p.v ? 'border-primary bg-primary/10 text-primary' : 'border-white/15 text-muted-foreground'}`}
             >
               {p.l}
             </button>
@@ -518,7 +518,7 @@ function BarCard({
     : items.filter(i => i.isActive);
 
   return (
-    <Card className={`border-border/50 overflow-hidden transition-all duration-300 ${!bar.isActive ? 'opacity-60' : ''}`}>
+    <Card className={`border-white/10 bg-card overflow-hidden transition-all duration-300 ${!bar.isActive ? 'opacity-60' : ''}`}>
       {/* Bar color stripe at top */}
       <div className="h-1.5" style={{ backgroundColor: bar.bgColor }} />
 
@@ -642,7 +642,7 @@ function BarCard({
 
         {/* Expanded: Settings + Announcements */}
         {expanded && (
-          <div className="border-t border-border/30">
+          <div className="border-t border-white/10">
             <div className="p-4 space-y-4">
               {/* Settings Panel */}
               <div>
@@ -674,7 +674,7 @@ function BarCard({
                 {items.length === 0 ? (
                   <button
                     onClick={() => onAddAnnouncement(bar._id)}
-                    className="w-full border-2 border-dashed border-border/50 rounded-xl p-6 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                    className="w-full border-2 border-dashed border-white/15 rounded-xl p-6 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group"
                   >
                     <Plus className="h-6 w-6 mx-auto mb-1 text-muted-foreground/40 group-hover:text-primary" />
                     <p className="text-xs text-muted-foreground group-hover:text-foreground">
@@ -686,7 +686,7 @@ function BarCard({
                     {items.map(item => (
                       <div
                         key={item._id}
-                        className={`flex items-center gap-3 p-2.5 rounded-lg border border-border/40 ${!item.isActive ? 'opacity-50' : ''}`}
+                        className={`flex items-center gap-3 p-2.5 rounded-lg border border-white/10 bg-white/5 ${!item.isActive ? 'opacity-50' : ''}`}
                       >
                         <div
                           className="h-6 w-20 rounded flex items-center px-2 text-[10px] font-medium shrink-0 overflow-hidden"
@@ -968,10 +968,10 @@ export default function AnnouncementManager() {
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: 'Total Bars',    value: barGroups.length,  color: 'text-foreground',  bg: 'bg-primary/10',   Icon: Layers   },
-          { label: 'Active Bars',   value: activeBars,        color: 'text-green-600',   bg: 'bg-green-500/10', Icon: EyeOff   },
+          { label: 'Active Bars',   value: activeBars,        color: 'text-emerald-400', bg: 'bg-emerald-500/10', Icon: EyeOff   },
           { label: 'Announcements', value: totalAnnouncements, color: 'text-primary',    bg: 'bg-primary/10',   Icon: Megaphone },
         ].map(({ label, value, color, bg, Icon }) => (
-          <Card key={label} className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <Card key={label} className="border-white/10 bg-card backdrop-blur-sm">
             <CardContent className="p-5 flex items-center gap-4">
               <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${bg}`}>
                 <Icon className={`h-5 w-5 ${color}`} />
@@ -1004,7 +1004,7 @@ export default function AnnouncementManager() {
       ) : barGroups.length === 0 ? (
         <button
           onClick={() => setCreateBarOpen(true)}
-          className="w-full border-2 border-dashed border-border/50 rounded-2xl p-12 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group"
+          className="w-full border-2 border-dashed border-white/15 rounded-2xl p-12 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group"
         >
           <Layers className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40 group-hover:text-primary transition-colors" />
           <p className="font-semibold text-muted-foreground group-hover:text-foreground">No bars yet</p>

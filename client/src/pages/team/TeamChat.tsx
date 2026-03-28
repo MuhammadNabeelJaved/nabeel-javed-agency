@@ -4,6 +4,7 @@
  * Sidebar shows all admin_team DM conversations.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     Send, Search, Phone, Video, MoreVertical, Paperclip, Loader2, Hash
 } from 'lucide-react';
@@ -15,10 +16,13 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
 import { chatApi, ChatMessage, Conversation } from '../../api/chat.api';
+import { ChatFileMessage } from '../../components/ChatFileMessage';
+import { SwipeableMessage } from '../../components/SwipeableMessage';
 
 export default function TeamChat() {
     const { user } = useAuth();
     const { socket, isConnected } = useSocket();
+    const [searchParams] = useSearchParams();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConvo, setSelectedConvo] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -29,7 +33,9 @@ export default function TeamChat() {
     const [isTyping, setIsTyping] = useState(false);
     const [typingUser, setTypingUser] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,6 +74,14 @@ export default function TeamChat() {
         }
     };
 
+    // Auto-select conversation from URL param ?convoId=...
+    useEffect(() => {
+        const convoId = searchParams.get('convoId');
+        if (!convoId || conversations.length === 0) return;
+        const match = conversations.find((c) => c._id === convoId);
+        if (match && selectedConvo?._id !== convoId) selectConversation(match);
+    }, [conversations, searchParams]);
+
     // ── Socket room join ─────────────────────────────────────────────────────
     useEffect(() => {
         if (!socket || !selectedConvo) return;
@@ -102,18 +116,27 @@ export default function TeamChat() {
             setIsTyping(typing);
         };
 
+        const onDeleted = ({ messageId }: { messageId: string }) => {
+            setMessages((prev) =>
+                prev.map((m) => m._id === messageId ? { ...m, isDeleted: true, content: '' } : m)
+            );
+        };
+
         socket.on('chat:new_message', onNewMessage);
         socket.on('chat:typing_indicator', onTyping);
+        socket.on('chat:message_deleted', onDeleted);
 
         return () => {
             socket.off('chat:new_message', onNewMessage);
             socket.off('chat:typing_indicator', onTyping);
+            socket.off('chat:message_deleted', onDeleted);
         };
     }, [socket, selectedConvo?._id]);
 
     // ── Auto-scroll ──────────────────────────────────────────────────────────
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const el = messagesContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
     }, [messages]);
 
     // ── Typing indicator ─────────────────────────────────────────────────────
@@ -132,13 +155,22 @@ export default function TeamChat() {
         const trimmed = message.trim();
         if (!trimmed || !socket || !selectedConvo) return;
         setMessage('');
+        const replyToId = replyTo?._id;
+        setReplyTo(null);
         socket.emit('chat:typing', { conversationId: selectedConvo._id, isTyping: false });
         socket.emit('chat:send_message', {
             conversationId: selectedConvo._id,
             content: trimmed,
             messageType: 'text',
+            replyToId,
         });
-    }, [message, socket, selectedConvo]);
+    }, [message, socket, selectedConvo, replyTo]);
+
+    // ── Delete message ────────────────────────────────────────────────────────
+    const handleDelete = useCallback((msgId: string) => {
+        if (!socket) return;
+        socket.emit('chat:delete_message', { messageId: msgId });
+    }, [socket]);
 
     // ── File upload ──────────────────────────────────────────────────────────
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -253,7 +285,7 @@ export default function TeamChat() {
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/5">
+                        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 bg-muted/5">
                             {isMsgsLoading ? (
                                 <div className="flex justify-center items-center h-full">
                                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -291,27 +323,34 @@ export default function TeamChat() {
                                                         {formatTime(msg.createdAt)}
                                                     </span>
                                                 </div>
-                                                <div
-                                                    className={`mt-1 rounded-2xl px-3 py-2 text-sm ${
-                                                        isMe
-                                                            ? 'bg-primary text-primary-foreground'
-                                                            : 'bg-card border border-border/50'
-                                                    }`}
-                                                >
-                                                    {msg.messageType === 'file' ? (
-                                                        <a
-                                                            href={msg.fileUrl}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="flex items-center gap-2 underline"
-                                                        >
-                                                            <Paperclip className="h-3 w-3 shrink-0" />
-                                                            {msg.fileName || 'File attachment'}
-                                                        </a>
-                                                    ) : (
-                                                        msg.content
-                                                    )}
-                                                </div>
+                                                <SwipeableMessage msg={msg} isMe={isMe} onReply={setReplyTo} onDelete={handleDelete}>
+                                                    <div
+                                                        className={`mt-1 rounded-2xl px-3 py-2 text-sm ${
+                                                            isMe
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'bg-card border border-border/50'
+                                                        }`}
+                                                    >
+                                                        {msg.replyTo && (
+                                                            <div className={`mb-2 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${isMe ? 'border-white/40 bg-white/10' : 'border-primary/40 bg-muted/50'}`}>
+                                                                <span className="font-semibold">{msg.replyTo.senderId.name}</span>
+                                                                <p className="truncate">{msg.replyTo.isDeleted ? 'Deleted message' : (msg.replyTo.messageType === 'file' ? `📎 ${msg.replyTo.fileName}` : msg.replyTo.content)}</p>
+                                                            </div>
+                                                        )}
+                                                        {msg.isDeleted ? (
+                                                            <span className="italic opacity-50">Message deleted</span>
+                                                        ) : msg.messageType === 'file' ? (
+                                                            <ChatFileMessage
+                                                                fileUrl={msg.fileUrl ?? ''}
+                                                                fileName={msg.fileName ?? 'File'}
+                                                                fileMime={msg.fileMime}
+                                                                isMe={isMe}
+                                                            />
+                                                        ) : (
+                                                            msg.content
+                                                        )}
+                                                    </div>
+                                                </SwipeableMessage>
                                             </div>
                                         </motion.div>
                                     );
@@ -326,8 +365,18 @@ export default function TeamChat() {
                         </div>
 
                         {/* Input */}
-                        <div className="p-4 border-t bg-card/50">
-                            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
+                        <div className="border-t bg-card/50">
+                            {replyTo && (
+                                <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                                    <div className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-muted border-l-2 border-primary">
+                                        <span className="font-semibold text-primary">{replyTo.senderId.name}</span>
+                                        <p className="truncate text-muted-foreground">{replyTo.messageType === 'file' ? `📎 ${replyTo.fileName}` : replyTo.content}</p>
+                                    </div>
+                                    <button onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
+                                </div>
+                            )}
+                            <div className="p-4">
+                            <input type="file" accept="*/*" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
                             <div className="flex gap-2">
                                 <Button
                                     variant="ghost"
@@ -352,6 +401,7 @@ export default function TeamChat() {
                                 <Button size="icon" onClick={handleSend} disabled={!message.trim()}>
                                     <Send className="h-4 w-4" />
                                 </Button>
+                            </div>
                             </div>
                         </div>
                     </>

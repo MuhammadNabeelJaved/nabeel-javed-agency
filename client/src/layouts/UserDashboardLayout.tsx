@@ -6,13 +6,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { UserSidebar } from '../components/UserSidebar';
 import { PageStatusGate } from '../components/PageStatusGate';
-import { MessageSquare, Menu } from 'lucide-react';
+import { Menu, MessageSquare, Sun, Moon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DashboardSearch } from '../components/DashboardSearch';
 import { useTheme } from '../contexts/ThemeContext';
 import { NotificationBell } from '../components/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 
 export function UserDashboardLayout() {
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,36 +36,64 @@ export function UserDashboardLayout() {
         {/* Topbar */}
         <header className="h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-background/50 border-b border-border/50">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <button
+            <motion.button
               onClick={() => setSidebarOpen(true)}
-              className="sm:hidden p-2 rounded-lg hover:bg-accent text-muted-foreground shrink-0"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              className="sm:hidden p-2 rounded-xl hover:bg-accent text-muted-foreground shrink-0 transition-colors"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
-            </button>
-            <h1 className="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600 truncate">
-              User Dashboard
-            </h1>
+            </motion.button>
+            <DashboardSearch role="user" />
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            {/* Quick Chat Button */}
-            <button
-              onClick={() => navigate('/user-dashboard/messages')}
-              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            {/* Theme toggle with animated icon swap */}
+            <motion.button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              className="p-2 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground transition-colors relative overflow-hidden"
+              aria-label="Toggle theme"
             >
-              <MessageSquare className="h-4 w-4" />
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={theme}
+                  initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                >
+                  {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </motion.div>
+              </AnimatePresence>
+            </motion.button>
+
+            {/* Quick Chat Button */}
+            <motion.button
+              onClick={() => navigate('/user-dashboard/messages')}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors group"
+            >
+              <MessageSquare className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
               <span className="text-sm font-medium">Support Chat</span>
-            </button>
+            </motion.button>
 
-            <NotificationBell notificationsRoute="/user-dashboard/notifications" />
+            <NotificationBell notificationsRoute="/user-dashboard/notifications" chatRoute="/user-dashboard/messages" />
 
-            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-6 border-l border-border/50">
+            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-border/50">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-medium text-foreground">{user?.name ?? 'User'}</p>
+                <p className="text-sm font-medium text-foreground leading-tight">{user?.name ?? 'User'}</p>
                 <p className="text-xs text-muted-foreground capitalize">{user?.role ?? 'User'}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-blue-600 p-[2px]">
+              <motion.div
+                className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-blue-600 p-[2px] cursor-pointer shrink-0"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              >
                 <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
                   {user?.photo && user.photo !== 'default.jpg' ? (
                     <img src={user.photo} alt={user.name} className="h-full w-full object-cover" />
@@ -71,7 +101,7 @@ export function UserDashboardLayout() {
                     <span className="text-sm font-bold text-primary">{user?.name?.charAt(0) ?? 'U'}</span>
                   )}
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </header>

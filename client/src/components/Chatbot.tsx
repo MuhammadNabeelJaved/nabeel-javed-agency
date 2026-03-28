@@ -257,11 +257,11 @@ export function Chatbot() {
               {/* File Preview */}
               <AnimatePresence>
                 {selectedFile && (
-                    <motion.div 
-                        initial={{ opacity: 0, height: 0, mb: 0 }}
-                        animate={{ opacity: 1, height: 'auto', mb: 12 }}
-                        exit={{ opacity: 0, height: 0, mb: 0 }}
-                        className="relative"
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="relative mb-3"
                     >
                         <div className="flex items-center gap-3 p-2 pr-8 rounded-lg bg-muted/50 border border-border/50 w-fit">
                             <div className="h-10 w-10 rounded bg-background flex items-center justify-center overflow-hidden">

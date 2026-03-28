@@ -38,8 +38,18 @@ export interface ChatMessage {
     fileUrl?: string;
     fileName?: string;
     fileType?: string;
+    fileMime?: string;
     readBy: string[];
     createdAt: string;
+    isDeleted?: boolean;
+    replyTo?: {
+        _id: string;
+        content: string;
+        messageType: string;
+        fileName?: string;
+        isDeleted?: boolean;
+        senderId: { _id: string; name: string };
+    };
 }
 
 export interface UploadedFile {

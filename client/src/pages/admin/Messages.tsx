@@ -4,6 +4,7 @@
  * main area shows the live chat thread.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     Search, MoreVertical, Phone, Video, Send, Paperclip,
     CheckCheck, Users, Loader2, Hash
@@ -14,12 +15,15 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
 import { chatApi, ChatMessage, Conversation } from '../../api/chat.api';
+import { ChatFileMessage } from '../../components/ChatFileMessage';
+import { SwipeableMessage } from '../../components/SwipeableMessage';
 
 type ChatTab = 'users' | 'team';
 
 export default function Messages() {
     const { user } = useAuth();
     const { socket, isConnected } = useSocket();
+    const [searchParams] = useSearchParams();
     const [tab, setTab] = useState<ChatTab>('users');
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConvo, setSelectedConvo] = useState<Conversation | null>(null);
@@ -31,7 +35,9 @@ export default function Messages() {
     const [isTyping, setIsTyping] = useState(false);
     const [typingUser, setTypingUser] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,6 +68,14 @@ export default function Messages() {
         }, 400);
         return () => clearTimeout(t);
     }, [search]);
+
+    // Auto-select conversation from URL param ?convoId=...
+    useEffect(() => {
+        const convoId = searchParams.get('convoId');
+        if (!convoId || conversations.length === 0) return;
+        const match = conversations.find((c) => c._id === convoId);
+        if (match && selectedConvo?._id !== convoId) selectConversation(match);
+    }, [conversations, searchParams]);
 
     // ── Socket new support request alert ─────────────────────────────────────
     useEffect(() => {
@@ -116,17 +130,26 @@ export default function Messages() {
             setIsTyping(typing);
         };
 
+        const onDeleted = ({ messageId }: { messageId: string }) => {
+            setMessages((prev) =>
+                prev.map((m) => m._id === messageId ? { ...m, isDeleted: true, content: '' } : m)
+            );
+        };
+
         socket.on('chat:new_message', onNewMessage);
         socket.on('chat:typing_indicator', onTyping);
+        socket.on('chat:message_deleted', onDeleted);
         return () => {
             socket.off('chat:new_message', onNewMessage);
             socket.off('chat:typing_indicator', onTyping);
+            socket.off('chat:message_deleted', onDeleted);
         };
     }, [socket, selectedConvo?._id]);
 
     // ── Auto-scroll ──────────────────────────────────────────────────────────
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const el = messagesContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
     }, [messages]);
 
     // ── Typing ───────────────────────────────────────────────────────────────
@@ -146,13 +169,22 @@ export default function Messages() {
         const trimmed = inputMessage.trim();
         if (!trimmed || !socket || !selectedConvo) return;
         setInputMessage('');
+        const replyToId = replyTo?._id;
+        setReplyTo(null);
         socket.emit('chat:typing', { conversationId: selectedConvo._id, isTyping: false });
         socket.emit('chat:send_message', {
             conversationId: selectedConvo._id,
             content: trimmed,
             messageType: 'text',
+            replyToId,
         });
     };
+
+    // ── Delete message ────────────────────────────────────────────────────────
+    const handleDelete = useCallback((msgId: string) => {
+        if (!socket) return;
+        socket.emit('chat:delete_message', { messageId: msgId });
+    }, [socket]);
 
     // ── File upload ──────────────────────────────────────────────────────────
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,7 +367,7 @@ export default function Messages() {
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/5">
+                        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 bg-muted/5">
                             <div className="flex justify-center my-4">
                                 <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full">
                                     Today
@@ -369,34 +401,43 @@ export default function Messages() {
                                             animate={{ opacity: 1, y: 0 }}
                                             className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                                         >
-                                            <div
-                                                className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
-                                                    isMe
-                                                        ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                        : 'bg-card text-card-foreground border rounded-tl-none'
-                                                }`}
-                                            >
-                                                {msg.messageType === 'file' ? (
-                                                    <a
-                                                        href={msg.fileUrl}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="flex items-center gap-2 text-sm underline"
-                                                    >
-                                                        <Paperclip className="h-3 w-3 shrink-0" />
-                                                        {msg.fileName || 'File attachment'}
-                                                    </a>
-                                                ) : (
-                                                    <p className="text-sm">{msg.content}</p>
-                                                )}
+                                            <div className="max-w-[70%]">
+                                            <SwipeableMessage msg={msg} isMe={isMe} onReply={setReplyTo} onDelete={handleDelete}>
                                                 <div
-                                                    className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                                                        isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                                    className={`rounded-2xl px-4 py-3 shadow-sm ${
+                                                        isMe
+                                                            ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                                            : 'bg-card text-card-foreground border rounded-tl-none'
                                                     }`}
                                                 >
-                                                    <span>{formatTime(msg.createdAt)}</span>
-                                                    {isMe && <CheckCheck className="h-3 w-3" />}
+                                                    {msg.replyTo && (
+                                                        <div className={`mb-2 px-2 py-1 rounded-lg border-l-2 text-xs opacity-70 ${isMe ? 'border-white/40 bg-white/10' : 'border-primary/40 bg-muted/50'}`}>
+                                                            <span className="font-semibold">{msg.replyTo.senderId.name}</span>
+                                                            <p className="truncate">{msg.replyTo.isDeleted ? 'Deleted message' : (msg.replyTo.messageType === 'file' ? `📎 ${msg.replyTo.fileName}` : msg.replyTo.content)}</p>
+                                                        </div>
+                                                    )}
+                                                    {msg.isDeleted ? (
+                                                        <p className="text-sm italic opacity-50">Message deleted</p>
+                                                    ) : msg.messageType === 'file' ? (
+                                                        <ChatFileMessage
+                                                            fileUrl={msg.fileUrl ?? ''}
+                                                            fileName={msg.fileName ?? 'File'}
+                                                            fileMime={msg.fileMime}
+                                                            isMe={isMe}
+                                                        />
+                                                    ) : (
+                                                        <p className="text-sm">{msg.content}</p>
+                                                    )}
+                                                    <div
+                                                        className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
+                                                            isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                                        }`}
+                                                    >
+                                                        <span>{formatTime(msg.createdAt)}</span>
+                                                        {isMe && <CheckCheck className="h-3 w-3" />}
+                                                    </div>
                                                 </div>
+                                            </SwipeableMessage>
                                             </div>
                                         </motion.div>
                                     );
@@ -409,8 +450,18 @@ export default function Messages() {
                         </div>
 
                         {/* Input */}
-                        <div className="p-4 border-t bg-card">
-                            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
+                        <div className="border-t bg-card">
+                            {replyTo && (
+                                <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                                    <div className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-muted border-l-2 border-primary">
+                                        <span className="font-semibold text-primary">{replyTo.senderId.name}</span>
+                                        <p className="truncate text-muted-foreground">{replyTo.messageType === 'file' ? `📎 ${replyTo.fileName}` : replyTo.content}</p>
+                                    </div>
+                                    <button onClick={() => setReplyTo(null)} className="text-muted-foreground hover:text-foreground p-1">✕</button>
+                                </div>
+                            )}
+                            <div className="p-4">
+                            <input type="file" ref={fileInputRef} className="hidden" accept="*/*" onChange={handleFileChange} />
                             <form onSubmit={handleSendMessage} className="flex items-end gap-2">
                                 <Button
                                     type="button"
@@ -437,6 +488,7 @@ export default function Messages() {
                                     <Send className="h-5 w-5" />
                                 </Button>
                             </form>
+                            </div>
                         </div>
                     </>
                 ) : (

@@ -29,10 +29,13 @@ export function ProjectCard({ title, category, image, tags, slug, onClick }: Pro
       {slug && <Link to={`/portfolio/${slug}`} className="absolute inset-0 z-50" aria-label={title} />}
       {/* Background Image with Zoom Effect */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src={image} 
-          alt={title} 
-          className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-700 ease-out will-change-transform"
+        {/* Fallback gradient shown behind image */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-purple-900/40 to-slate-900" />
+        <img
+          src={image || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop'}
+          alt={title}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop'; }}
+          className="relative z-10 object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-700 ease-out will-change-transform"
         />
         {/* Dark gradient overlay for readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80 z-10 transition-opacity duration-300 group-hover:opacity-90" />

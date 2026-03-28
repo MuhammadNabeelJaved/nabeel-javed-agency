@@ -10,6 +10,8 @@ import {
     getFeaturedJobs,
 } from "../../controllers/usersControllers/jobs.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
+import { mutationLimiter } from "../../middlewares/rateLimiter.js";
+import { mongoIdParam, validate } from "../../middlewares/validate.js";
 
 const router = express.Router();
 
@@ -17,12 +19,12 @@ const router = express.Router();
 router.get("/", getAllJobs);
 router.get("/active", getActiveJobs);
 router.get("/featured", getFeaturedJobs);
-router.get("/:id", getJobById);
+router.get("/:id", validate([mongoIdParam("id")]), getJobById);
 
 // Admin-only routes
-router.post("/", userAuthenticated, authorizeRoles("admin"), createJob);
-router.put("/:id", userAuthenticated, authorizeRoles("admin"), updateJob);
-router.patch("/:id/status", userAuthenticated, authorizeRoles("admin"), updateJobStatus);
-router.delete("/:id", userAuthenticated, authorizeRoles("admin"), deleteJob);
+router.post("/", userAuthenticated, authorizeRoles("admin"), mutationLimiter, createJob);
+router.put("/:id", userAuthenticated, authorizeRoles("admin"), mutationLimiter, validate([mongoIdParam("id")]), updateJob);
+router.patch("/:id/status", userAuthenticated, authorizeRoles("admin"), mutationLimiter, validate([mongoIdParam("id")]), updateJobStatus);
+router.delete("/:id", userAuthenticated, authorizeRoles("admin"), mutationLimiter, validate([mongoIdParam("id")]), deleteJob);
 
 export default router;

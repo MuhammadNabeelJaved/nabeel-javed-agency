@@ -30,7 +30,7 @@ export function ThemeProvider({
   storageKey = "vite-ui-theme",
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
-    () => "light" // Temporarily force light mode: (localStorage.getItem(storageKey) as Theme) || defaultTheme
+    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   );
 
   useEffect(() => {

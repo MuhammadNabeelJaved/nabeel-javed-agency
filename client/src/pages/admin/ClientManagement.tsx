@@ -8,7 +8,7 @@ import {
   Users, Search, Plus, Mail, Phone, ExternalLink, Briefcase,
   Trash2, Edit, Building, Loader2, Globe, DollarSign,
   Eye, CheckCircle2, AlertCircle, Clock, Ban, Calendar,
-  User, FileText, TrendingUp, RefreshCw,
+  User, FileText, TrendingUp, RefreshCw, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -115,6 +115,10 @@ export default function ClientManagement() {
   // Delete
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
   const loadClients = async () => {
     setIsLoading(true);
     try {
@@ -157,6 +161,11 @@ export default function ClientManagement() {
     const matchStatus = statusFilter === 'All' || c.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const totalPages     = Math.ceil(filteredClients.length / PAGE_SIZE);
+  const paginatedClients = filteredClients.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  React.useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter]);
 
   // ── form open ──
   const handleOpenCreate = () => {
@@ -351,7 +360,7 @@ export default function ClientManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredClients.map(client => (
+                  {paginatedClients.map(client => (
                     <TableRow key={client._id} className="border-border/50 hover:bg-muted/30 group">
 
                       {/* Company */}
@@ -475,6 +484,30 @@ export default function ClientManagement() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {!isLoading && totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredClients.length)}–{Math.min(currentPage * PAGE_SIZE, filteredClients.length)} of {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                  className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="px-2 font-medium">{currentPage} / {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage === totalPages}
+                  className="h-7 w-7 rounded flex items-center justify-center hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           )}
         </CardContent>

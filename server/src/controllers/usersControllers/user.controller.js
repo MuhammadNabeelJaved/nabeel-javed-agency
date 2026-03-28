@@ -25,6 +25,7 @@ import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import User from "../../models/usersModels/User.model.js";
 import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
+import { logAuthFail, logAuthSuccess } from "../../middlewares/requestLogger.js";
 
 
 
@@ -255,16 +256,19 @@ export const loginUser = asyncHandler(async (req, res) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
+        logAuthFail(req, "user_not_found");
         throw new AppError("Invalid email or password", 401);
     }
 
     const isPasswordValid = await user.comparePassword(password);
 
     if (!isPasswordValid) {
+        logAuthFail(req, "wrong_password");
         throw new AppError("Invalid password", 401);
     }
 
     const { accessToken, refreshToken } = await jwtTokens(user);
+    logAuthSuccess(req, user._id);
 
     const userResponse = user.toObject();
     delete userResponse.password;
@@ -421,24 +425,29 @@ export const deleteUser = asyncHandler(async (req, res) => {
 export const updateUserProfile = asyncHandler(async (req, res) => {
     try {
         const userId = req.params.id;
-        const updates = req.body || {};
+        const rawUpdates = req.body || {};
         const avatar = req.file?.path;
 
         if (!userId) {
             throw new AppError("User ID is required", 400);
         }
 
+        // Whitelist of fields that may be changed through this route.
+        // Any field not in this list is silently dropped — prevents mass-
+        // assignment attacks where an attacker tries to escalate role, change
+        // email, or inject arbitrary model fields via the request body.
+        const ALLOWED_FIELDS = new Set([
+            "name", "phone", "bio", "position", "department",
+            "teamProfile", "skills", "location", "website",
+        ]);
+
+        const updates = Object.fromEntries(
+            Object.entries(rawUpdates).filter(([k]) => ALLOWED_FIELDS.has(k))
+        );
+
         // At least one field or a new avatar must be provided
         if (Object.keys(updates).length === 0 && !avatar) {
             throw new AppError("No data provided for update", 400);
-        }
-
-        // Reject attempts to change sensitive fields through this route
-        if (updates.password || updates.email || updates.role) {
-            throw new AppError(
-                "Cannot update password, email, or role through this route",
-                400
-            );
         }
 
         // Handle avatar replacement

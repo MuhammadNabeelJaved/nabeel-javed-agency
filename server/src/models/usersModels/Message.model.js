@@ -54,6 +54,19 @@ const messageSchema = new mongoose.Schema(
                 ref: "User",
             },
         ],
+
+        // Reply threading
+        replyTo: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Message",
+            default: null,
+        },
+
+        // Soft delete
+        isDeleted: { type: Boolean, default: false },
+
+        // MIME type (stored for ChatFileMessage rendering)
+        fileMime: { type: String, default: null },
     },
     {
         timestamps: true,
