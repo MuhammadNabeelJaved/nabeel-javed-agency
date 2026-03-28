@@ -50,8 +50,8 @@ export default function TeamChat() {
                 );
                 setConversations(convos);
                 if (convos.length > 0) selectConversation(convos[0]);
-            } catch {
-                toast.error('Failed to load conversations');
+            } catch (err: any) {
+                toast.error('Failed to load conversations', { description: err?.response?.data?.message || 'Please try again.' });
             } finally {
                 setIsLoading(false);
             }
@@ -67,8 +67,8 @@ export default function TeamChat() {
             setIsMsgsLoading(true);
             const res = await chatApi.getMessages(convo._id, 1, 50);
             setMessages(res.data.data?.messages || []);
-        } catch {
-            toast.error('Failed to load messages');
+        } catch (err: any) {
+            toast.error('Failed to load messages', { description: err?.response?.data?.message || 'Please try again.' });
         } finally {
             setIsMsgsLoading(false);
         }
@@ -188,8 +188,8 @@ export default function TeamChat() {
                 fileName,
                 fileMime,
             });
-        } catch {
-            toast.error('File upload failed');
+        } catch (err: any) {
+            toast.error('File upload failed', { description: err?.response?.data?.message || 'Please try again.' });
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

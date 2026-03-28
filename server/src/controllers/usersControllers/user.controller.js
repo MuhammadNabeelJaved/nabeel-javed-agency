@@ -257,7 +257,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     if (!user) {
         logAuthFail(req, "user_not_found");
-        throw new AppError("Invalid email or password", 401);
+        throw new AppError("No account found with this email address", 401);
     }
 
     const isPasswordValid = await user.comparePassword(password);

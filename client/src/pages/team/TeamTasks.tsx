@@ -183,8 +183,8 @@ export default function TeamTasks() {
       };
       tasks.forEach(t => { if (g[t.status]) g[t.status].push(t); });
       setGrouped(g);
-    } catch {
-      toast.error('Failed to load tasks');
+    } catch (err: any) {
+      toast.error('Failed to load tasks', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -234,8 +234,8 @@ export default function TeamTasks() {
       }
       setModalOpen(false);
       fetchTasks();
-    } catch {
-      toast.error('Failed to save task');
+    } catch (err: any) {
+      toast.error('Failed to save task', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setSaving(false);
     }
@@ -250,8 +250,8 @@ export default function TeamTasks() {
       toast.success('Task deleted');
       setDeleteTargetId(null);
       fetchTasks();
-    } catch {
-      toast.error('Failed to delete task');
+    } catch (err: any) {
+      toast.error('Failed to delete task', { description: err?.response?.data?.message || 'Please try again.' });
       setDeleteTargetId(null);
     }
   };
@@ -262,8 +262,8 @@ export default function TeamTasks() {
     try {
       await tasksApi.updateStatus(id, status);
       fetchTasks();
-    } catch {
-      toast.error('Failed to move task');
+    } catch (err: any) {
+      toast.error('Failed to move task', { description: err?.response?.data?.message || 'Please try again.' });
     }
   };
 

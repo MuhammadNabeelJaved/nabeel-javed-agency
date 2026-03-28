@@ -59,8 +59,8 @@ export default function ContentEditor() {
     try {
       await fn();
       toast.success('Saved successfully');
-    } catch {
-      toast.error('Save failed');
+    } catch (err: any) {
+      toast.error('Save failed', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setIsSaving(false);
     }

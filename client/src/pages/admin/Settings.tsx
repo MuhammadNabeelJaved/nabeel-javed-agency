@@ -178,8 +178,8 @@ export default function Settings() {
       setConsentRecords(recordsRes.data.data.records);
       setConsentTotal(recordsRes.data.data.pagination.total);
       setConsentPage(page);
-    } catch {
-      toast.error('Failed to load consent data');
+    } catch (err: any) {
+      toast.error('Failed to load consent data', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setConsentLoading(false);
     }
@@ -199,8 +199,8 @@ export default function Settings() {
         setConsentStats(prev => prev ? { ...prev, total: prev.total - 1 } : prev);
       }
       toast.success('Record deleted');
-    } catch {
-      toast.error('Failed to delete record');
+    } catch (err: any) {
+      toast.error('Failed to delete record', { description: err?.response?.data?.message || 'Please try again.' });
     }
   };
 
@@ -210,8 +210,8 @@ export default function Settings() {
       const res = await apiClient.delete(`/consent/clear?days=${clearDays}`);
       toast.success(res.data.message);
       loadConsentData(1);
-    } catch {
-      toast.error('Failed to clear records');
+    } catch (err: any) {
+      toast.error('Failed to clear records', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setClearing(false);
     }

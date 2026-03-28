@@ -52,8 +52,8 @@ export default function UserChat() {
                     // No conversation yet — it will be created on first send
                     setIsLoadingConvo(false);
                 }
-            } catch {
-                toast.error('Failed to load chat');
+            } catch (err: any) {
+                toast.error('Failed to load chat', { description: err?.response?.data?.message || 'Please try again.' });
                 setIsLoadingConvo(false);
             }
         }
@@ -64,8 +64,8 @@ export default function UserChat() {
         try {
             const res = await chatApi.getMessages(conversationId, 1, 50);
             setMessages(res.data.data?.messages || []);
-        } catch {
-            toast.error('Failed to load messages');
+        } catch (err: any) {
+            toast.error('Failed to load messages', { description: err?.response?.data?.message || 'Please try again.' });
         } finally {
             setIsLoadingConvo(false);
         }
@@ -146,8 +146,8 @@ export default function UserChat() {
                 activeConvo = convoRes.data.data;
                 setConversation(activeConvo);
                 socket.emit('chat:join_conversation', { conversationId: activeConvo._id });
-            } catch {
-                toast.error('Failed to start conversation');
+            } catch (err: any) {
+                toast.error('Failed to start conversation', { description: err?.response?.data?.message || 'Please try again.' });
                 return;
             } finally {
                 setIsSending(false);
@@ -189,8 +189,8 @@ export default function UserChat() {
                 fileName,
                 fileMime,
             });
-        } catch {
-            toast.error('File upload failed');
+        } catch (err: any) {
+            toast.error('File upload failed', { description: err?.response?.data?.message || 'Please try again.' });
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

@@ -93,8 +93,8 @@ export default function TeamProjects() {
         const d = clientRes.value.data.data;
         setClientRequests(d?.projects || d || []);
       }
-    } catch {
-      toast.error('Failed to load projects');
+    } catch (err: any) {
+      toast.error('Failed to load projects', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -107,8 +107,8 @@ export default function TeamProjects() {
       await adminProjectsApi.updateStatus(id, status);
       setAdminProjects(prev => prev.map(p => p._id === id ? { ...p, status } : p));
       toast.success('Status updated');
-    } catch {
-      toast.error('Failed to update status');
+    } catch (err: any) {
+      toast.error('Failed to update status', { description: err?.response?.data?.message || 'Please try again.' });
     }
   };
 

@@ -144,8 +144,8 @@ export default function Projects() {
       const res = await adminProjectsApi.getAll();
       const data = res.data.data;
       setProjects(Array.isArray(data?.projects) ? data.projects : Array.isArray(data) ? data : []);
-    } catch {
-      showNotif('error', 'Failed to load projects');
+    } catch (err: any) {
+      showNotif('error', 'Failed to load projects', err?.response?.data?.message);
     } finally {
       setIsLoading(false);
     }
@@ -199,8 +199,8 @@ export default function Projects() {
       showNotif('success', 'Project deleted');
       setConfirmDeleteId(null);
       loadProjects();
-    } catch {
-      showNotif('error', 'Delete failed');
+    } catch (err: any) {
+      showNotif('error', 'Delete failed', err?.response?.data?.message);
     } finally {
       setDeletingId(null);
     }
@@ -211,8 +211,8 @@ export default function Projects() {
       await adminProjectsApi.update(project._id, { isPublic: !project.isPublic });
       showNotif('success', project.isPublic ? 'Hidden from portfolio' : 'Now visible on portfolio');
       loadProjects();
-    } catch {
-      showNotif('error', 'Failed to update visibility');
+    } catch (err: any) {
+      showNotif('error', 'Failed to update visibility', err?.response?.data?.message);
     }
   };
 

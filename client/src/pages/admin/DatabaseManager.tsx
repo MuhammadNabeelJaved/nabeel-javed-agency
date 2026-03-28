@@ -379,8 +379,8 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
       const data = res.data?.data;
       setDocs(data?.documents ?? []);
       setPagination(data?.pagination ?? { total: 0, pages: 1, limit: 20 });
-    } catch {
-      toast.error('Failed to load documents');
+    } catch (err: any) {
+      toast.error('Failed to load documents', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -893,8 +893,8 @@ function InsightsTab() {
       try {
         const res = await apiClient.get('/database/insights');
         setInsights(res.data?.data ?? null);
-      } catch {
-        toast.error('Failed to load insights');
+      } catch (err: any) {
+        toast.error('Failed to load insights', { description: err?.response?.data?.message || 'Please try again.' });
       } finally {
         setLoading(false);
       }
@@ -1305,8 +1305,8 @@ function ExportTab({ collections }: { collections: CollectionInfo[] }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success(`Exported ${name} successfully`);
-    } catch {
-      toast.error(`Failed to export ${name}`);
+    } catch (err: any) {
+      toast.error(`Failed to export ${name}`, { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setDownloading(null);
     }
@@ -1384,8 +1384,8 @@ export default function DatabaseManager() {
     try {
       const res = await apiClient.get('/database/stats');
       setStats(res.data?.data ?? null);
-    } catch {
-      toast.error('Failed to load database stats');
+    } catch (err: any) {
+      toast.error('Failed to load database stats', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setStatsLoading(false);
     }
@@ -1395,8 +1395,8 @@ export default function DatabaseManager() {
     try {
       const res = await apiClient.get('/database/collections');
       setCollections(res.data?.data ?? []);
-    } catch {
-      toast.error('Failed to load collections');
+    } catch (err: any) {
+      toast.error('Failed to load collections', { description: err?.response?.data?.message || 'Please try again.' });
     } finally {
       setCollectionsLoading(false);
     }
