@@ -89,12 +89,23 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             }
         });
 
+        // Bridge server-emitted data:updated events (sent to authenticated rooms
+        // like admin:global, team:global, user:{id}) to the window CustomEvent
+        // system so all useDataRealtime hooks fire automatically without needing
+        // to know anything about sockets.
+        socket.on('data:updated', (payload: { section: string }) => {
+            window.dispatchEvent(
+                new CustomEvent('cms:updated', { detail: { section: payload.section } })
+            );
+        });
+
         socketRef.current = socket;
 
         return () => {
             socket.off('connect');
             socket.off('disconnect');
             socket.off('connect_error');
+            socket.off('data:updated');
             // Don't disconnect on component unmount — keep the connection alive
             // across route changes. Only disconnect on logout (handled above).
         };

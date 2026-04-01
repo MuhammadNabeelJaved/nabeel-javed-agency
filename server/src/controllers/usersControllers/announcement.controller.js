@@ -42,6 +42,8 @@ export const updateSettings = asyncHandler(async (req, res) => {
     }
 
     const doc = await Announcement.findOneAndUpdate(SETTINGS_FILTER, { $set: setFields }, { upsert: true, new: true });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "announcements" });
     successResponse(res, "Settings updated", {
         tickerDuration:   doc.tickerDuration,
         scrollEnabled:    doc.scrollEnabled,
@@ -89,6 +91,8 @@ export const createAnnouncement = asyncHandler(async (req, res) => {
         createdBy: req.user._id,
     });
 
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "announcements" });
     successResponse(res, "Announcement created", item, 201);
 });
 
@@ -104,6 +108,8 @@ export const updateAnnouncement = asyncHandler(async (req, res) => {
     });
     if (!item) throw new AppError("Announcement not found", 404);
 
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "announcements" });
     successResponse(res, "Announcement updated", item);
 });
 
@@ -111,5 +117,7 @@ export const updateAnnouncement = asyncHandler(async (req, res) => {
 export const deleteAnnouncement = asyncHandler(async (req, res) => {
     const item = await Announcement.findByIdAndDelete(req.params.id);
     if (!item) throw new AppError("Announcement not found", 404);
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "announcements" });
     successResponse(res, "Announcement deleted", {});
 });

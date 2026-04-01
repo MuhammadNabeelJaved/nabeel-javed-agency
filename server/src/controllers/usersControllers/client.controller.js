@@ -20,6 +20,13 @@ import { successResponse } from "../../utils/apiResponse.js";
 import Client from "../../models/usersModels/Client.model.js";
 import Project from "../../models/usersModels/Project.model.js";
 import { escapeRegex } from "../../middlewares/sanitize.js";
+import { emitDataUpdate } from "../../utils/dataUpdateService.js";
+
+// Helper: refresh all admin clients views
+const emitClientsUpdate = (req) => {
+    const io = req.app.get('io');
+    if (io) emitDataUpdate(io, 'clients', ['admin:global']);
+};
 
 // =========================
 // CREATE CLIENT
@@ -57,6 +64,7 @@ export const createClient = asyncHandler(async (req, res) => {
     });
 
     successResponse(res, "Client created successfully", client, 201);
+    emitClientsUpdate(req);
 });
 
 // =========================
@@ -148,6 +156,7 @@ export const updateClient = asyncHandler(async (req, res) => {
 
     if (!client) throw new AppError("Client not found", 404);
     successResponse(res, "Client updated successfully", client);
+    emitClientsUpdate(req);
 });
 
 // =========================
@@ -161,6 +170,7 @@ export const deleteClient = asyncHandler(async (req, res) => {
     );
     if (!client) throw new AppError("Client not found", 404);
     successResponse(res, "Client archived successfully", {});
+    emitClientsUpdate(req);
 });
 
 // =========================
@@ -190,4 +200,15 @@ export const getClientStats = asyncHandler(async (req, res) => {
         newThisMonth,
         totalRevenue: totalRevenue[0]?.total || 0,
     });
+});
+
+// =========================
+// BULK DELETE CLIENTS (archive)
+// =========================
+export const bulkDeleteClients = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+    const result = await Client.updateMany({ _id: { $in: ids } }, { isArchived: true });
+    successResponse(res, `${result.modifiedCount} client(s) archived`, { archivedCount: result.modifiedCount });
+    emitClientsUpdate(req);
 });

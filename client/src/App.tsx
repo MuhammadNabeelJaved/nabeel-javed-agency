@@ -77,6 +77,7 @@ import DatabaseManager from './pages/admin/DatabaseManager';
 import ClientProjectRequests from './pages/admin/ClientProjectRequests';
 import PageManager from './pages/admin/PageManager';
 import AnnouncementManager from './pages/admin/AnnouncementManager';
+import NavFooterManager from './pages/admin/NavFooterManager';
 
 // Team Dashboard Pages
 import { TeamDashboardLayout } from './layouts/TeamDashboardLayout';
@@ -106,6 +107,7 @@ import UserSupport from './pages/user/UserSupport';
 
 import { CookieConsent } from './components/CookieConsent';
 import { CookieConsentProvider } from './contexts/CookieConsentContext';
+import { useContent } from './contexts/ContentContext';
 
 // Configure Tailwind Theme Extension
 // This must run before rendering
@@ -164,6 +166,18 @@ const configureTailwind = () => {
   }
 };
 
+// Syncs admin-set globalTheme from ContentContext into ThemeContext on load/change
+function GlobalThemeSyncer() {
+  const { globalTheme } = useContent();
+  const { setTheme } = useTheme();
+  useEffect(() => {
+    if (globalTheme === 'dark' || globalTheme === 'light') {
+      setTheme(globalTheme);
+    }
+  }, [globalTheme]);
+  return null;
+}
+
 function ToasterWrapper() {
   const { theme } = useTheme();
   return (
@@ -189,6 +203,7 @@ export default function App() {
       <AuthProvider>
       <SocketProvider>
       <ContentProvider>
+        <GlobalThemeSyncer />
         <GlobalStyles />
         <ToasterWrapper />
         <div className="min-h-screen bg-background text-foreground font-sans antialiased">
@@ -262,6 +277,7 @@ export default function App() {
                 <Route path="database" element={<DatabaseManager />} />
                 <Route path="announcements" element={<AnnouncementManager />} />
                 <Route path="page-manager" element={<PageManager />} />
+                <Route path="nav-footer" element={<NavFooterManager />} />
                 <Route path="content-editor" element={<ContentEditor />} />
                 <Route path="settings" element={<Settings />} />
               </Route>

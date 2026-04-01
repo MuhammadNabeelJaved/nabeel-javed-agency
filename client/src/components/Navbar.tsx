@@ -15,12 +15,12 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { usePageVisibility } from '../hooks/usePageVisibility';
 import { Button } from './ui/button';
-import { Menu, X, Sun, Moon, Globe, Check, ChevronDown, ArrowRight, LayoutDashboard, LogOut, User } from 'lucide-react';
+import { Menu, X, Sun, Moon, Globe, Check, ChevronDown, ArrowRight, LayoutDashboard, LogOut, User, Settings, MessageSquare, Bell, Briefcase, FolderKanban, ClipboardList, HeadphonesIcon, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function Navbar() {
   const { theme, setTheme } = useTheme();
-  const { logoUrl, announcementBars } = useContent();
+  const { logoUrl, announcementBars, navLinks: cmsNavLinks } = useContent();
   // Total height of all active bars (each is 40px)
   const totalBarHeight = announcementBars.filter(g => g.bar.isActive && g.items.length > 0).length * 40;
   const { lang, setLang, t } = useLanguage();
@@ -57,6 +57,32 @@ export function Navbar() {
     return '/user-dashboard';
   };
 
+  const getProfileMenuItems = () => {
+    if (user?.role === 'admin') return [
+      { label: 'Dashboard',     icon: LayoutDashboard, to: '/admin' },
+      { label: 'Messages',      icon: MessageSquare,   to: '/admin/messages' },
+      { label: 'Notifications', icon: Bell,            to: '/admin/notifications' },
+      { label: 'Team',          icon: Users,           to: '/admin/team' },
+      { label: 'Settings',      icon: Settings,        to: '/admin/settings' },
+    ];
+    if (user?.role === 'team') return [
+      { label: 'Dashboard',     icon: LayoutDashboard, to: '/team' },
+      { label: 'Projects',      icon: FolderKanban,    to: '/team/projects' },
+      { label: 'My Tasks',      icon: ClipboardList,   to: '/team/tasks' },
+      { label: 'Chat',          icon: MessageSquare,   to: '/team/chat' },
+      { label: 'Notifications', icon: Bell,            to: '/team/notifications' },
+      { label: 'Settings',      icon: Settings,        to: '/team/settings' },
+    ];
+    return [
+      { label: 'Dashboard',     icon: LayoutDashboard, to: '/user-dashboard' },
+      { label: 'My Profile',    icon: User,            to: '/user-dashboard/profile' },
+      { label: 'My Projects',   icon: Briefcase,       to: '/user-dashboard/projects' },
+      { label: 'Applied Jobs',  icon: FolderKanban,    to: '/user-dashboard/applied-jobs' },
+      { label: 'Support Chat',  icon: HeadphonesIcon,  to: '/user-dashboard/messages' },
+      { label: 'Notifications', icon: Bell,            to: '/user-dashboard/notifications' },
+    ];
+  };
+
   const userInitials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : 'U';
@@ -69,13 +95,18 @@ export function Navbar() {
     { code: 'JP' as const, name: '日本語' },
   ];
 
-  const navLinks = [
-    { name: t('nav.services'), path: '/services' },
-    { name: t('nav.portfolio'), path: '/portfolio' },
-    { name: t('nav.contact'), path: '/contact' },
-    { name: t('nav.userDashboard'), path: '/user-dashboard' },
-    { name: t('nav.admin'), path: '/admin' },
-  ].filter(link => isVisible(link.path));
+  const navLinks = (
+    cmsNavLinks.length > 0
+      ? cmsNavLinks
+          .filter(l => l.isActive)
+          .sort((a, b) => a.order - b.order)
+          .map(l => ({ name: l.label, path: l.href, openInNewTab: l.openInNewTab }))
+      : [
+          { name: t('nav.services'), path: '/services', openInNewTab: false },
+          { name: t('nav.portfolio'), path: '/portfolio', openInNewTab: false },
+          { name: t('nav.contact'), path: '/contact', openInNewTab: false },
+        ]
+  ).filter(link => isVisible(link.path));
 
   return (
     <>
@@ -128,6 +159,8 @@ export function Navbar() {
                     <Link
                       key={link.name}
                       to={link.path}
+                      target={link.openInNewTab ? '_blank' : undefined}
+                      rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
                       className="relative px-4 py-2 text-sm font-medium group overflow-hidden rounded-full"
                     >
                       {isActive && (
@@ -215,8 +248,8 @@ export function Navbar() {
                     className="flex items-center gap-2 p-1 pr-3 rounded-full transition-all duration-300 hover:bg-accent border border-border/50"
                   >
                     <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden">
-                      {user?.avatar ? (
-                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                      {user?.photo && user.photo !== 'default.jpg' ? (
+                        <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-xs font-bold text-primary">{userInitials}</span>
                       )}
@@ -233,27 +266,49 @@ export function Navbar() {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-3 w-52 bg-popover/90 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl py-1 z-50 overflow-hidden"
+                        className="absolute right-0 mt-3 w-60 bg-popover/95 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl shadow-black/10 z-50 overflow-hidden"
                       >
-                        <div className="px-4 py-3 border-b border-border/50">
-                          <p className="text-sm font-semibold text-foreground truncate">{user?.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                        {/* Header */}
+                        <div className="px-4 py-3.5 border-b border-border/50 flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-600 p-[2px] shrink-0">
+                            <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+                              {user?.photo && user.photo !== 'default.jpg' ? (
+                                <img src={user.photo} alt={user.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-sm font-bold text-primary">{userInitials}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground truncate leading-tight">{user?.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                            <p className="text-xs text-primary/70 capitalize mt-0.5">{user?.role}</p>
+                          </div>
                         </div>
-                        <Link
-                          to={getDashboardPath()}
-                          onClick={() => setShowProfile(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                        >
-                          <LayoutDashboard className="h-4 w-4" />
-                          Dashboard
-                        </Link>
-                        <button
-                          onClick={() => { logout(); setShowProfile(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          <LogOut className="h-4 w-4" />
-                          Logout
-                        </button>
+
+                        {/* Role-based menu items */}
+                        <div className="py-1.5">
+                          {getProfileMenuItems().map((item) => (
+                            <Link
+                              key={item.to}
+                              to={item.to}
+                              onClick={() => setShowProfile(false)}
+                              className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                            >
+                              <item.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                              {item.label}
+                            </Link>
+                          ))}
+
+                          <div className="my-1 border-t border-border/50" />
+                          <button
+                            onClick={() => { logout(); setShowProfile(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <LogOut className="h-4 w-4 shrink-0" />
+                            Sign Out
+                          </button>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -312,6 +367,8 @@ export function Navbar() {
                   >
                     <Link
                       to={link.path}
+                      target={link.openInNewTab ? '_blank' : undefined}
+                      rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
                       onClick={() => setIsOpen(false)}
                       className={`text-3xl font-bold tracking-tight hover:text-primary transition-colors flex items-center justify-center space-x-3 ${
                         location.pathname === link.path ? 'text-primary' : 'text-foreground'
@@ -351,30 +408,45 @@ export function Navbar() {
                 
                 {isAuthenticated ? (
                   <div className="space-y-3">
+                    {/* User info card */}
                     <div className="flex items-center gap-3 p-4 rounded-2xl bg-muted/50">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center overflow-hidden shrink-0">
-                        {user?.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-sm font-bold text-primary">{userInitials}</span>
-                        )}
+                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-purple-600 p-[2px] shrink-0">
+                        <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+                          {user?.photo && user.photo !== 'default.jpg' ? (
+                            <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-base font-bold text-primary">{userInitials}</span>
+                          )}
+                        </div>
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-foreground truncate">{user?.name}</p>
                         <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+                        <p className="text-xs text-primary/70 capitalize mt-0.5">{user?.role}</p>
                       </div>
                     </div>
-                    <Link to={getDashboardPath()} onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full h-12 text-base rounded-2xl">
-                        <LayoutDashboard className="mr-2 h-5 w-5" /> Dashboard
-                      </Button>
-                    </Link>
+
+                    {/* Role-based quick links */}
+                    <div className="rounded-2xl bg-muted/30 overflow-hidden divide-y divide-border/50">
+                      {getProfileMenuItems().map((item) => (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setIsOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent transition-colors"
+                        >
+                          <item.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+
                     <Button
                       variant="destructive"
                       className="w-full h-12 text-base rounded-2xl"
                       onClick={() => { logout(); setIsOpen(false); }}
                     >
-                      <LogOut className="mr-2 h-5 w-5" /> Logout
+                      <LogOut className="mr-2 h-5 w-5" /> Sign Out
                     </Button>
                   </div>
                 ) : (

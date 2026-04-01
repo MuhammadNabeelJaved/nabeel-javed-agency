@@ -2,7 +2,7 @@
  * User Dashboard Home
  * Overview of the user's account and activities — live data from DB.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -19,6 +19,7 @@ import {
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { projectsApi } from '../../api/projects.api';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
 
 interface ProjectStats {
   total: number;
@@ -48,24 +49,26 @@ export default function UserDashboardHome() {
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [statsRes, projectsRes] = await Promise.all([
-          projectsApi.getStats(),
-          projectsApi.getAll({ limit: 3, sortBy: 'createdAt', order: 'desc' }),
-        ]);
-        setStats(statsRes.data.data);
-        const list = projectsRes.data.data?.projects ?? projectsRes.data.data ?? [];
-        setRecentProjects(list.slice(0, 3));
-      } catch (err) {
-        console.error('[UserDashboard] load failed:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+  const loadDashboard = useCallback(async () => {
+    try {
+      const [statsRes, projectsRes] = await Promise.all([
+        projectsApi.getStats(),
+        projectsApi.getAll({ limit: 3, sortBy: 'createdAt', order: 'desc' }),
+      ]);
+      setStats(statsRes.data.data);
+      const list = projectsRes.data.data?.projects ?? projectsRes.data.data ?? [];
+      setRecentProjects(list.slice(0, 3));
+    } catch (err) {
+      console.error('[UserDashboard] load failed:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+
+  // Real-time: refresh stats + recent projects when admin updates any project
+  useDataRealtime('projects', loadDashboard);
 
   const activeCount   = (stats?.approved ?? 0) + (stats?.inReview ?? 0);
   const pendingCount  = stats?.pending ?? 0;

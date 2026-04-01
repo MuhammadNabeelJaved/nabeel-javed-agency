@@ -7,6 +7,8 @@ import {
     deleteProject,
     updateProjectStatus,
     getPublicPortfolio,
+    bulkDeleteProjects,
+    bulkToggleVisibility,
 } from "../../controllers/usersControllers/adminProject.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 import { mutationLimiter } from "../../middlewares/rateLimiter.js";
@@ -20,6 +22,10 @@ router.get("/portfolio", getPublicPortfolio);
 // Read routes – admin + team can access
 router.get("/", userAuthenticated, authorizeRoles("admin", "team"), getAllProjects);
 router.get("/:id", userAuthenticated, authorizeRoles("admin", "team"), validate([mongoIdParam("id")]), getProjectById);
+
+// Bulk routes – must come before /:id param routes
+router.delete("/bulk", userAuthenticated, authorizeRoles("admin"), mutationLimiter, bulkDeleteProjects);
+router.patch("/bulk/visibility", userAuthenticated, authorizeRoles("admin"), mutationLimiter, bulkToggleVisibility);
 
 // Write routes – admin only
 router.post("/", userAuthenticated, authorizeRoles("admin"), mutationLimiter, createProject);

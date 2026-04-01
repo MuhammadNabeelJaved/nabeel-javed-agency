@@ -27,6 +27,11 @@ import {
   Pencil,
   Trash2,
   X,
+  CheckSquare,
+  Square,
+  ListChecks,
+  FilePlus2,
+  PenLine,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -360,8 +365,20 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
   const [pagination, setPagination] = useState({ total: 0, pages: 1, limit: 20 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // ── Bulk select ───────────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelect = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+  });
+  const toggleAll = () => setSelectedIds(
+    selectedIds.size === docs.length ? new Set() : new Set(docs.map(d => String(d._id ?? '')).filter(Boolean))
+  );
+  const allSelected = docs.length > 0 && selectedIds.size === docs.length;
+  const clearSelection = () => setSelectedIds(new Set());
+
   // ── JSON editor modal ─────────────────────────────────────────────────────
-  const [docModal, setDocModal] = useState<{ mode: 'add' | 'edit'; doc?: Record<string, unknown> } | null>(null);
+  // mode: 'add' = single insert, 'edit' = single update, 'bulk-insert' = insertMany, 'bulk-update' = patch selected
+  const [docModal, setDocModal] = useState<{ mode: 'add' | 'edit' | 'bulk-insert' | 'bulk-update'; doc?: Record<string, unknown> } | null>(null);
   const [docJson, setDocJson] = useState('');
   const [docSaving, setDocSaving] = useState(false);
   const [jsonError, setJsonError] = useState('');
@@ -369,6 +386,8 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
   // ── Delete confirm ────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   async function fetchDocs(p = page, s = search) {
     setLoading(true);
@@ -413,6 +432,18 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
     setDocModal({ mode: 'add' });
   }
 
+  function openBulkInsert() {
+    setDocJson('[\n  {\n    \n  }\n]');
+    setJsonError('');
+    setDocModal({ mode: 'bulk-insert' });
+  }
+
+  function openBulkUpdate() {
+    setDocJson('{\n  \n}');
+    setJsonError('');
+    setDocModal({ mode: 'bulk-update' });
+  }
+
   function openEdit(doc: Record<string, unknown>) {
     setDocJson(JSON.stringify(doc, null, 2));
     setJsonError('');
@@ -421,18 +452,34 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
 
   async function handleSave() {
     if (!docModal) return;
-    let parsed: Record<string, unknown>;
-    try { parsed = JSON.parse(docJson); }
-    catch { setJsonError('Invalid JSON — fix before saving.'); return; }
     setDocSaving(true);
     try {
       if (docModal.mode === 'add') {
+        let parsed: Record<string, unknown>;
+        try { parsed = JSON.parse(docJson); } catch { setJsonError('Invalid JSON.'); setDocSaving(false); return; }
         await apiClient.post(`/database/collections/${collection.name}/documents`, parsed);
         toast.success('Document inserted');
-      } else {
+      } else if (docModal.mode === 'edit') {
+        let parsed: Record<string, unknown>;
+        try { parsed = JSON.parse(docJson); } catch { setJsonError('Invalid JSON.'); setDocSaving(false); return; }
         const id = String((docModal.doc as any)?._id);
         await apiClient.put(`/database/collections/${collection.name}/documents/${id}`, parsed);
         toast.success('Document updated');
+      } else if (docModal.mode === 'bulk-insert') {
+        let parsed: unknown[];
+        try { parsed = JSON.parse(docJson); } catch { setJsonError('Invalid JSON array.'); setDocSaving(false); return; }
+        if (!Array.isArray(parsed)) { setJsonError('Must be a JSON array [ ... ].'); setDocSaving(false); return; }
+        const res = await apiClient.post(`/database/collections/${collection.name}/documents/bulk-insert`, { documents: parsed });
+        toast.success(res.data?.message || `${parsed.length} document(s) inserted`);
+      } else if (docModal.mode === 'bulk-update') {
+        let patch: Record<string, unknown>;
+        try { patch = JSON.parse(docJson); } catch { setJsonError('Invalid JSON object.'); setDocSaving(false); return; }
+        const res = await apiClient.patch(`/database/collections/${collection.name}/documents/bulk-update`, {
+          ids: Array.from(selectedIds),
+          patch,
+        });
+        toast.success(res.data?.message || 'Documents updated');
+        clearSelection();
       }
       setDocModal(null);
       fetchDocs(page, search);
@@ -452,6 +499,21 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Delete failed');
     } finally { setDeleting(false); }
+  }
+
+  async function handleBulkDelete() {
+    setBulkDeleting(true);
+    try {
+      const res = await apiClient.delete(`/database/collections/${collection.name}/documents/bulk`, {
+        data: { ids: Array.from(selectedIds) },
+      });
+      toast.success(res.data?.message || `${selectedIds.size} document(s) deleted`);
+      clearSelection();
+      setConfirmBulkDelete(false);
+      fetchDocs(page, search);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Bulk delete failed');
+    } finally { setBulkDeleting(false); }
   }
 
   // Auto-detect columns from the first visible doc
@@ -492,6 +554,9 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs border-border" onClick={openBulkInsert} title="Insert multiple documents from JSON array">
+                <FilePlus2 className="h-3.5 w-3.5" /> Bulk Insert
+              </Button>
               <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={openAdd}>
                 <Plus className="h-3.5 w-3.5" /> Add Document
               </Button>
@@ -525,6 +590,27 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
             </form>
           </div>
 
+          {/* Bulk action bar */}
+          {selectedIds.size > 0 && (
+            <div className="px-6 py-2 border-b border-border bg-primary/5 shrink-0 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <ListChecks className="h-4 w-4" />
+                {selectedIds.size} document{selectedIds.size !== 1 ? 's' : ''} selected
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 border-border" onClick={openBulkUpdate}>
+                  <PenLine className="h-3.5 w-3.5" /> Bulk Update
+                </Button>
+                <Button size="sm" variant="destructive" className="h-7 text-xs gap-1.5" onClick={() => setConfirmBulkDelete(true)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+                </Button>
+                <button onClick={clearSelection} className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-accent text-muted-foreground transition-colors" title="Clear selection">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           <div className="flex-1 overflow-auto bg-background">
             {loading ? (
@@ -541,6 +627,14 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-muted/60 backdrop-blur-sm border-b-2 border-border">
+                    <th className="px-4 py-3 w-8 shrink-0">
+                      <button onClick={toggleAll} title={allSelected ? 'Deselect all' : 'Select all'}>
+                        {allSelected
+                          ? <CheckSquare className="h-4 w-4 text-primary" />
+                          : <Square className="h-4 w-4 text-muted-foreground" />
+                        }
+                      </button>
+                    </th>
                     <th className="text-left px-4 py-3 font-semibold text-muted-foreground w-10 shrink-0">#</th>
                     {columns.map((col) => (
                       <th key={col} className="text-left px-4 py-3 font-semibold text-muted-foreground font-mono whitespace-nowrap">{col}</th>
@@ -556,9 +650,17 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
                     return (
                       <React.Fragment key={docId || i}>
                         <tr
-                          className={`transition-colors cursor-pointer group ${isExpanded ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-muted/30'}`}
+                          className={`transition-colors cursor-pointer group ${isExpanded ? 'bg-primary/5 border-l-2 border-l-primary' : selectedIds.has(docId) ? 'bg-primary/5' : 'hover:bg-muted/30'}`}
                           onClick={() => setExpandedId(isExpanded ? null : docId)}
                         >
+                          <td className="px-4 py-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={() => docId && toggleSelect(docId)}>
+                              {selectedIds.has(docId)
+                                ? <CheckSquare className="h-4 w-4 text-primary" />
+                                : <Square className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                              }
+                            </button>
+                          </td>
                           <td className="px-4 py-3 text-muted-foreground font-mono shrink-0">{rowNum}</td>
                           {columns.map((col) => (
                             <td key={col} className="px-4 py-3 font-mono max-w-[200px]">
@@ -595,7 +697,7 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
                         {/* Expanded JSON row */}
                         {isExpanded && (
                           <tr className="bg-muted/10">
-                            <td colSpan={columns.length + 2} className="px-6 py-4">
+                            <td colSpan={columns.length + 3} className="px-6 py-4">
                               <div className="flex items-center justify-between gap-2 mb-3">
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Full Document JSON</p>
                                 <div className="flex items-center gap-3">
@@ -697,12 +799,16 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
             <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40">
               <div>
                 <h3 className="font-semibold text-base text-foreground">
-                  {docModal.mode === 'add' ? 'Insert Document' : 'Edit Document'}
+                  {docModal.mode === 'add' && 'Insert Document'}
+                  {docModal.mode === 'edit' && 'Edit Document'}
+                  {docModal.mode === 'bulk-insert' && 'Bulk Insert Documents'}
+                  {docModal.mode === 'bulk-update' && `Bulk Update ${selectedIds.size} Document${selectedIds.size !== 1 ? 's' : ''}`}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {docModal.mode === 'add'
-                    ? `Add a new document to "${collection.name}".`
-                    : `Edit document in "${collection.name}". The _id field is read-only.`}
+                  {docModal.mode === 'add' && `Add a new document to "${collection.name}".`}
+                  {docModal.mode === 'edit' && `Edit document in "${collection.name}". The _id field is read-only.`}
+                  {docModal.mode === 'bulk-insert' && `Paste a JSON array of documents to insert into "${collection.name}". Max 500.`}
+                  {docModal.mode === 'bulk-update' && `Enter fields to $set on all ${selectedIds.size} selected documents. The _id field is ignored.`}
                 </p>
               </div>
               <button
@@ -734,7 +840,10 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
               <Button onClick={handleSave} disabled={docSaving} className="gap-2 min-w-[120px]">
                 {docSaving
                   ? <><RefreshCw className="h-4 w-4 animate-spin" /> Saving…</>
-                  : docModal.mode === 'add' ? <><Plus className="h-4 w-4" /> Insert</> : <><Pencil className="h-4 w-4" /> Save Changes</>
+                  : docModal.mode === 'add'         ? <><Plus className="h-4 w-4" /> Insert</>
+                  : docModal.mode === 'edit'         ? <><Pencil className="h-4 w-4" /> Save Changes</>
+                  : docModal.mode === 'bulk-insert'  ? <><FilePlus2 className="h-4 w-4" /> Insert All</>
+                  :                                   <><PenLine className="h-4 w-4" /> Update All</>
                 }
               </Button>
             </div>
@@ -776,21 +885,121 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
           </div>
         </div>
       )}
+      {/* ── Bulk Delete Confirm ─────────────────────────────────────────────── */}
+      {confirmBulkDelete && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-border bg-muted/40">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                  <Trash2 className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base text-foreground">Bulk Delete Documents</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">This action cannot be undone.</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-muted-foreground">
+                Permanently delete <span className="font-semibold text-foreground">{selectedIds.size} document{selectedIds.size !== 1 ? 's' : ''}</span> from <span className="font-semibold text-foreground">{collection.name}</span>?
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
+              <Button variant="outline" onClick={() => setConfirmBulkDelete(false)} disabled={bulkDeleting} className="border-border">
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleBulkDelete} disabled={bulkDeleting} className="gap-2 min-w-[120px]">
+                {bulkDeleting ? <><RefreshCw className="h-4 w-4 animate-spin" /> Deleting…</> : <><Trash2 className="h-4 w-4" /> Delete {selectedIds.size}</>}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
 }
 
 // ─── Tab 2: Collections ───────────────────────────────────────────────────────
-function CollectionsTab({ collections, loading }: { collections: CollectionInfo[]; loading: boolean }) {
+function CollectionsTab({ collections, loading, onRefresh }: { collections: CollectionInfo[]; loading: boolean; onRefresh: () => void }) {
   const [search, setSearch] = useState('');
   const [browserTarget, setBrowserTarget] = useState<CollectionInfo | null>(null);
 
+  // Bulk create state
+  const [showBulkCreate, setShowBulkCreate] = useState(false);
+  const [bulkNames, setBulkNames] = useState('');
+  const [bulkCreating, setBulkCreating] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: string[]; errors: { name: string; error: string }[] } | null>(null);
+
+  // Bulk delete state
+  const [selectedNames, setSelectedNames] = useState<Set<string>>(new Set());
+  const [confirmBulkDrop, setConfirmBulkDrop] = useState(false);
+  const [bulkDropping, setBulkDropping] = useState(false);
+
   const filtered = collections.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const allSelected = filtered.length > 0 && filtered.every(c => selectedNames.has(c.name));
+
+  function toggleSelect(name: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedNames(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+  }
+
+  function toggleAll(e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedNames(allSelected ? new Set() : new Set(filtered.map(c => c.name)));
+  }
+
+  function clearSelection() { setSelectedNames(new Set()); }
+
+  async function handleBulkDrop() {
+    setBulkDropping(true);
+    try {
+      const res = await apiClient.delete('/database/collections/bulk', { data: { names: Array.from(selectedNames) } });
+      const { dropped, errors } = res.data?.data ?? { dropped: [], errors: [] };
+      if (dropped.length > 0) toast.success(`${dropped.length} collection(s) deleted`);
+      if (errors.length > 0) toast.error(`${errors.length} collection(s) failed to delete`);
+      clearSelection();
+      setConfirmBulkDrop(false);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Bulk delete failed');
+    } finally {
+      setBulkDropping(false);
+    }
+  }
 
   function formatSize(kb: number): string {
     if (kb >= 1024) return (kb / 1024).toFixed(1) + ' MB';
     return kb.toFixed(1) + ' KB';
+  }
+
+  function openBulkCreate() {
+    setBulkNames('');
+    setBulkResult(null);
+    setShowBulkCreate(true);
+  }
+
+  async function handleBulkCreate() {
+    const names = bulkNames.split('\n').map(n => n.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    setBulkCreating(true);
+    setBulkResult(null);
+    try {
+      const res = await apiClient.post('/database/collections/bulk-create', { names });
+      const { created, errors } = res.data?.data ?? { created: [], errors: [] };
+      setBulkResult({ created, errors });
+      if (created.length > 0) toast.success(`${created.length} collection(s) created`);
+      if (errors.length > 0 && created.length === 0) toast.error('All collections failed to create');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Bulk create failed');
+    } finally {
+      setBulkCreating(false);
+    }
   }
 
   if (loading) {
@@ -813,55 +1022,102 @@ function CollectionsTab({ collections, loading }: { collections: CollectionInfo[
             className="pl-9 bg-muted/30 border-border"
           />
         </div>
-        <p className="text-xs text-muted-foreground shrink-0">{filtered.length} collection{filtered.length !== 1 ? 's' : ''}</p>
+        <div className="flex items-center gap-3 shrink-0">
+          <p className="text-xs text-muted-foreground">{filtered.length} collection{filtered.length !== 1 ? 's' : ''}</p>
+          <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={openBulkCreate}>
+            <Plus className="h-3.5 w-3.5" /> Create Collections
+          </Button>
+        </div>
       </div>
+
+      {/* Bulk selection action bar */}
+      {selectedNames.size > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20">
+          <div className="flex items-center gap-2.5">
+            <CheckSquare className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">
+              {selectedNames.size} collection{selectedNames.size !== 1 ? 's' : ''} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearSelection}>
+              Clear
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => setConfirmBulkDrop(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Card className="bg-muted/30 border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-muted-foreground bg-muted/20">
+                <th className="px-4 py-3 w-10">
+                  <button onClick={toggleAll} title={allSelected ? 'Deselect all' : 'Select all'}>
+                    {allSelected
+                      ? <CheckSquare className="h-4 w-4 text-primary" />
+                      : <Square className="h-4 w-4 text-muted-foreground" />
+                    }
+                  </button>
+                </th>
                 <th className="text-left px-4 py-3 font-medium">Collection</th>
                 <th className="text-right px-4 py-3 font-medium">Documents</th>
                 <th className="text-right px-4 py-3 font-medium">Size</th>
                 <th className="text-right px-4 py-3 font-medium">Avg Doc</th>
                 <th className="text-right px-4 py-3 font-medium">Indexes</th>
-                <th className="text-right px-4 py-3 font-medium">Actions</th>
+                <th className="text-right px-4 py-3 font-medium w-10"></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((col) => (
-                <tr key={col.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors group">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Database className="h-3.5 w-3.5 text-primary" />
+              {filtered.map((col) => {
+                const isSelected = selectedNames.has(col.name);
+                return (
+                  <tr
+                    key={col.name}
+                    className={`border-b border-border/50 transition-colors cursor-pointer group ${isSelected ? 'bg-primary/5' : 'hover:bg-primary/5'}`}
+                    onClick={() => setBrowserTarget(col)}
+                    title={`Browse ${col.name}`}
+                  >
+                    <td className="px-4 py-3 w-10">
+                      <button onClick={(e) => toggleSelect(col.name, e)} title="Select">
+                        {isSelected
+                          ? <CheckSquare className="h-4 w-4 text-primary" />
+                          : <Square className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        }
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Database className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <span className="font-mono font-medium text-sm">{col.name}</span>
                       </div>
-                      <span className="font-mono font-medium text-sm">{col.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{col.count.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatSize(col.sizeKB)}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs">{formatBytes(col.avgObjSize)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Badge variant="outline" className="border-border text-xs">{col.indexCount}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 gap-1.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary"
-                      onClick={() => setBrowserTarget(col)}
-                    >
-                      <FolderOpen className="h-3.5 w-3.5" /> Browse
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{col.count.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{formatSize(col.sizeKB)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">{formatBytes(col.avgObjSize)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Badge variant="outline" className="border-border text-xs">{col.indexCount}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
+                    </td>
+                  </tr>
+                );
+              })}
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-14 text-muted-foreground text-sm">
+                  <td colSpan={7} className="text-center py-14 text-muted-foreground text-sm">
                     <Database className="h-8 w-8 mx-auto mb-3 opacity-20" />
                     No collections found.
                   </td>
@@ -878,6 +1134,161 @@ function CollectionsTab({ collections, loading }: { collections: CollectionInfo[
           collection={browserTarget}
           onClose={() => setBrowserTarget(null)}
         />
+      )}
+
+      {/* Bulk Drop Collections Confirm */}
+      {confirmBulkDrop && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-border bg-muted/40">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                  <Trash2 className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base text-foreground">Delete Collections</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">This will permanently drop all selected collections and their data.</p>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Permanently drop <span className="font-semibold text-foreground">{selectedNames.size} collection{selectedNames.size !== 1 ? 's' : ''}</span>? This cannot be undone.
+              </p>
+              <div className="bg-muted/50 border border-border rounded-xl px-4 py-3 flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                {Array.from(selectedNames).map(name => (
+                  <span key={name} className="font-mono text-xs bg-red-500/10 text-red-500 border border-red-500/20 px-2 py-0.5 rounded-md">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
+              <Button variant="outline" onClick={() => setConfirmBulkDrop(false)} disabled={bulkDropping} className="border-border">
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleBulkDrop} disabled={bulkDropping} className="gap-2 min-w-[140px]">
+                {bulkDropping
+                  ? <><RefreshCw className="h-4 w-4 animate-spin" /> Deleting…</>
+                  : <><Trash2 className="h-4 w-4" /> Delete {selectedNames.size}</>
+                }
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Create Collections Modal */}
+      {showBulkCreate && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40">
+              <div>
+                <h3 className="font-semibold text-base text-foreground flex items-center gap-2">
+                  <FilePlus2 className="h-4 w-4 text-primary" /> Create Collections
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Enter one collection name per line. Max 20.
+                </p>
+              </div>
+              <button
+                onClick={() => { if (!bulkCreating) { setShowBulkCreate(false); setBulkResult(null); } }}
+                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent text-muted-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                  Collection Names (one per line)
+                </label>
+                <textarea
+                  value={bulkNames}
+                  onChange={(e) => { setBulkNames(e.target.value); setBulkResult(null); }}
+                  rows={8}
+                  placeholder={"audit_logs\ntemp_cache\nanalytics_events"}
+                  spellCheck={false}
+                  disabled={bulkCreating}
+                  className="w-full bg-muted/60 border border-border rounded-xl px-4 py-3 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y leading-relaxed placeholder:text-muted-foreground/50"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Only letters, digits, underscore (_) and dot (.) are allowed in collection names.
+                </p>
+              </div>
+
+              {/* Results */}
+              {bulkResult && (
+                <div className="space-y-2">
+                  {bulkResult.created.length > 0 && (
+                    <div className="rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
+                      <p className="text-xs font-semibold text-green-600 dark:text-green-400 mb-1.5">
+                        Created ({bulkResult.created.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {bulkResult.created.map(n => (
+                          <span key={n} className="font-mono text-xs bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-md">
+                            {n}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {bulkResult.errors.length > 0 && (
+                    <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+                      <p className="text-xs font-semibold text-red-500 mb-1.5">
+                        Failed ({bulkResult.errors.length})
+                      </p>
+                      <div className="space-y-1">
+                        {bulkResult.errors.map(e => (
+                          <p key={e.name} className="text-xs text-muted-foreground">
+                            <span className="font-mono text-red-400">{e.name}</span> — {e.error}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
+              <Button
+                variant="outline"
+                onClick={() => { setShowBulkCreate(false); setBulkResult(null); }}
+                disabled={bulkCreating}
+                className="border-border"
+              >
+                {bulkResult ? 'Close' : 'Cancel'}
+              </Button>
+              {!bulkResult && (
+                <Button
+                  onClick={handleBulkCreate}
+                  disabled={bulkCreating || !bulkNames.trim()}
+                  className="gap-2 min-w-[140px]"
+                >
+                  {bulkCreating
+                    ? <><RefreshCw className="h-4 w-4 animate-spin" /> Creating…</>
+                    : <><FilePlus2 className="h-4 w-4" /> Create Collections</>
+                  }
+                </Button>
+              )}
+              {bulkResult && bulkResult.created.length > 0 && (
+                <Button
+                  onClick={() => { setBulkNames(''); setBulkResult(null); }}
+                  variant="outline"
+                  className="border-border gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Create More
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </motion.div>
   );
@@ -1463,7 +1874,7 @@ export default function DatabaseManager() {
         </TabsContent>
 
         <TabsContent value="collections">
-          <CollectionsTab collections={collections} loading={collectionsLoading} />
+          <CollectionsTab collections={collections} loading={collectionsLoading} onRefresh={fetchCollections} />
         </TabsContent>
 
         <TabsContent value="insights">

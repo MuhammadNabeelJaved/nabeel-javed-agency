@@ -79,6 +79,8 @@ export const createProject = asyncHandler(async (req, res, next) => {
             return next(new AppError('Project creation failed', 500));
         }
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "projects" });
         return successResponse(res, 'Project created successfully', newProject, 201);
     } catch (error) {
         console.error(error);
@@ -203,6 +205,8 @@ export const updateProject = asyncHandler(async (req, res, next) => {
             return next(new AppError('Project not found', 404));
         }
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "projects" });
         successResponse(res, 'Project updated successfully', project);
     } catch (error) {
         console.error(error);
@@ -229,6 +233,8 @@ export const deleteProject = asyncHandler(async (req, res, next) => {
             return next(new AppError('Project not found', 404));
         }
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "projects" });
         successResponse(res, 'Project deleted successfully', null);
     } catch (error) {
         console.error(error);
@@ -285,10 +291,37 @@ export const updateProjectStatus = asyncHandler(async (req, res, next) => {
             return next(new AppError('Project not found', 404));
         }
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "projects" });
         successResponse(res, 'Project status updated successfully', project);
     } catch (error) {
         console.error(error);
         if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw error;
     }
+});
+
+// =========================
+// BULK DELETE PROJECTS
+// =========================
+export const bulkDeleteProjects = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+    const result = await adminProject.deleteMany({ _id: { $in: ids } });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+    successResponse(res, `${result.deletedCount} project(s) deleted`, { deletedCount: result.deletedCount });
+});
+
+// =========================
+// BULK TOGGLE VISIBILITY
+// =========================
+export const bulkToggleVisibility = asyncHandler(async (req, res) => {
+    const { ids, isPublic } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+    if (typeof isPublic !== "boolean") throw new AppError("isPublic (boolean) is required", 400);
+    await adminProject.updateMany({ _id: { $in: ids } }, { isPublic });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+    successResponse(res, `${ids.length} project(s) updated`, { count: ids.length });
 });

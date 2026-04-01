@@ -527,6 +527,143 @@ export const deleteDocument = asyncHandler(async (req, res) => {
 // 6. GET /export/:name
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Bulk: POST /collections/:name/documents/bulk-insert — insertMany
+// ---------------------------------------------------------------------------
+export const bulkInsertDocuments = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const { name } = req.params;
+  if (!isValidCollectionName(name)) throw new AppError("Invalid collection name", 400);
+  const { documents } = req.body;
+  if (!Array.isArray(documents) || documents.length === 0)
+    throw new AppError("'documents' must be a non-empty array", 400);
+  if (documents.length > 500)
+    throw new AppError("Maximum 500 documents per bulk insert", 400);
+  const db = mongoose.connection.db;
+  const result = await db.collection(name).insertMany(documents, { ordered: false });
+  return successResponse(res, `${result.insertedCount} document(s) inserted`, {
+    insertedCount: result.insertedCount,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bulk: DELETE /collections/:name/documents/bulk — deleteMany by ids[]
+// ---------------------------------------------------------------------------
+export const bulkDeleteDocuments = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const { name } = req.params;
+  if (!isValidCollectionName(name)) throw new AppError("Invalid collection name", 400);
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0)
+    throw new AppError("'ids' must be a non-empty array", 400);
+  const { ObjectId } = mongoose.Types;
+  const objectIds = ids.map(id => {
+    try { return new ObjectId(id); }
+    catch { throw new AppError(`Invalid ID: ${id}`, 400); }
+  });
+  const db = mongoose.connection.db;
+  const result = await db.collection(name).deleteMany({ _id: { $in: objectIds } });
+  return successResponse(res, `${result.deletedCount} document(s) deleted`, {
+    deletedCount: result.deletedCount,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bulk: PATCH /collections/:name/documents/bulk-update — updateMany with $set patch
+// ---------------------------------------------------------------------------
+export const bulkUpdateDocuments = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const { name } = req.params;
+  if (!isValidCollectionName(name)) throw new AppError("Invalid collection name", 400);
+  const { ids, patch } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0)
+    throw new AppError("'ids' must be a non-empty array", 400);
+  if (!patch || typeof patch !== "object" || Array.isArray(patch))
+    throw new AppError("'patch' must be a JSON object", 400);
+  const { _id, ...fields } = patch;
+  if (Object.keys(fields).length === 0)
+    throw new AppError("'patch' must contain at least one field", 400);
+  const { ObjectId } = mongoose.Types;
+  const objectIds = ids.map(id => {
+    try { return new ObjectId(id); }
+    catch { throw new AppError(`Invalid ID: ${id}`, 400); }
+  });
+  const db = mongoose.connection.db;
+  const result = await db.collection(name).updateMany(
+    { _id: { $in: objectIds } },
+    { $set: fields }
+  );
+  return successResponse(res, `${result.modifiedCount} document(s) updated`, {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bulk: DELETE /collections/bulk — drop multiple collections by name
+// ---------------------------------------------------------------------------
+export const bulkDropCollections = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const { names } = req.body;
+  if (!Array.isArray(names) || names.length === 0)
+    throw new AppError("'names' must be a non-empty array", 400);
+
+  const db = mongoose.connection.db;
+  const dropped = [];
+  const errors = [];
+
+  for (const raw of names) {
+    const name = String(raw).trim();
+    if (!name) continue;
+    if (!isValidCollectionName(name)) {
+      errors.push({ name, error: "Invalid collection name" });
+      continue;
+    }
+    try {
+      await db.dropCollection(name);
+      dropped.push(name);
+    } catch (err) {
+      errors.push({ name, error: err.message });
+    }
+  }
+
+  return successResponse(res, `${dropped.length} collection(s) dropped`, { dropped, errors });
+});
+
+// ---------------------------------------------------------------------------
+// Bulk: POST /collections/bulk-create — create multiple empty collections
+// ---------------------------------------------------------------------------
+export const bulkCreateCollections = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+  const { names } = req.body;
+  if (!Array.isArray(names) || names.length === 0)
+    throw new AppError("'names' must be a non-empty array", 400);
+  if (names.length > 20)
+    throw new AppError("Maximum 20 collections per bulk create", 400);
+
+  const db = mongoose.connection.db;
+  const created = [];
+  const errors = [];
+
+  for (const raw of names) {
+    const name = String(raw).trim();
+    if (!name) continue;
+    if (!isValidCollectionName(name)) {
+      errors.push({ name, error: "Invalid name — use letters, digits, underscore, or dot only" });
+      continue;
+    }
+    try {
+      await db.createCollection(name);
+      created.push(name);
+    } catch (err) {
+      // Collection already exists or other error
+      errors.push({ name, error: err.message });
+    }
+  }
+
+  return successResponse(res, `${created.length} collection(s) created`, { created, errors });
+});
+
 export const exportCollection = asyncHandler(async (req, res) => {
   requireAdmin(req);
 

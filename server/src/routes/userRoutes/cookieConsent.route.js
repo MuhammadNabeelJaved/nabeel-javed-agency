@@ -18,6 +18,9 @@ import {
   getConsentStats,
   clearOldConsents,
   deleteConsent,
+  getUsersConsent,
+  overrideUserConsent,
+  resetUserConsent,
 } from '../../controllers/usersControllers/cookieConsent.controller.js';
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
 
@@ -30,7 +33,10 @@ router.post('/', saveConsent);
 router.use(userAuthenticated, authorizeRoles('admin'));
 
 router.get('/stats', getConsentStats);
-router.delete('/clear', clearOldConsents);   // must come before /:id
+router.delete('/clear', clearOldConsents);          // must come before /:id
+router.get('/users', getUsersConsent);              // all users + their latest consent
+router.patch('/users/:userId', overrideUserConsent); // admin sets a user's consent
+router.delete('/users/:userId/reset', resetUserConsent); // admin resets a user's consent
 router.get('/', getConsents);
 router.delete('/:id', deleteConsent);
 

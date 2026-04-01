@@ -8,6 +8,7 @@
  * DELETE /api/v1/consent/clear — admin only, bulk-delete records older than N days
  */
 import CookieConsent from '../../models/usersModels/CookieConsent.model.js';
+import User from '../../models/usersModels/User.model.js';
 import asyncHandler from '../../middlewares/asyncHandler.js';
 import AppError from '../../utils/AppError.js';
 import { successResponse } from '../../utils/apiResponse.js';
@@ -54,7 +55,7 @@ export const saveConsent = asyncHandler(async (req, res) => {
     userAgent: ua,
   });
 
-  successResponse(res, 201, 'Consent recorded', { id: doc._id });
+  successResponse(res, 'Consent recorded', { id: doc._id }, 201);
 });
 
 // ── GET /api/v1/consent ───────────────────────────────────────────────────────
@@ -74,7 +75,7 @@ export const getConsents = asyncHandler(async (req, res) => {
     CookieConsent.countDocuments(),
   ]);
 
-  successResponse(res, 200, 'Consent records fetched', {
+  successResponse(res, 'Consent records fetched', {
     records,
     pagination: {
       total,
@@ -101,7 +102,7 @@ export const getConsentStats = asyncHandler(async (req, res) => {
 
   const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
-  successResponse(res, 200, 'Consent stats fetched', {
+  successResponse(res, 'Consent stats fetched', {
     total,
     last30Days: recent,
     breakdown: {
@@ -124,7 +125,7 @@ export const clearOldConsents = asyncHandler(async (req, res) => {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const result = await CookieConsent.deleteMany({ createdAt: { $lt: cutoff } });
 
-  successResponse(res, 200, `Deleted ${result.deletedCount} records older than ${days} days`, {
+  successResponse(res, `Deleted ${result.deletedCount} records older than ${days} days`, {
     deletedCount: result.deletedCount,
   });
 });
@@ -134,5 +135,91 @@ export const clearOldConsents = asyncHandler(async (req, res) => {
 export const deleteConsent = asyncHandler(async (req, res) => {
   const doc = await CookieConsent.findByIdAndDelete(req.params.id);
   if (!doc) throw new AppError('Record not found', 404);
-  successResponse(res, 200, 'Consent record deleted');
+  successResponse(res, 'Consent record deleted');
+});
+
+// ── GET /api/v1/consent/users ─────────────────────────────────────────────────
+// Returns all registered users with their latest consent record (if any)
+
+export const getUsersConsent = asyncHandler(async (req, res) => {
+  const users = await User.find({ deletedAt: null })
+    .select('name email role photo')
+    .sort({ name: 1 })
+    .lean();
+
+  // For each user, get their latest consent record
+  const latestConsents = await CookieConsent.aggregate([
+    { $match: { userId: { $in: users.map(u => u._id) } } },
+    { $sort: { createdAt: -1 } },
+    {
+      $group: {
+        _id: '$userId',
+        consent: { $first: '$consent' },
+        updatedAt: { $first: '$createdAt' },
+        recordId: { $first: '$_id' },
+      },
+    },
+  ]);
+
+  const consentMap = {};
+  for (const c of latestConsents) {
+    consentMap[String(c._id)] = {
+      consent: c.consent,
+      updatedAt: c.updatedAt,
+      recordId: c.recordId,
+    };
+  }
+
+  const result = users.map(u => ({
+    ...u,
+    latestConsent: consentMap[String(u._id)] ?? null,
+  }));
+
+  successResponse(res, 'Users consent fetched', { users: result });
+});
+
+// ── PATCH /api/v1/consent/users/:userId ───────────────────────────────────────
+// Admin overrides a user's consent by inserting a new authoritative record
+
+export const overrideUserConsent = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { functional = false, analytics = false, marketing = false } = req.body;
+
+  const user = await User.findById(userId).lean();
+  if (!user) throw new AppError('User not found', 404);
+
+  const doc = await CookieConsent.create({
+    userId,
+    consent: {
+      essential: true,
+      functional: Boolean(functional),
+      analytics: Boolean(analytics),
+      marketing: Boolean(marketing),
+    },
+    timestamp: new Date().toISOString(),
+    ipAddress: 'admin-override',
+    userAgent: `Admin override by ${req.user.email}`,
+  });
+
+  successResponse(res, 'User consent updated', {
+    consent: doc.consent,
+    updatedAt: doc.createdAt,
+    recordId: doc._id,
+  }, 201);
+});
+
+// ── DELETE /api/v1/consent/users/:userId/reset ────────────────────────────────
+// Admin resets a user's consent — deletes all their records (forces re-prompt)
+
+export const resetUserConsent = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const user = await User.findById(userId).lean();
+  if (!user) throw new AppError('User not found', 404);
+
+  const result = await CookieConsent.deleteMany({ userId });
+
+  successResponse(res, `Consent reset for ${user.name}. ${result.deletedCount} records removed.`, {
+    deletedCount: result.deletedCount,
+  });
 });

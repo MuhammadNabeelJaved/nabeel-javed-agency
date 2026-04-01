@@ -262,6 +262,111 @@ Responsive HTML email templates — table-based layout, inline CSS, dark brand t
 
 ---
 
+## Searchable Pages — All Dashboards
+
+Every dashboard has a command-palette search (Cmd/Ctrl+K) powered by `client/src/components/DashboardSearch.tsx`.
+
+### How it works
+- `<DashboardSearch role="admin|team|user" />` is rendered in every dashboard topbar (DashboardLayout, TeamDashboardLayout, UserDashboardLayout)
+- Each role has a static registry: `ADMIN_ITEMS`, `TEAM_ITEMS`, `USER_ITEMS` — arrays of `SearchItem`
+- Results are scored and sorted by label/description/keywords match
+- Selecting an item calls `navigate(item.path)` — supports `?tab=` query params for deep-linking
+
+### SearchItem shape
+```ts
+{
+  id: string;           // unique, e.g. 'a-content'
+  label: string;        // display name
+  description?: string; // subtitle shown in results
+  path: string;         // navigate path — can include ?tab= for sub-tabs
+  icon: LucideIcon;
+  group: string;        // section header: 'Pages' | 'Actions' | 'Content Sections' | etc.
+  keywords?: string[];  // extra search terms
+}
+```
+
+### RULE — When you add a new page, tab, or section, you MUST:
+1. **Add an entry to the relevant role's registry** in `DashboardSearch.tsx`
+   - Admin pages → `ADMIN_ITEMS`
+   - Team pages → `TEAM_ITEMS`
+   - User pages → `USER_ITEMS`
+2. **Use `?tab=<value>` in `path`** if the destination is a tab inside an existing page
+3. **The target page must read `?tab=` from URL** on mount to auto-select the tab:
+   ```tsx
+   const location = useLocation();
+   const [activeTab, setActiveTab] = useState(() =>
+     new URLSearchParams(location.search).get('tab') || 'default'
+   );
+   useEffect(() => {
+     const tab = new URLSearchParams(location.search).get('tab');
+     if (tab) setActiveTab(tab);
+   }, [location.search]);
+   ```
+
+### Current registries
+| Role | Groups | # Items |
+|------|--------|---------|
+| admin | Pages, Content Sections, Actions | ~30 |
+| team | Pages, Actions | ~13 |
+| user | Pages, Actions | ~12 |
+
+### Content Editor deep-links
+All tabs in `/admin/content-editor` are searchable via `?tab=` params:
+`hero`, `logo`, `tech`, `process`, `why`, `testimonials`, `contact`, `social`, `nav-footer`
+
+ContentEditor reads `?tab=` on mount and on `location.search` change (useEffect).
+
+---
+
+## Real-Time Sync Architecture
+
+Every CRUD operation instantly reflects across all dashboards without a page reload.
+
+### How it works (two-layer system)
+
+**Layer 1 — Public CMS events (unauthenticated):**
+- Server controllers call `io.of('/public').emit('cms:updated', { section })`
+- `ContentContext` subscribes to `/public` namespace and dispatches `window CustomEvent 'cms:updated'`
+- `useDataRealtime(section, refetch)` hooks on any page pick this up and call their refetch function
+
+**Layer 2 — Authenticated private events (role-based rooms):**
+- Server controllers call `emitDataUpdate(io, section, ['admin:global' | 'team:global' | 'user:{id}'])`  
+  → utility is at `server/src/utils/dataUpdateService.js`
+- `SocketContext` listens for `data:updated` on the authenticated socket and dispatches `window 'cms:updated'`
+- Same `useDataRealtime` hooks fire automatically
+
+### Socket rooms
+| Room | Who joins | Used for |
+|---|---|---|
+| `user:{userId}` | Every authenticated user | Private notifications + project updates |
+| `admin:global` | All admins | New project requests, client changes, admin data sync |
+| `team:global` | All team members | Task/resource updates |
+| `conversation:{id}` | Chat participants | Chat messages |
+| `/public` namespace | Everyone (no auth) | CMS: services, jobs, announcements, page status, admin projects |
+
+### What triggers what
+| Action | Rooms notified | Section | Notification sent? |
+|---|---|---|---|
+| User submits project | `admin:global` | `projects` | ✅ `project_submitted` → all admins |
+| Admin updates project status | `user:{owner}`, `admin:global` | `projects` | ✅ `project_accepted/rejected/status_updated` → user |
+| Admin assigns team to project | `user:{teamId}` | `projects` | ✅ `project_assigned` → team member |
+| Admin/team creates task | `/public` + `team:global` | `tasks` | ✅ `task_assigned` → assignee |
+| Admin/team reassigns task | `/public` + `team:global` | `tasks` | ✅ `task_assigned` → new assignee |
+| Client CRUD | `admin:global` | `clients` | ❌ (admin-only data) |
+| Services/Jobs/Announcements CRUD | `/public` | `services/jobs/announcements` | ❌ |
+| Resources CRUD | `/public` | `resources` | ❌ |
+
+### RULE — When adding a new feature that mutates data:
+1. **Import** `emitDataUpdate` from `server/src/utils/dataUpdateService.js`
+2. **After** your DB write, call `emitDataUpdate(io, 'sectionName', ['room1', 'room2'])`
+3. **On the frontend**, ensure the page that displays the data has `useDataRealtime('sectionName', refetchFn)`
+4. For cross-role notifications (e.g. user → admin), use `createAndEmitNotification` from `notificationService.js`
+
+### Notification types (Notification.model.js enum)
+`message` | `file_received` | `project_accepted` | `project_rejected` | `project_assigned` | `project_submitted` | `task_assigned` | `status_updated`
+
+---
+
 ## Git Rules
 - Branch: `main` → remote: `github.com/MuhammadNabeelJaved/nabeel-javed-agency`
 - **Never** stage `server/.claude/settings.local.json`

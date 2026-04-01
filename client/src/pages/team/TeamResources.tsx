@@ -2,10 +2,10 @@
  * Team Resources Page
  * Upload files to Cloudinary, store metadata in DB, fetch + display + delete.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Upload, Trash2, Download, FileText, Image, Film,
-  Archive, File, Loader2, Search, Plus, X,
+  Archive, File, Loader2, Search, Plus, X, CheckSquare, Square,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -14,6 +14,9 @@ import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 import { resourcesApi } from '../../api/resources.api';
 import { toast } from 'sonner';
+import { useBulkSelect } from '../../hooks/useBulkSelect';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
+import { BulkActionBar } from '../../components/BulkActionBar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,11 +86,12 @@ export default function TeamResources() {
   const [search, setSearch]                 = useState('');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting]             = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const fileInputRef                        = useRef<HTMLInputElement>(null);
 
   // ── Fetch ────────────────────────────────────────────────────────────────
 
-  const fetchResources = async () => {
+  const fetchResources = useCallback(async () => {
     setError(null);
     try {
       const res = await resourcesApi.getAll();
@@ -100,9 +104,10 @@ export default function TeamResources() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchResources(); }, []);
+  useDataRealtime('resources', fetchResources);
+  useEffect(() => { fetchResources(); }, [fetchResources]);
 
   // ── Upload ───────────────────────────────────────────────────────────────
 
@@ -185,6 +190,22 @@ export default function TeamResources() {
     r.name.toLowerCase().includes(search.toLowerCase()) ||
     r.originalName.toLowerCase().includes(search.toLowerCase())
   );
+
+  const bulk = useBulkSelect(filtered);
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await resourcesApi.bulkDelete(bulk.ids);
+      toast.success(`${bulk.count} file(s) deleted`);
+      bulk.clear();
+      fetchResources();
+    } catch (err: any) {
+      toast.error('Bulk delete failed', { description: err?.response?.data?.message });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -277,10 +298,19 @@ export default function TeamResources() {
           {filtered.map(resource => (
             <Card
               key={resource._id}
-              className="group hover:border-primary/40 transition-all duration-200 cursor-pointer"
+              className={`group transition-all duration-200 cursor-pointer ${bulk.isSelected(resource._id) ? 'border-primary ring-1 ring-primary' : 'hover:border-primary/40'}`}
               onClick={() => window.open(resource.url, '_blank')}
             >
               <CardContent className="p-5 flex flex-col gap-4">
+                {/* Checkbox */}
+                <div className="flex items-center justify-between" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => bulk.toggle(resource._id)}>
+                    {bulk.isSelected(resource._id)
+                      ? <CheckSquare className="h-4 w-4 text-primary" />
+                      : <Square className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    }
+                  </button>
+                </div>
                 {/* Icon */}
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${getIconBg(resource.mimeType, resource.resourceType)}`}>
                   {getFileIcon(resource.mimeType, resource.resourceType)}
@@ -353,6 +383,21 @@ export default function TeamResources() {
         onConfirm={handleDelete}
         loading={deleting}
         description="This will permanently delete the file from Cloudinary and cannot be undone."
+      />
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        itemLabel="file"
+        actions={[
+          {
+            label: 'Delete Selected',
+            icon: Trash2,
+            variant: 'destructive',
+            loading: isBulkDeleting,
+            onClick: handleBulkDelete,
+          },
+        ]}
       />
     </div>
   );

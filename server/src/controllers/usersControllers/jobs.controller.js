@@ -75,6 +75,8 @@ export const createJob = asyncHandler(async (req, res) => {
             postedBy: req.user._id,
         });
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
         successResponse(res, "Job created successfully", job, 201);
     } catch (error) {
         console.error("Error in createJob:", error);
@@ -210,6 +212,8 @@ export const updateJob = asyncHandler(async (req, res) => {
             throw new AppError("Job not found", 404);
         }
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
         successResponse(res, "Job updated successfully", job);
     } catch (error) {
         console.error("Error in updateJob:", error);
@@ -236,6 +240,8 @@ export const deleteJob = asyncHandler(async (req, res) => {
             throw new AppError("Job not found", 404);
         }
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
         successResponse(res, "Job deleted successfully", null);
     } catch (error) {
         console.error("Error in deleteJob:", error);
@@ -271,6 +277,8 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
             throw new AppError("Job not found", 404);
         }
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
         successResponse(res, "Job status updated successfully", job);
     } catch (error) {
         console.error("Error in updateJobStatus:", error);
@@ -279,6 +287,31 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
     }
 });
 
+
+// =========================
+// BULK DELETE JOBS
+// =========================
+export const bulkDeleteJobs = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+    const result = await JobPosting.deleteMany({ _id: { $in: ids } });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
+    successResponse(res, `${result.deletedCount} job(s) deleted`, { deletedCount: result.deletedCount });
+});
+
+// =========================
+// BULK UPDATE JOB STATUS
+// =========================
+export const bulkUpdateJobStatus = asyncHandler(async (req, res) => {
+    const { ids, status } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+    if (!status) throw new AppError("status is required", 400);
+    await JobPosting.updateMany({ _id: { $in: ids } }, { status });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
+    successResponse(res, `${ids.length} job(s) updated`, { count: ids.length });
+});
 
 // =========================
 // GET FEATURED JOBS (Public)

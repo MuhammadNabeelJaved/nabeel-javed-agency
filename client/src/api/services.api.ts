@@ -7,4 +7,5 @@ export const servicesApi = {
   create: (data: any) => apiClient.post('/services/create', data),
   update: (id: string, data: any) => apiClient.put(`/services/update/${id}`, data),
   delete: (id: string) => apiClient.delete(`/services/delete/${id}`),
+  bulkDelete: (ids: string[]) => apiClient.delete('/services/bulk', { data: { ids } }),
 };

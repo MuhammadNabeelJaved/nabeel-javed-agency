@@ -8,4 +8,6 @@ export const adminProjectsApi = {
   update: (id: string, data: any) => apiClient.put(`/admin/projects/${id}`, data),
   updateStatus: (id: string, status: string) => apiClient.patch(`/admin/projects/${id}/status`, { status }),
   delete: (id: string) => apiClient.delete(`/admin/projects/${id}`),
+  bulkDelete: (ids: string[]) => apiClient.delete('/admin/projects/bulk', { data: { ids } }),
+  bulkToggleVisibility: (ids: string[], isPublic: boolean) => apiClient.patch('/admin/projects/bulk/visibility', { ids, isPublic }),
 };

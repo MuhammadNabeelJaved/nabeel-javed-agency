@@ -7,4 +7,5 @@ export const clientsApi = {
   update: (id: string, data: any) => apiClient.put(`/clients/${id}`, data),
   delete: (id: string) => apiClient.delete(`/clients/${id}`),
   getStats: () => apiClient.get('/clients/stats'),
+  bulkDelete: (ids: string[]) => apiClient.delete('/clients/bulk', { data: { ids } }),
 };

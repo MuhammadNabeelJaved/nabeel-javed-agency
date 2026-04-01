@@ -1,6 +1,11 @@
 import express from "express";
 import {
     getCMS,
+    getNavLinks,
+    updateNavLinks,
+    getFooterSections,
+    updateFooterSections,
+    updateGlobalTheme,
     updateLogo,
     updateTechStack,
     addTechCategory,
@@ -27,9 +32,18 @@ const router = express.Router();
 
 // Public – frontend reads all CMS content
 router.get("/", getCMS);
+router.get("/nav-links", getNavLinks);
+router.get("/footer-sections", getFooterSections);
 
 // Admin-only writes
 router.use(userAuthenticated, authorizeRoles("admin"));
+
+// Global Theme
+router.patch("/global-theme", updateGlobalTheme);
+
+// Nav & Footer links
+router.put("/nav-links", updateNavLinks);
+router.put("/footer-sections", updateFooterSections);
 
 // Global Logo
 router.patch("/logo", updateLogo);

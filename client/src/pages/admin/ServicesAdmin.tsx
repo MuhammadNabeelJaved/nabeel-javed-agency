@@ -2,7 +2,7 @@
  * Services Admin Page
  * Management interface for services
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Search,
@@ -15,7 +15,9 @@ import {
   Megaphone,
   Layout,
   ExternalLink,
-  Loader2
+  Loader2,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
@@ -24,6 +26,9 @@ import { ServiceEditor, ServiceData } from './ServiceEditor';
 import { toast } from 'sonner';
 import { servicesApi } from '../../api/services.api';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
+import { useBulkSelect } from '../../hooks/useBulkSelect';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
+import { BulkActionBar } from '../../components/BulkActionBar';
 
 const iconOptions = [
   { value: 'web-development', label: 'Web Dev', icon: Code },
@@ -42,12 +47,9 @@ export default function ServicesAdmin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  useEffect(() => {
-    loadServices();
-  }, []);
-
-  const loadServices = async () => {
+  const loadServices = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await servicesApi.getAll();
@@ -62,6 +64,31 @@ export default function ServicesAdmin() {
       toast.error('Failed to load services', { description: err?.response?.data?.message || 'Could not connect to the server.' });
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const filteredServices = services.filter(s =>
+    s.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const bulk = useBulkSelect(filteredServices);
+  useDataRealtime('services', loadServices);
+
+  useEffect(() => {
+    loadServices();
+  }, [loadServices]);
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await servicesApi.bulkDelete(bulk.ids);
+      toast.success(`${bulk.count} service(s) deleted`);
+      bulk.clear();
+      loadServices();
+    } catch (err: any) {
+      toast.error('Bulk delete failed', { description: err?.response?.data?.message });
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -199,10 +226,6 @@ export default function ServicesAdmin() {
     return option ? option.icon : Code;
   };
 
-  const filteredServices = services.filter(s =>
-    s.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   if (view === 'edit') {
     return (
       <>
@@ -230,15 +253,23 @@ export default function ServicesAdmin() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search services..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full sm:w-80 pl-9"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 sm:flex-none">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search services..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full sm:w-80 pl-9"
+              />
+            </div>
+            {filteredServices.length > 0 && (
+              <Button variant="ghost" size="sm" className="gap-2 shrink-0" onClick={bulk.toggleAll}>
+                {bulk.allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                {bulk.allSelected ? 'Deselect All' : 'Select All'}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -254,7 +285,13 @@ export default function ServicesAdmin() {
             const serviceId = (service as any)._id || String(service.id);
             const pricingCount = service.pricing?.length ?? (service as any).pricingPlans?.length ?? 0;
             return (
-              <Card key={serviceId} className="group hover:shadow-md transition-shadow relative overflow-hidden">
+              <Card key={serviceId} className={`group hover:shadow-md transition-shadow relative overflow-hidden ${bulk.isSelected(serviceId) ? 'ring-2 ring-primary' : ''}`}>
+                <button
+                  className="absolute top-3 left-3 z-20 text-primary"
+                  onClick={(e) => { e.stopPropagation(); bulk.toggle(serviceId); }}
+                >
+                  {bulk.isSelected(serviceId) ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                </button>
                 <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-10 bg-gradient-to-l from-background via-background/80 to-transparent pl-8">
                   <Button variant="outline" size="icon" className="h-8 w-8 bg-background" onClick={() => handleEdit(service)}>
                     <Edit className="h-4 w-4" />
@@ -306,6 +343,21 @@ export default function ServicesAdmin() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         description="Are you sure you want to delete this service? This action cannot be undone."
+      />
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        itemLabel="service"
+        actions={[
+          {
+            label: 'Delete Selected',
+            icon: Trash2,
+            variant: 'destructive',
+            loading: isBulkDeleting,
+            onClick: handleBulkDelete,
+          },
+        ]}
       />
     </div>
   );

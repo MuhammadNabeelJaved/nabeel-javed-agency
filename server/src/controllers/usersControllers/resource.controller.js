@@ -102,5 +102,28 @@ export const deleteResource = asyncHandler(async (req, res) => {
 
     await resource.deleteOne();
 
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "resources" });
     return successResponse(res, "Resource deleted");
+});
+
+// ─── Bulk Delete Resources ────────────────────────────────────────────────────
+export const bulkDeleteResources = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+
+    const resources = await Resource.find({ _id: { $in: ids } });
+
+    // Delete from Cloudinary (best-effort, non-fatal)
+    await Promise.allSettled(resources.map(r => {
+        if (!r.publicId) return Promise.resolve();
+        const cdnType = r.resourceType === "video" ? "video"
+            : r.resourceType === "raw" ? "raw" : "image";
+        return cloudinary.uploader.destroy(r.publicId, { resource_type: cdnType });
+    }));
+
+    const result = await Resource.deleteMany({ _id: { $in: ids } });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "resources" });
+    return successResponse(res, `${result.deletedCount} resource(s) deleted`, { deletedCount: result.deletedCount });
 });

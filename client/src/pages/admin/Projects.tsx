@@ -2,8 +2,8 @@
  * Portfolio Projects Admin Page
  * Full CRUD for portfolio projects with real API integration.
  */
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, Globe, Lock, Loader2, X, Save, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Search, Edit, Trash2, Eye, EyeOff, Globe, Lock, Loader2, X, Save, Image as ImageIcon, CheckSquare, Square } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -15,6 +15,9 @@ import { toast } from 'sonner';
 import { adminProjectsApi } from '../../api/adminProjects.api';
 import { useAuth } from '../../contexts/AuthContext';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
+import { useBulkSelect } from '../../hooks/useBulkSelect';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
+import { BulkActionBar } from '../../components/BulkActionBar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,6 +133,7 @@ export default function Projects() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const [viewProject, setViewProject] = useState<any | null>(null);
 
@@ -138,7 +142,7 @@ export default function Projects() {
     else toast.error(title, message ? { description: message } : undefined);
   };
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await adminProjectsApi.getAll();
@@ -149,9 +153,10 @@ export default function Projects() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { loadProjects(); }, []);
+  useDataRealtime('projects', loadProjects);
+  useEffect(() => { loadProjects(); }, [loadProjects]);
 
   const openAdd = () => {
     setEditingId(null);
@@ -221,6 +226,33 @@ export default function Projects() {
     const matchStatus = filterStatus === 'All' || p.status === filterStatus;
     return matchSearch && matchStatus;
   });
+
+  const bulk = useBulkSelect(filtered);
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await adminProjectsApi.bulkDelete(bulk.ids);
+      toast.success(`${bulk.count} project(s) deleted`);
+      bulk.clear();
+      loadProjects();
+    } catch (err: any) {
+      toast.error('Bulk delete failed', { description: err?.response?.data?.message });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleBulkToggleVisibility = async (isPublic: boolean) => {
+    try {
+      await adminProjectsApi.bulkToggleVisibility(bulk.ids, isPublic);
+      toast.success(`${bulk.count} project(s) ${isPublic ? 'published' : 'hidden'}`);
+      bulk.clear();
+      loadProjects();
+    } catch (err: any) {
+      toast.error('Failed to update visibility', { description: err?.response?.data?.message });
+    }
+  };
 
   const stats = {
     total: projects.length,
@@ -292,6 +324,11 @@ export default function Projects() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <button onClick={bulk.toggleAll}>
+                      {bulk.allSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                  </TableHead>
                   <TableHead>Project</TableHead>
                   <TableHead>Client</TableHead>
                   <TableHead>Category</TableHead>
@@ -304,7 +341,12 @@ export default function Projects() {
                 {filtered.map(project => {
                   const thumb = project.projectGallery?.[0]?.url;
                   return (
-                    <TableRow key={project._id}>
+                    <TableRow key={project._id} className={bulk.isSelected(project._id) ? 'bg-primary/5' : ''}>
+                      <TableCell>
+                        <button onClick={() => bulk.toggle(project._id)}>
+                          {bulk.isSelected(project._id) ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                        </button>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           {thumb ? (
@@ -536,6 +578,31 @@ export default function Projects() {
         onClose={() => setConfirmDeleteId(null)}
         onConfirm={handleDelete}
         description="Delete this project? This action cannot be undone."
+      />
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        itemLabel="project"
+        actions={[
+          {
+            label: 'Publish',
+            icon: Globe,
+            onClick: () => handleBulkToggleVisibility(true),
+          },
+          {
+            label: 'Hide',
+            icon: EyeOff,
+            onClick: () => handleBulkToggleVisibility(false),
+          },
+          {
+            label: 'Delete Selected',
+            icon: Trash2,
+            variant: 'destructive',
+            loading: isBulkDeleting,
+            onClick: handleBulkDelete,
+          },
+        ]}
       />
     </div>
   );

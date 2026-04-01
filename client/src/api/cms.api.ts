@@ -3,6 +3,14 @@ import apiClient from './apiClient';
 export const cmsApi = {
   get: () => apiClient.get('/cms'),
 
+  updateGlobalTheme: (globalTheme: 'dark' | 'light' | null) => apiClient.patch('/cms/global-theme', { globalTheme }),
+
+  getNavLinks: () => apiClient.get('/cms/nav-links'),
+  updateNavLinks: (navLinks: any[]) => apiClient.put('/cms/nav-links', { navLinks }),
+
+  getFooterSections: () => apiClient.get('/cms/footer-sections'),
+  updateFooterSections: (footerSections: any[]) => apiClient.put('/cms/footer-sections', { footerSections }),
+
   updateLogo: (logoUrl: string) => apiClient.patch('/cms/logo', { logoUrl }),
 
   updateTechStack: (techStack: any[]) => apiClient.put('/cms/tech-stack', { techStack }),

@@ -2,7 +2,8 @@
  * Content Editor Page
  * Admin interface to manage all dynamic website content via CMS API.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useContent, TechItem, ProcessStep, WhyChooseUsFeature, ContactInfo, SocialLinks, CustomSocialLink, Testimonial } from '../../contexts/ContentContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
@@ -25,6 +26,7 @@ const SOCIAL_PLATFORMS = [
 ];
 import { toast } from 'sonner';
 import { homepageApi } from '../../api/homepage.api';
+import NavFooterManager from './NavFooterManager';
 
 export default function ContentEditor() {
   const {
@@ -37,8 +39,18 @@ export default function ContentEditor() {
     testimonials, updateTestimonials,
   } = useContent();
 
-  const [activeTab, setActiveTab] = useState("hero");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    return tab || 'hero';
+  });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync tab when URL search changes (e.g. navigated from search palette)
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab) setActiveTab(tab);
+  }, [location.search]);
 
   // Hero state (HomePageHero API)
   const [hero, setHero] = useState({ statusBadge: '', titleLine1: '', titleLine2: '', subtitle: '' });
@@ -156,6 +168,7 @@ export default function ContentEditor() {
           <TabsTrigger value="testimonials" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Testimonials</TabsTrigger>
           <TabsTrigger value="contact" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Contact Info</TabsTrigger>
           <TabsTrigger value="social" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Social Links</TabsTrigger>
+          <TabsTrigger value="nav-footer" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Nav & Footer</TabsTrigger>
         </TabsList>
 
         {/* --- Hero Tab --- */}
@@ -487,6 +500,10 @@ export default function ContentEditor() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+        {/* --- Nav & Footer Tab --- */}
+        <TabsContent value="nav-footer">
+          <NavFooterManager />
         </TabsContent>
       </Tabs>
     </div>

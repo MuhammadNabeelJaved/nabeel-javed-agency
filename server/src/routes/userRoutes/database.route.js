@@ -11,6 +11,11 @@ import {
   insertDocument,
   updateDocument,
   deleteDocument,
+  bulkInsertDocuments,
+  bulkDeleteDocuments,
+  bulkUpdateDocuments,
+  bulkCreateCollections,
+  bulkDropCollections,
 } from "../../controllers/usersControllers/database.controller.js";
 
 const router = express.Router();
@@ -20,8 +25,15 @@ router.use(userAuthenticated);
 
 router.get("/stats", getDbStats);
 router.get("/collections", getCollections);
+router.post("/collections/bulk-create", bulkCreateCollections);
+router.delete("/collections/bulk", bulkDropCollections);
 router.get("/collections/:name", getCollectionDetail);
 router.get("/collections/:name/documents", getDocuments);
+// Bulk routes — before /:id param routes
+router.post("/collections/:name/documents/bulk-insert", bulkInsertDocuments);
+router.delete("/collections/:name/documents/bulk", bulkDeleteDocuments);
+router.patch("/collections/:name/documents/bulk-update", bulkUpdateDocuments);
+// Single-doc routes
 router.post("/collections/:name/documents", insertDocument);
 router.put("/collections/:name/documents/:id", updateDocument);
 router.delete("/collections/:name/documents/:id", deleteDocument);

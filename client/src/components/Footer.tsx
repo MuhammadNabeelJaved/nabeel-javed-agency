@@ -23,7 +23,7 @@ import { usePageVisibility } from '../hooks/usePageVisibility';
 
 export function Footer() {
   const { t } = useLanguage();
-  const { socialLinks: cms, contactInfo } = useContent();
+  const { socialLinks: cms, contactInfo, footerSections: cmsFooterSections } = useContent();
   const { isVisible } = usePageVisibility();
   const currentYear = new Date().getFullYear();
 
@@ -39,50 +39,45 @@ export function Footer() {
     })),
   ];
 
-  const footerLinks = [
+  const DEFAULT_FOOTER = [
     {
       title: t('footer.exploreTitle'),
       links: [
-        { label: t('nav.services'), href: '/services' },
-        { label: t('nav.portfolio'), href: '/portfolio' },
-        { label: 'Process', href: '/#process' },
-        { label: 'About', href: '/about' },
-      ],
-    },
-    {
-      title: t('footer.emailTemplatesTitle'),
-      links: [
-        { label: 'Signup Confirmation', href: '/emails/signup-confirmation' },
-        { label: 'Email Verification', href: '/emails/email-verification' },
-        { label: 'Password Reset', href: '/emails/password-reset' },
-        { label: 'Project Created', href: '/emails/project-created' },
-        { label: 'Project Completed', href: '/emails/project-completed' },
-        { label: 'Feedback Request', href: '/emails/feedback-request' },
-        { label: 'OTP Verification', href: '/otp-verification' },
+        { label: t('nav.services'), href: '/services', isActive: true, openInNewTab: false },
+        { label: t('nav.portfolio'), href: '/portfolio', isActive: true, openInNewTab: false },
+        { label: 'Process', href: '/#process', isActive: true, openInNewTab: false },
+        { label: 'About', href: '/about', isActive: true, openInNewTab: false },
       ],
     },
     {
       title: t('footer.companyTitle'),
       links: [
-        { label: 'Our Team', href: '/our-team' },
-        { label: 'Careers', href: '/careers' },
-        { label: 'Blog', href: '/blog' },
-        { label: t('nav.contact'), href: '/contact' },
-        { label: t('footer.privacy'), href: '/privacy' },
-        { label: 'Job Privacy Policy', href: '/careers/privacy' },
-        { label: 'Team Dashboard', href: '/team' },
-        { label: 'Apply Now', href: '/careers/apply' },
-        { label: '404 Error', href: '/404' },
-        { label: '500 Error', href: '/500' },
-        { label: 'Coming Soon', href: '/coming-soon' },
-        { label: 'Maintenance', href: '/maintenance' },
-        { label: 'Skeleton Preview', href: '/skeleton' },
-        { label: 'Loading Screen', href: '/loading' },
-        { label: 'Page Loader', href: '/page-loader' },
+        { label: 'Our Team', href: '/our-team', isActive: true, openInNewTab: false },
+        { label: 'Careers', href: '/careers', isActive: true, openInNewTab: false },
+        { label: t('nav.contact'), href: '/contact', isActive: true, openInNewTab: false },
+        { label: t('footer.privacy'), href: '/privacy', isActive: true, openInNewTab: false },
+        { label: t('footer.terms'), href: '/terms', isActive: true, openInNewTab: false },
       ],
     },
-  ].map(col => ({ ...col, links: col.links.filter(l => isVisible(l.href)) }))
-   .filter(col => col.links.length > 0);
+  ];
+
+  const footerLinks = (
+    cmsFooterSections.length > 0
+      ? cmsFooterSections
+          .sort((a, b) => a.order - b.order)
+          .map(s => ({
+            title: s.title,
+            links: s.links
+              .filter(l => l.isActive)
+              .map(l => ({ label: l.label, href: l.href, openInNewTab: l.openInNewTab })),
+          }))
+      : DEFAULT_FOOTER.map(s => ({
+          ...s,
+          links: s.links.map(l => ({ ...l })),
+        }))
+  )
+    .map(col => ({ ...col, links: col.links.filter(l => isVisible(l.href)) }))
+    .filter(col => col.links.length > 0);
 
   return (
     <footer className="relative bg-background text-foreground pt-12 sm:pt-16 md:pt-24 pb-8 sm:pb-10 md:pb-12 overflow-hidden border-t border-border/50">
@@ -191,8 +186,10 @@ export function Footer() {
               <ul className="space-y-4">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <Link 
-                      to={link.href} 
+                    <Link
+                      to={link.href}
+                      target={(link as any).openInNewTab ? '_blank' : undefined}
+                      rel={(link as any).openInNewTab ? 'noopener noreferrer' : undefined}
                       className="group flex items-center text-muted-foreground hover:text-foreground transition-colors text-sm"
                     >
                       <span className="w-0 overflow-hidden group-hover:w-3 transition-all duration-300 text-primary mr-0 group-hover:mr-2">→</span>
