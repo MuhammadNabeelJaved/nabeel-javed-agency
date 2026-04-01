@@ -3,12 +3,13 @@
  * Full CRUD: add, edit, delete, status quick-change, full detail view
  * Field names aligned with backend Client model
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users, Search, Plus, Mail, Phone, ExternalLink, Briefcase,
   Trash2, Edit, Building, Loader2, Globe, DollarSign,
   Eye, CheckCircle2, AlertCircle, Clock, Ban, Calendar,
   User, FileText, TrendingUp, RefreshCw, ChevronLeft, ChevronRight,
+  CheckSquare, Square,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -29,6 +30,9 @@ import { toast } from 'sonner';
 import { clientsApi } from '../../api/clients.api';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 import apiClient from '../../api/apiClient';
+import { useBulkSelect } from '../../hooks/useBulkSelect';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
+import { BulkActionBar } from '../../components/BulkActionBar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Client {
@@ -114,12 +118,13 @@ export default function ClientManagement() {
 
   // Delete
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Pagination
   const PAGE_SIZE = 10;
   const [currentPage, setCurrentPage] = useState(1);
 
-  const loadClients = async () => {
+  const loadClients = useCallback(async () => {
     setIsLoading(true);
     try {
       const clientsRes = await clientsApi.getAll();
@@ -146,9 +151,10 @@ export default function ClientManagement() {
     } catch {
       // stats failure doesn't block the main list
     }
-  };
+  }, []);
 
-  useEffect(() => { loadClients(); }, []);
+  useDataRealtime('clients', loadClients);
+  useEffect(() => { loadClients(); }, [loadClients]);
 
   // ── filtered list ──
   const filteredClients = clients.filter(c => {
@@ -165,7 +171,23 @@ export default function ClientManagement() {
   const totalPages     = Math.ceil(filteredClients.length / PAGE_SIZE);
   const paginatedClients = filteredClients.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  React.useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter]);
+  const bulk = useBulkSelect(paginatedClients);
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await clientsApi.bulkDelete(bulk.ids);
+      toast.success(`${bulk.count} client(s) archived`);
+      bulk.clear();
+      loadClients();
+    } catch (err: any) {
+      toast.error('Bulk archive failed', { description: err?.response?.data?.message });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  React.useEffect(() => { setCurrentPage(1); bulk.clear(); }, [searchTerm, statusFilter]);
 
   // ── form open ──
   const handleOpenCreate = () => {
@@ -350,6 +372,11 @@ export default function ClientManagement() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableHead className="w-10">
+                      <button onClick={bulk.toggleAll}>
+                        {bulk.allSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                      </button>
+                    </TableHead>
                     <TableHead>Company</TableHead>
                     <TableHead className="hidden md:table-cell">Industry</TableHead>
                     <TableHead>Status</TableHead>
@@ -361,7 +388,12 @@ export default function ClientManagement() {
                 </TableHeader>
                 <TableBody>
                   {paginatedClients.map(client => (
-                    <TableRow key={client._id} className="border-border/50 hover:bg-muted/30 group">
+                    <TableRow key={client._id} className={`border-border/50 hover:bg-muted/30 group ${bulk.isSelected(client._id) ? 'bg-primary/5' : ''}`}>
+                      <TableCell>
+                        <button onClick={() => bulk.toggle(client._id)}>
+                          {bulk.isSelected(client._id) ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                        </button>
+                      </TableCell>
 
                       {/* Company */}
                       <TableCell>
@@ -459,7 +491,7 @@ export default function ClientManagement() {
 
                   {filteredClients.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-40 text-center">
+                      <TableCell colSpan={8} className="h-40 text-center">
                         {searchTerm || statusFilter !== 'All' ? (
                           <p className="text-muted-foreground">No clients match your filters.</p>
                         ) : (
@@ -807,6 +839,21 @@ export default function ClientManagement() {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         description="This will archive the client. They will no longer appear in the active directory."
+      />
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        itemLabel="client"
+        actions={[
+          {
+            label: 'Archive Selected',
+            icon: Trash2,
+            variant: 'destructive',
+            loading: isBulkDeleting,
+            onClick: handleBulkDelete,
+          },
+        ]}
       />
     </div>
   );

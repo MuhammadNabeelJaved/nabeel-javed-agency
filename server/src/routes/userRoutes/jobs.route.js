@@ -8,6 +8,8 @@ import {
     deleteJob,
     updateJobStatus,
     getFeaturedJobs,
+    bulkDeleteJobs,
+    bulkUpdateJobStatus,
 } from "../../controllers/usersControllers/jobs.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 import { mutationLimiter } from "../../middlewares/rateLimiter.js";
@@ -20,6 +22,10 @@ router.get("/", getAllJobs);
 router.get("/active", getActiveJobs);
 router.get("/featured", getFeaturedJobs);
 router.get("/:id", validate([mongoIdParam("id")]), getJobById);
+
+// Bulk routes – must come before /:id param routes
+router.delete("/bulk", userAuthenticated, authorizeRoles("admin"), mutationLimiter, bulkDeleteJobs);
+router.patch("/bulk/status", userAuthenticated, authorizeRoles("admin"), mutationLimiter, bulkUpdateJobStatus);
 
 // Admin-only routes
 router.post("/", userAuthenticated, authorizeRoles("admin"), mutationLimiter, createJob);

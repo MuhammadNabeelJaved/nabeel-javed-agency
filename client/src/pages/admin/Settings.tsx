@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import {
   User, Lock, Bell, Globe, Key, Shield, Camera, Save, Loader2,
   Copy, RefreshCw, Eye, EyeOff, Check, Cookie, Trash2, BarChart3,
-  Users, TrendingUp, AlertTriangle,
+  Users, TrendingUp, AlertTriangle, RotateCcw, ShieldCheck, ShieldOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -158,6 +158,18 @@ export default function Settings() {
     ipAddress: string | null;
     createdAt: string;
   };
+  type UserConsent = {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+    photo?: string;
+    latestConsent: {
+      consent: { essential: boolean; functional: boolean; analytics: boolean; marketing: boolean };
+      updatedAt: string;
+      recordId: string;
+    } | null;
+  };
 
   const [consentStats, setConsentStats] = useState<ConsentStats | null>(null);
   const [consentRecords, setConsentRecords] = useState<ConsentRecord[]>([]);
@@ -166,6 +178,14 @@ export default function Settings() {
   const [consentLoading, setConsentLoading] = useState(false);
   const [clearDays, setClearDays] = useState(90);
   const [clearing, setClearing] = useState(false);
+
+  // User cookie controls
+  const [usersConsent, setUsersConsent] = useState<UserConsent[]>([]);
+  const [usersConsentLoading, setUsersConsentLoading] = useState(false);
+  const [overriding, setOverriding] = useState<string | null>(null);   // userId being saved
+  const [resetting, setResetting]   = useState<string | null>(null);   // userId being reset
+  // Local edits: userId → draft consent state
+  const [draftConsent, setDraftConsent] = useState<Record<string, { functional: boolean; analytics: boolean; marketing: boolean }>>({});
 
   const loadConsentData = async (page = 1) => {
     setConsentLoading(true);
@@ -186,7 +206,10 @@ export default function Settings() {
   };
 
   React.useEffect(() => {
-    if (tab === 'cookies') loadConsentData(1);
+    if (tab === 'cookies') {
+      loadConsentData(1);
+      loadUsersConsent();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -201,6 +224,63 @@ export default function Settings() {
       toast.success('Record deleted');
     } catch (err: any) {
       toast.error('Failed to delete record', { description: err?.response?.data?.message || 'Please try again.' });
+    }
+  };
+
+  const loadUsersConsent = async () => {
+    setUsersConsentLoading(true);
+    try {
+      const res = await apiClient.get('/consent/users');
+      const users: UserConsent[] = res.data.data.users;
+      setUsersConsent(users);
+      // Seed draft from latest consent
+      const drafts: Record<string, { functional: boolean; analytics: boolean; marketing: boolean }> = {};
+      for (const u of users) {
+        drafts[u._id] = {
+          functional: u.latestConsent?.consent.functional ?? false,
+          analytics:  u.latestConsent?.consent.analytics  ?? false,
+          marketing:  u.latestConsent?.consent.marketing  ?? false,
+        };
+      }
+      setDraftConsent(drafts);
+    } catch (err: any) {
+      toast.error('Failed to load users consent', { description: err?.response?.data?.message });
+    } finally {
+      setUsersConsentLoading(false);
+    }
+  };
+
+  const handleOverrideConsent = async (userId: string, userName: string) => {
+    const draft = draftConsent[userId];
+    if (!draft) return;
+    setOverriding(userId);
+    try {
+      const res = await apiClient.patch(`/consent/users/${userId}`, draft);
+      const updated = res.data.data;
+      setUsersConsent(prev => prev.map(u =>
+        u._id === userId ? { ...u, latestConsent: { consent: { essential: true, ...draft }, updatedAt: updated.updatedAt, recordId: updated.recordId } } : u
+      ));
+      toast.success(`Consent updated for ${userName}`);
+    } catch (err: any) {
+      toast.error('Failed to update consent', { description: err?.response?.data?.message });
+    } finally {
+      setOverriding(null);
+    }
+  };
+
+  const handleResetConsent = async (userId: string, userName: string) => {
+    setResetting(userId);
+    try {
+      const res = await apiClient.delete(`/consent/users/${userId}/reset`);
+      setUsersConsent(prev => prev.map(u =>
+        u._id === userId ? { ...u, latestConsent: null } : u
+      ));
+      setDraftConsent(prev => ({ ...prev, [userId]: { functional: false, analytics: false, marketing: false } }));
+      toast.success(res.data.message);
+    } catch (err: any) {
+      toast.error('Failed to reset consent', { description: err?.response?.data?.message });
+    } finally {
+      setResetting(null);
     }
   };
 
@@ -680,6 +760,128 @@ export default function Settings() {
                     {clearing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     {clearing ? 'Clearing…' : 'Clear Old Records'}
                   </Button>
+                </CardContent>
+              </Card>
+
+              {/* ── User Cookie Controls ──────────────────────────────── */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users className="h-4 w-4" /> User Cookie Controls
+                    </CardTitle>
+                    <CardDescription>View and override each user's cookie consent preferences</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={loadUsersConsent} disabled={usersConsentLoading}>
+                    <RefreshCw className={`h-4 w-4 ${usersConsentLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {usersConsentLoading && usersConsent.length === 0 ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="h-16 rounded-xl bg-muted/30 animate-pulse" />
+                      ))}
+                    </div>
+                  ) : usersConsent.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-sm">No users found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {usersConsent.map(u => {
+                        const draft = draftConsent[u._id] ?? { functional: false, analytics: false, marketing: false };
+                        const hasConsent = !!u.latestConsent;
+                        const initials = u.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                        const isSaving  = overriding === u._id;
+                        const isReset   = resetting  === u._id;
+                        return (
+                          <div key={u._id} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                            {/* User row */}
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                                  {u.photo && u.photo !== 'default.jpg'
+                                    ? <img src={u.photo} alt={u.name} className="h-full w-full object-cover" />
+                                    : initials
+                                  }
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium leading-tight truncate">{u.name}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                </div>
+                                <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                                  u.role === 'admin' ? 'bg-primary/15 text-primary'
+                                  : u.role === 'team' ? 'bg-blue-500/15 text-blue-400'
+                                  : 'bg-muted text-muted-foreground'
+                                }`}>{u.role}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {hasConsent ? (
+                                  <span className="flex items-center gap-1 text-xs text-emerald-400">
+                                    <ShieldCheck className="h-3.5 w-3.5" />
+                                    Consent given · {new Date(u.latestConsent!.updatedAt).toLocaleDateString()}
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <ShieldOff className="h-3.5 w-3.5" />
+                                    No consent yet
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Consent toggles */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                              {/* Essential — always on, disabled */}
+                              <div className="flex items-center justify-between rounded-lg bg-background border border-border px-3 py-2">
+                                <span className="text-xs text-muted-foreground">Essential</span>
+                                <Toggle checked={true} onChange={() => {}} />
+                              </div>
+                              {(['functional', 'analytics', 'marketing'] as const).map(cat => (
+                                <div key={cat} className="flex items-center justify-between rounded-lg bg-background border border-border px-3 py-2">
+                                  <span className="text-xs text-muted-foreground capitalize">{cat}</span>
+                                  <Toggle
+                                    checked={draft[cat]}
+                                    onChange={() =>
+                                      setDraftConsent(prev => ({
+                                        ...prev,
+                                        [u._id]: { ...prev[u._id], [cat]: !prev[u._id]?.[cat] },
+                                      }))
+                                    }
+                                  />
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex justify-end gap-2 pt-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isReset || isSaving}
+                                onClick={() => handleResetConsent(u._id, u.name)}
+                                className="gap-1.5 text-xs"
+                              >
+                                {isReset ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                Reset
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={isSaving || isReset}
+                                onClick={() => handleOverrideConsent(u._id, u.name)}
+                                className="gap-1.5 text-xs"
+                              >
+                                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

@@ -138,6 +138,35 @@ const cmsSchema = new mongoose.Schema(
             order: { type: Number, default: 0 },
         }],
 
+        // ── Navbar Links ──
+        navLinks: [{
+            label:       { type: String, required: true, trim: true, maxlength: 60 },
+            href:        { type: String, required: true, trim: true, maxlength: 200 },
+            order:       { type: Number, default: 0 },
+            isActive:    { type: Boolean, default: true },
+            openInNewTab:{ type: Boolean, default: false },
+        }],
+
+        // ── Footer Sections ──
+        footerSections: [{
+            title:  { type: String, required: true, trim: true, maxlength: 60 },
+            order:  { type: Number, default: 0 },
+            links:  [{
+                label:        { type: String, required: true, trim: true, maxlength: 60 },
+                href:         { type: String, required: true, trim: true, maxlength: 200 },
+                isActive:     { type: Boolean, default: true },
+                openInNewTab: { type: Boolean, default: false },
+            }],
+        }],
+
+        // ── Global Site Theme ──
+        // When set, overrides all visitor theme preferences site-wide
+        globalTheme: {
+            type: String,
+            enum: ['dark', 'light', null],
+            default: null,
+        },
+
         // Tracks which admin last modified the CMS content
         lastUpdatedBy: {
             type: mongoose.Schema.Types.ObjectId,

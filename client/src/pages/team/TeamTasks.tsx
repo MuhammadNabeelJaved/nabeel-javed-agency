@@ -2,7 +2,7 @@
  * Team Tasks – Kanban board connected to DB.
  * CRUD: Add / Edit / Delete tasks, change priority, move between columns.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -13,12 +13,15 @@ import {
 } from '../../components/ui/dialog';
 import {
   Plus, MoreHorizontal, Calendar, AlertCircle, Loader2,
-  Pencil, Trash2, MoveRight, X,
+  Pencil, Trash2, MoveRight, X, CheckSquare, Square, CheckCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { tasksApi } from '../../api/tasks.api';
 import { toast } from 'sonner';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
+import { useBulkSelect } from '../../hooks/useBulkSelect';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
+import { BulkActionBar } from '../../components/BulkActionBar';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -170,10 +173,15 @@ export default function TeamTasks() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(BLANK_FORM);
   const [saving, setSaving] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // ── Flat list for bulk select (all tasks across columns) ──────────────────
+  const allTasks = Object.values(grouped).flat();
+  const bulk = useBulkSelect(allTasks);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
       const res = await tasksApi.getAll();
@@ -188,9 +196,10 @@ export default function TeamTasks() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchTasks(); }, []);
+  useDataRealtime('tasks', fetchTasks);
+  useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
 
@@ -267,6 +276,33 @@ export default function TeamTasks() {
     }
   };
 
+  // ── Bulk actions ──────────────────────────────────────────────────────────
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await tasksApi.bulkDelete(bulk.ids);
+      toast.success(`${bulk.count} task(s) deleted`);
+      bulk.clear();
+      fetchTasks();
+    } catch (err: any) {
+      toast.error('Bulk delete failed', { description: err?.response?.data?.message });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleBulkMarkComplete = async () => {
+    try {
+      await tasksApi.bulkUpdateStatus(bulk.ids, 'completed');
+      toast.success(`${bulk.count} task(s) marked complete`);
+      bulk.clear();
+      fetchTasks();
+    } catch (err: any) {
+      toast.error('Failed to update tasks', { description: err?.response?.data?.message });
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -330,13 +366,24 @@ export default function TeamTasks() {
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95 }}
-                          className="group bg-card border border-border/50 p-4 rounded-lg shadow-sm transition-colors hover:border-primary/30"
+                          className={`group bg-card border p-4 rounded-lg shadow-sm transition-colors ${bulk.isSelected(task._id) ? 'border-primary ring-1 ring-primary' : 'border-border/50 hover:border-primary/30'}`}
                         >
-                          {/* Top row: priority + menu */}
+                          {/* Top row: checkbox + priority + menu */}
                           <div className="flex justify-between items-start mb-2">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${PRIORITY_STYLES[task.priority]}`}>
-                              {task.priority}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); bulk.toggle(task._id); }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                {bulk.isSelected(task._id)
+                                  ? <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                                  : <Square className="h-3.5 w-3.5 text-muted-foreground" />
+                                }
+                              </button>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${PRIORITY_STYLES[task.priority]}`}>
+                                {task.priority}
+                              </span>
+                            </div>
                             <TaskMenu
                               task={task}
                               onEdit={() => openEdit(task)}
@@ -486,6 +533,26 @@ export default function TeamTasks() {
         onClose={() => setDeleteTargetId(null)}
         onConfirm={handleDelete}
         description="Are you sure you want to delete this task? This action cannot be undone."
+      />
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        itemLabel="task"
+        actions={[
+          {
+            label: 'Mark Complete',
+            icon: CheckCheck,
+            onClick: handleBulkMarkComplete,
+          },
+          {
+            label: 'Delete Selected',
+            icon: Trash2,
+            variant: 'destructive',
+            loading: isBulkDeleting,
+            onClick: handleBulkDelete,
+          },
+        ]}
       />
     </>
   );

@@ -58,6 +58,8 @@ export const createService = asyncHandler(async (req, res) => {
             throw new AppError("Failed to create service", 500);
         }
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "services" });
         successResponse(res, "Service created successfully", service, 201);
     } catch (error) {
         console.error("Error creating service:", error);
@@ -154,6 +156,8 @@ export const deleteService = asyncHandler(async (req, res) => {
 
         await service.deleteOne();
 
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "services" });
         successResponse(res, "Service deleted successfully", null);
     } catch (error) {
         console.error("Error in deleteService:", error);
@@ -185,10 +189,24 @@ export const updateService = asyncHandler(async (req, res) => {
         if (!updatedService) {
             throw new AppError("Failed to update service", 500);
         }
+        const io = req.app.get("io");
+        if (io) io.of("/public").emit("cms:updated", { section: "services" });
         successResponse(res, "Service updated successfully", updatedService);
     } catch (error) {
         console.error("Error in updateService:", error);
         if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to update service: ${error.message}`, 500);
     }
+});
+
+// =========================
+// BULK DELETE SERVICES
+// =========================
+export const bulkDeleteServices = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+    const result = await Service.deleteMany({ _id: { $in: ids } });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "services" });
+    successResponse(res, `${result.deletedCount} service(s) deleted`, { deletedCount: result.deletedCount });
 });

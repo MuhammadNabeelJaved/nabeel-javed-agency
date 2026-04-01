@@ -8,4 +8,6 @@ export const jobsApi = {
   update: (id: string, data: any) => apiClient.put(`/jobs/${id}`, data),
   updateStatus: (id: string, status: string) => apiClient.patch(`/jobs/${id}/status`, { status }),
   delete: (id: string) => apiClient.delete(`/jobs/${id}`),
+  bulkDelete: (ids: string[]) => apiClient.delete('/jobs/bulk', { data: { ids } }),
+  bulkUpdateStatus: (ids: string[], status: string) => apiClient.patch('/jobs/bulk/status', { ids, status }),
 };

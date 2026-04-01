@@ -93,6 +93,14 @@ export async function initSocket(httpServer, corsOptions) {
         }
     });
 
+    // ── Public namespace — no auth required, CMS broadcast events only ──────
+    // Clients (including unauthenticated visitors) subscribe here to receive
+    // live CMS update events emitted by admin controllers.
+    const publicNs = io.of("/public");
+    publicNs.on("connection", (socket) => {
+        socket.on("disconnect", () => {});
+    });
+
     // ── Connection handler ────────────────────────────────────────────────────
     io.on("connection", (socket) => {
         const user = socket.user;
@@ -104,6 +112,11 @@ export async function initSocket(httpServer, corsOptions) {
         // Admins get a broadcast room for new support request alerts
         if (user.role === "admin") {
             socket.join("admin:global");
+        }
+
+        // Team members get a shared broadcast room for task/resource updates
+        if (user.role === "team") {
+            socket.join("team:global");
         }
 
         // ── Send unread count immediately on connect ───────────────────────────

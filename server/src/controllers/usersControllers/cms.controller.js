@@ -18,12 +18,141 @@ import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import CMS from "../../models/usersModels/CMS.model.js";
 
+// Broadcast a CMS update event to all public subscribers
+const emitCmsUpdate = (req, section) => {
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section });
+};
+
 // =========================
 // GET CMS (public)
 // =========================
 export const getCMS = asyncHandler(async (req, res) => {
     const cms = await CMS.getOrCreate();
     successResponse(res, "CMS content fetched successfully", cms);
+});
+
+// =========================
+// DEFAULT NAV + FOOTER SEEDS
+// =========================
+const DEFAULT_NAV_LINKS = [
+    { label: 'Services',  href: '/services',  order: 0, isActive: true, openInNewTab: false },
+    { label: 'Portfolio', href: '/portfolio', order: 1, isActive: true, openInNewTab: false },
+    { label: 'Contact',   href: '/contact',   order: 2, isActive: true, openInNewTab: false },
+];
+
+const DEFAULT_FOOTER_SECTIONS = [
+    {
+        title: 'Explore', order: 0,
+        links: [
+            { label: 'Services',  href: '/services',  isActive: true },
+            { label: 'Portfolio', href: '/portfolio', isActive: true },
+            { label: 'Process',   href: '/#process',  isActive: true },
+            { label: 'About',     href: '/about',     isActive: true },
+        ],
+    },
+    {
+        title: 'Company', order: 1,
+        links: [
+            { label: 'Our Team',          href: '/our-team',        isActive: true },
+            { label: 'Careers',           href: '/careers',         isActive: true },
+            { label: 'Contact',           href: '/contact',         isActive: true },
+            { label: 'Privacy Policy',    href: '/privacy',         isActive: true },
+            { label: 'Terms of Service',  href: '/terms',           isActive: true },
+        ],
+    },
+];
+
+// =========================
+// GET NAV LINKS (public)
+// =========================
+export const getNavLinks = asyncHandler(async (req, res) => {
+    const cms = await CMS.getOrCreate();
+    let links = cms.navLinks || [];
+    if (links.length === 0) {
+        cms.navLinks = DEFAULT_NAV_LINKS;
+        await cms.save();
+        links = cms.navLinks;
+    }
+    successResponse(res, 'Nav links fetched', { navLinks: links });
+});
+
+// =========================
+// UPDATE NAV LINKS (admin)
+// =========================
+export const updateNavLinks = asyncHandler(async (req, res) => {
+    const { navLinks } = req.body;
+    if (!Array.isArray(navLinks)) throw new AppError('navLinks must be an array', 400);
+
+    const cms = await CMS.getOrCreate();
+    cms.navLinks = navLinks.map((l, i) => ({
+        label:        String(l.label || '').trim(),
+        href:         String(l.href  || '').trim(),
+        order:        typeof l.order === 'number' ? l.order : i,
+        isActive:     l.isActive !== false,
+        openInNewTab: Boolean(l.openInNewTab),
+    })).filter(l => l.label && l.href);
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+    emitCmsUpdate(req, 'navLinks');
+    successResponse(res, 'Nav links updated', { navLinks: cms.navLinks });
+});
+
+// =========================
+// GET FOOTER SECTIONS (public)
+// =========================
+export const getFooterSections = asyncHandler(async (req, res) => {
+    const cms = await CMS.getOrCreate();
+    let sections = cms.footerSections || [];
+    if (sections.length === 0) {
+        cms.footerSections = DEFAULT_FOOTER_SECTIONS;
+        await cms.save();
+        sections = cms.footerSections;
+    }
+    successResponse(res, 'Footer sections fetched', { footerSections: sections });
+});
+
+// =========================
+// UPDATE FOOTER SECTIONS (admin)
+// =========================
+export const updateFooterSections = asyncHandler(async (req, res) => {
+    const { footerSections } = req.body;
+    if (!Array.isArray(footerSections)) throw new AppError('footerSections must be an array', 400);
+
+    const cms = await CMS.getOrCreate();
+    cms.footerSections = footerSections.map((s, i) => ({
+        title: String(s.title || '').trim(),
+        order: typeof s.order === 'number' ? s.order : i,
+        links: Array.isArray(s.links)
+            ? s.links.map(l => ({
+                label:        String(l.label || '').trim(),
+                href:         String(l.href  || '').trim(),
+                isActive:     l.isActive !== false,
+                openInNewTab: Boolean(l.openInNewTab),
+              })).filter(l => l.label && l.href)
+            : [],
+    })).filter(s => s.title);
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+    emitCmsUpdate(req, 'footerSections');
+    successResponse(res, 'Footer sections updated', { footerSections: cms.footerSections });
+});
+
+// =========================
+// UPDATE GLOBAL THEME
+// =========================
+export const updateGlobalTheme = asyncHandler(async (req, res) => {
+    const { globalTheme } = req.body;
+    if (globalTheme !== 'dark' && globalTheme !== 'light' && globalTheme !== null) {
+        throw new AppError("globalTheme must be 'dark', 'light', or null", 400);
+    }
+
+    const cms = await CMS.getOrCreate();
+    cms.globalTheme = globalTheme ?? null;
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+    emitCmsUpdate(req, 'globalTheme');
+    successResponse(res, "Global theme updated successfully", { globalTheme: cms.globalTheme });
 });
 
 // =========================
@@ -37,7 +166,7 @@ export const updateLogo = asyncHandler(async (req, res) => {
     cms.logoUrl = logoUrl;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Logo updated successfully", { logoUrl: cms.logoUrl });
 });
 
@@ -52,7 +181,7 @@ export const updateTechStack = asyncHandler(async (req, res) => {
     cms.techStack = techStack;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Tech stack updated successfully", { techStack: cms.techStack });
 });
 
@@ -65,7 +194,7 @@ export const addTechCategory = asyncHandler(async (req, res) => {
     cms.techStack.push({ categoryName, categoryDescription, items: items || [] });
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Tech stack category added", { techStack: cms.techStack }, 201);
 });
 
@@ -83,7 +212,7 @@ export const updateTechCategory = asyncHandler(async (req, res) => {
     if (items !== undefined) category.items = items;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Tech stack category updated", { techStack: cms.techStack });
 });
 
@@ -98,7 +227,7 @@ export const deleteTechCategory = asyncHandler(async (req, res) => {
     category.deleteOne();
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Tech stack category deleted", { techStack: cms.techStack });
 });
 
@@ -114,7 +243,7 @@ export const updateConceptToReality = asyncHandler(async (req, res) => {
     if (steps !== undefined) cms.conceptToReality.steps = steps;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Concept to Reality updated", { conceptToReality: cms.conceptToReality });
 });
 
@@ -127,7 +256,7 @@ export const addProcessStep = asyncHandler(async (req, res) => {
     cms.conceptToReality.steps.push({ stepTitle, description, iconName, gradientColor, bulletPoints: bulletPoints || [] });
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Process step added", { steps: cms.conceptToReality.steps }, 201);
 });
 
@@ -148,7 +277,7 @@ export const updateProcessStep = asyncHandler(async (req, res) => {
     if (order !== undefined) step.order = order;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Process step updated", { steps: cms.conceptToReality.steps });
 });
 
@@ -163,7 +292,7 @@ export const deleteProcessStep = asyncHandler(async (req, res) => {
     step.deleteOne();
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Process step deleted", { steps: cms.conceptToReality.steps });
 });
 
@@ -182,7 +311,7 @@ export const updateWhyChooseUs = asyncHandler(async (req, res) => {
     if (scrollingCards !== undefined) wcu.scrollingCards = scrollingCards;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Why Choose Us updated", { whyChooseUs: cms.whyChooseUs });
 });
 
@@ -195,7 +324,7 @@ export const addScrollingCard = asyncHandler(async (req, res) => {
     cms.whyChooseUs.scrollingCards.push({ title, description, iconName, order });
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Scrolling card added", { scrollingCards: cms.whyChooseUs.scrollingCards }, 201);
 });
 
@@ -214,7 +343,7 @@ export const updateScrollingCard = asyncHandler(async (req, res) => {
     if (order !== undefined) card.order = order;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Scrolling card updated", { scrollingCards: cms.whyChooseUs.scrollingCards });
 });
 
@@ -229,7 +358,7 @@ export const deleteScrollingCard = asyncHandler(async (req, res) => {
     card.deleteOne();
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Scrolling card deleted", { scrollingCards: cms.whyChooseUs.scrollingCards });
 });
 
@@ -246,7 +375,7 @@ export const updateContactInfo = asyncHandler(async (req, res) => {
     if (businessHours !== undefined) cms.contactInfo.businessHours = businessHours;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Contact info updated", { contactInfo: cms.contactInfo });
 });
 
@@ -267,7 +396,7 @@ export const updateSocialLinks = asyncHandler(async (req, res) => {
     }
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Social links updated", { socialLinks: cms.socialLinks });
 });
 
@@ -282,7 +411,7 @@ export const updateTestimonials = asyncHandler(async (req, res) => {
     cms.testimonials = testimonials;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Testimonials updated", { testimonials: cms.testimonials });
 });
 
@@ -294,7 +423,7 @@ export const addTestimonial = asyncHandler(async (req, res) => {
     cms.testimonials.push({ content, author, role, rating, order: cms.testimonials.length });
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Testimonial added", { testimonials: cms.testimonials }, 201);
 });
 
@@ -313,7 +442,7 @@ export const updateTestimonial = asyncHandler(async (req, res) => {
     if (order !== undefined) testimonial.order = order;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Testimonial updated", { testimonials: cms.testimonials });
 });
 
@@ -327,6 +456,6 @@ export const deleteTestimonial = asyncHandler(async (req, res) => {
     testimonial.deleteOne();
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
-
+    emitCmsUpdate(req, 'cms');
     successResponse(res, "Testimonial deleted", { testimonials: cms.testimonials });
 });

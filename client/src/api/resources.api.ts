@@ -6,4 +6,5 @@ export const resourcesApi = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   delete:  (id: string)               => apiClient.delete(`/resources/${id}`),
+  bulkDelete: (ids: string[])         => apiClient.delete('/resources/bulk', { data: { ids } }),
 };

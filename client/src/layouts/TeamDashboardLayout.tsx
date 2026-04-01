@@ -6,13 +6,14 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { TeamSidebar } from '../components/TeamSidebar';
 import { PageStatusGate } from '../components/PageStatusGate';
-import { Menu, Sun, Moon, MessageSquare } from 'lucide-react';
+import { Menu, Sun, Moon, MessageSquare, Settings, Bell, LayoutDashboard, FolderKanban, ClipboardList, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardSearch } from '../components/DashboardSearch';
 import { useTheme } from '../contexts/ThemeContext';
 import { NotificationBell } from '../components/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
+import { ProfileDropdown, type ProfileMenuItem } from '../components/ProfileDropdown';
 
 export function TeamDashboardLayout() {
   const { theme, setTheme } = useTheme();
@@ -20,7 +21,17 @@ export function TeamDashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   useNotifications();
+
+  const teamMenuItems: ProfileMenuItem[] = [
+    { label: 'Dashboard',      icon: LayoutDashboard, to: '/team' },
+    { label: 'Projects',       icon: FolderKanban,    to: '/team/projects' },
+    { label: 'My Tasks',       icon: ClipboardList,   to: '/team/tasks' },
+    { label: 'Chat',           icon: MessageSquare,   to: '/team/chat' },
+    { label: 'Notifications',  icon: Bell,            to: '/team/notifications' },
+    { label: 'Settings',       icon: Settings,        to: '/team/settings', divider: true },
+  ];
 
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
@@ -83,16 +94,33 @@ export function TeamDashboardLayout() {
               <span className="text-sm font-medium">Chat</span>
             </motion.button>
 
+            {/* Go to Website */}
+            <div className="relative group">
+              <motion.button
+                onClick={() => navigate('/')}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                className="p-2 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Go to website"
+              >
+                <Home className="h-5 w-5" />
+              </motion.button>
+              <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded-lg bg-popover border border-border text-xs text-popover-foreground whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-md">
+                Go to Website
+              </div>
+            </div>
+
             <NotificationBell notificationsRoute="/team/notifications" chatRoute="/team/chat" />
 
-            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-border/50">
+            <div className="relative flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-border/50">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-medium text-foreground leading-tight">{user?.name ?? 'Team Member'}</p>
                 <p className="text-xs text-muted-foreground capitalize">
-                  {user?.teamProfile?.position ?? user?.role ?? 'Team'}
+                  {(user as any)?.teamProfile?.position ?? user?.role ?? 'Team'}
                 </p>
               </div>
               <motion.div
+                onClick={() => setProfileOpen(o => !o)}
                 className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-[2px] cursor-pointer shrink-0"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -106,6 +134,12 @@ export function TeamDashboardLayout() {
                   )}
                 </div>
               </motion.div>
+              <ProfileDropdown
+                open={profileOpen}
+                onClose={() => setProfileOpen(false)}
+                items={teamMenuItems}
+                subLabel={(user as any)?.teamProfile?.position ?? user?.role ?? 'Team'}
+              />
             </div>
           </div>
         </header>

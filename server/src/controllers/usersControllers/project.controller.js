@@ -5,6 +5,7 @@ import User from "../../models/usersModels/User.model.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
 import { createAndEmitNotification } from "../../utils/notificationService.js";
+import { emitDataUpdate } from "../../utils/dataUpdateService.js";
 
 
 // =========================
@@ -85,9 +86,27 @@ export const createProject = asyncHandler(async (req, res) => {
         // Populate user info
         await project.populate('requestedBy', 'name email');
 
-        // Also send project creation email to user (optional)
-
         successResponse(res, "Project created successfully", project, 201);
+
+        // ── Real-time: notify admins + refresh admin dashboard ────────────────
+        const io = req.app.get('io');
+        if (io) {
+            // Push data:updated so admin's ClientProjectRequests page refreshes
+            emitDataUpdate(io, 'projects', ['admin:global']);
+
+            // Send a bell notification to every admin (non-blocking)
+            const admins = await User.find({ role: 'admin' }).select('_id').lean();
+            for (const admin of admins) {
+                createAndEmitNotification(io, {
+                    recipientId: admin._id,
+                    type: 'project_submitted',
+                    title: 'New Project Request',
+                    message: `${user.name || 'A client'} submitted a new project request: "${project.projectName}".`,
+                    payload: { projectId: project._id },
+                    createdBy: user._id,
+                }).catch(() => {});
+            }
+        }
     } catch (error) {
         console.error("Error in createProject:", error);
         if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
@@ -286,52 +305,77 @@ export const updateProject = asyncHandler(async (req, res) => {
         await project.save();
         await project.populate('requestedBy', 'name email');
 
-        // ── Fire real-time notifications on status or assignment changes ──────
+        // ── Fire real-time notifications + data sync on status/assignment changes
         const io = req.app.get('io');
-        if (req?.user?.role === 'admin' && io) {
-            // Notify project owner when admin accepts or rejects
-            if (status && status !== prevStatus && project.requestedBy) {
-                const ownerId = project.requestedBy._id || project.requestedBy;
-                if (status === 'approved') {
-                    await createAndEmitNotification(io, {
-                        recipientId: ownerId,
-                        type: 'project_accepted',
-                        title: 'Project Accepted!',
-                        message: `Your project "${project.projectName}" has been accepted by the team.`,
-                        payload: { projectId: project._id },
-                        createdBy: req.user._id,
-                    }).catch(() => {});
-                } else if (status === 'rejected') {
-                    await createAndEmitNotification(io, {
-                        recipientId: ownerId,
-                        type: 'project_rejected',
-                        title: 'Project Update',
-                        message: `Your project "${project.projectName}" could not be accepted at this time.`,
-                        payload: { projectId: project._id },
-                        createdBy: req.user._id,
-                    }).catch(() => {});
+        if (io) {
+            const ownerId = String(project.requestedBy._id || project.requestedBy);
+
+            // Always refresh the project owner's dashboard after any admin update
+            emitDataUpdate(io, 'projects', [`user:${ownerId}`]);
+            // Also refresh admin dashboard (e.g. progress/cost changes)
+            emitDataUpdate(io, 'projects', ['admin:global']);
+
+            if (req?.user?.role === 'admin') {
+                // Notify project owner when admin accepts or rejects
+                if (status && status !== prevStatus) {
+                    if (status === 'approved') {
+                        await createAndEmitNotification(io, {
+                            recipientId: ownerId,
+                            type: 'project_accepted',
+                            title: 'Project Accepted!',
+                            message: `Your project "${project.projectName}" has been accepted by the team.`,
+                            payload: { projectId: project._id },
+                            createdBy: req.user._id,
+                        }).catch(() => {});
+                    } else if (status === 'rejected') {
+                        await createAndEmitNotification(io, {
+                            recipientId: ownerId,
+                            type: 'project_rejected',
+                            title: 'Project Update',
+                            message: `Your project "${project.projectName}" could not be accepted at this time.`,
+                            payload: { projectId: project._id },
+                            createdBy: req.user._id,
+                        }).catch(() => {});
+                    } else if (status === 'in_review') {
+                        await createAndEmitNotification(io, {
+                            recipientId: ownerId,
+                            type: 'status_updated',
+                            title: 'Project Under Review',
+                            message: `Your project "${project.projectName}" is now under review.`,
+                            payload: { projectId: project._id },
+                            createdBy: req.user._id,
+                        }).catch(() => {});
+                    } else if (status === 'completed') {
+                        await createAndEmitNotification(io, {
+                            recipientId: ownerId,
+                            type: 'status_updated',
+                            title: 'Project Completed!',
+                            message: `Your project "${project.projectName}" has been marked as completed.`,
+                            payload: { projectId: project._id },
+                            createdBy: req.user._id,
+                        }).catch(() => {});
+                    }
                 }
-            }
 
-            // Notify newly assigned team members
-            if (assignedTeam !== undefined) {
-                const newAssigned = Array.isArray(assignedTeam)
-                    ? assignedTeam.map(String)
-                    : [String(assignedTeam)];
-
-                const freshlyAdded = newAssigned.filter(
-                    (id) => !prevAssignedTeam.includes(id)
-                );
-
-                for (const memberId of freshlyAdded) {
-                    await createAndEmitNotification(io, {
-                        recipientId: memberId,
-                        type: 'project_assigned',
-                        title: 'New Project Assigned',
-                        message: `You have been assigned to "${project.projectName}".`,
-                        payload: { projectId: project._id },
-                        createdBy: req.user._id,
-                    }).catch(() => {});
+                // Notify newly assigned team members + refresh their dashboard
+                if (assignedTeam !== undefined) {
+                    const newAssigned = Array.isArray(assignedTeam)
+                        ? assignedTeam.map(String)
+                        : [String(assignedTeam)];
+                    const freshlyAdded = newAssigned.filter(
+                        (id) => !prevAssignedTeam.includes(id)
+                    );
+                    for (const memberId of freshlyAdded) {
+                        emitDataUpdate(io, 'projects', [`user:${memberId}`]);
+                        await createAndEmitNotification(io, {
+                            recipientId: memberId,
+                            type: 'project_assigned',
+                            title: 'New Project Assigned',
+                            message: `You have been assigned to "${project.projectName}".`,
+                            payload: { projectId: project._id },
+                            createdBy: req.user._id,
+                        }).catch(() => {});
+                    }
                 }
             }
         }
@@ -463,6 +507,10 @@ export const deleteProject = asyncHandler(async (req, res) => {
         await project.deleteOne();
 
         successResponse(res, "Project and all attachments deleted successfully", null);
+
+        // Refresh admin dashboard after deletion
+        const io = req.app.get('io');
+        if (io) emitDataUpdate(io, 'projects', ['admin:global']);
     } catch (error) {
         console.error("Error in deleteProject:", error);
         if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;

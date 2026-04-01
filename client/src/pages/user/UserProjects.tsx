@@ -2,7 +2,7 @@
  * User Projects Page
  * Live CRUD: fetch from DB, create new request with file upload, delete pending/rejected.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   Search,
@@ -40,6 +40,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { projectsApi } from '../../api/projects.api';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ export default function UserProjects() {
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setError(null);
     try {
       const res = await projectsApi.getAll({ limit: 50 });
@@ -119,9 +120,12 @@ export default function UserProjects() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchProjects(); }, []);
+  useEffect(() => { fetchProjects(); }, [fetchProjects]);
+
+  // Real-time: refresh when admin updates project status/progress/assignment
+  useDataRealtime('projects', fetchProjects);
 
   useEffect(() => {
     if (location.state?.openNewProject) {

@@ -8,6 +8,7 @@ import asyncHandler from "../../middlewares/asyncHandler.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import AppError from "../../utils/AppError.js";
 import Task from "../../models/usersModels/Task.model.js";
+import { createAndEmitNotification } from "../../utils/notificationService.js";
 // ─── Create Task ──────────────────────────────────────────────────────────────
 
 /**
@@ -39,6 +40,21 @@ export const createTask = asyncHandler(async (req, res) => {
         .populate("createdBy", "name photo")
         .populate("project", "projectTitle category");
 
+    const io = req.app.get("io");
+    if (io) {
+        io.of("/public").emit("cms:updated", { section: "tasks" });
+        // Notify the assigned team member (if not self-assigned)
+        if (assignedTo && String(assignedTo) !== String(req.user._id)) {
+            createAndEmitNotification(io, {
+                recipientId: assignedTo,
+                type: "task_assigned",
+                title: "New Task Assigned",
+                message: `You have been assigned a new task: "${task.title}".`,
+                payload: { taskId: task._id },
+                createdBy: req.user._id,
+            }).catch(() => {});
+        }
+    }
     return successResponse(res, "Task created", populatedTask, 201);
 });
 
@@ -164,6 +180,8 @@ export const updateTask = asyncHandler(async (req, res) => {
         throw new AppError("Not authorized to update this task", 403);
     }
 
+    const prevAssignedTo = task.assignedTo ? String(task.assignedTo) : null;
+
     const allowed = [
         "title", "description", "priority", "project", "assignedTo",
         "dueDate", "tags", "checklist",
@@ -183,6 +201,22 @@ export const updateTask = asyncHandler(async (req, res) => {
         { path: "project", select: "projectTitle category" },
     ]);
 
+    const io = req.app.get("io");
+    if (io) {
+        io.of("/public").emit("cms:updated", { section: "tasks" });
+        // Notify newly assigned member (if reassigned to someone else)
+        const newAssignedTo = req.body.assignedTo ? String(req.body.assignedTo) : null;
+        if (newAssignedTo && newAssignedTo !== prevAssignedTo && newAssignedTo !== String(req.user._id)) {
+            createAndEmitNotification(io, {
+                recipientId: newAssignedTo,
+                type: "task_assigned",
+                title: "Task Assigned to You",
+                message: `You have been assigned the task: "${task.title}".`,
+                payload: { taskId: task._id },
+                createdBy: req.user._id,
+            }).catch(() => {});
+        }
+    }
     return successResponse(res, "Task updated", task);
 });
 
@@ -214,6 +248,8 @@ export const updateTaskStatus = asyncHandler(async (req, res) => {
     task.status = status;
     await task.save(); // pre-save hook auto-sets completedAt
 
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "tasks" });
     return successResponse(res, "Task status updated", { status: task.status, completedAt: task.completedAt });
 });
 
@@ -234,6 +270,8 @@ export const deleteTask = asyncHandler(async (req, res) => {
     }
 
     await task.deleteOne();
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "tasks" });
     return successResponse(res, "Task deleted");
 });
 
@@ -265,4 +303,26 @@ export const getTaskStats = asyncHandler(async (req, res) => {
         byStatus: statusBreakdown,
         byPriority: priorityBreakdown,
     });
+});
+
+// ─── Bulk Delete Tasks ────────────────────────────────────────────────────────
+export const bulkDeleteTasks = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+    const result = await Task.deleteMany({ _id: { $in: ids } });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "tasks" });
+    return successResponse(res, `${result.deletedCount} task(s) deleted`, { deletedCount: result.deletedCount });
+});
+
+// ─── Bulk Update Task Status ──────────────────────────────────────────────────
+export const bulkUpdateTaskStatus = asyncHandler(async (req, res) => {
+    const { ids, status } = req.body;
+    const validStatuses = ["todo", "in_progress", "in_review", "completed"];
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError("ids array is required", 400);
+    if (!status || !validStatuses.includes(status)) throw new AppError(`status must be one of: ${validStatuses.join(", ")}`, 400);
+    await Task.updateMany({ _id: { $in: ids } }, { status });
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "tasks" });
+    return successResponse(res, `${ids.length} task(s) updated`, { count: ids.length });
 });

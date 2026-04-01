@@ -4,7 +4,7 @@
  * - Full CRUD: Add, Edit, Remove team members
  * - Hiring pipeline (candidates — kept as local state for now)
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -29,6 +29,8 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../../components/ui/button';
@@ -43,6 +45,10 @@ import { Textarea } from '../../components/ui/textarea';
 import { usersApi } from '../../api/users.api';
 import { chatApi } from '../../api/chat.api';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
+import { toast } from 'sonner';
+import { useBulkSelect } from '../../hooks/useBulkSelect';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
+import { BulkActionBar } from '../../components/BulkActionBar';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -173,9 +179,11 @@ export default function TeamManagement() {
   const [selectedCandidate, setSelectedCandidate] = useState<(typeof INITIAL_CANDIDATES)[0] | null>(null);
   const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
 
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
   // ── Data Loading ──
 
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -188,11 +196,12 @@ export default function TeamManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
+  useDataRealtime('users', loadMembers);
   useEffect(() => {
     loadMembers();
-  }, []);
+  }, [loadMembers]);
 
   // ── Handlers ──
 
@@ -299,7 +308,23 @@ export default function TeamManagement() {
   const totalPages     = Math.ceil(filteredMembers.length / PAGE_SIZE);
   const paginatedMembers = filteredMembers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  React.useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+  const bulk = useBulkSelect(paginatedMembers);
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await Promise.all(bulk.ids.map(id => usersApi.delete(id)));
+      toast.success(`${bulk.count} member(s) removed`);
+      bulk.clear();
+      loadMembers();
+    } catch (err: any) {
+      toast.error('Bulk delete failed', { description: err?.response?.data?.message });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  React.useEffect(() => { setCurrentPage(1); bulk.clear(); }, [searchTerm]);
 
   const filteredCandidates = candidates.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -391,6 +416,11 @@ export default function TeamManagement() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <button onClick={bulk.toggleAll}>
+                          {bulk.allSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                        </button>
+                      </TableHead>
                       <TableHead>Member</TableHead>
                       <TableHead>Position</TableHead>
                       <TableHead>Department</TableHead>
@@ -402,7 +432,12 @@ export default function TeamManagement() {
                   </TableHeader>
                   <TableBody>
                     {paginatedMembers.map(member => (
-                      <TableRow key={member._id}>
+                      <TableRow key={member._id} className={bulk.isSelected(member._id) ? 'bg-primary/5' : ''}>
+                        <TableCell>
+                          <button onClick={() => bulk.toggle(member._id)}>
+                            {bulk.isSelected(member._id) ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground opacity-50" />}
+                          </button>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar>
@@ -892,6 +927,21 @@ export default function TeamManagement() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         description={deleteTarget ? `Remove ${deleteTarget.name} from the team? This cannot be undone.` : undefined}
+      />
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        itemLabel="member"
+        actions={[
+          {
+            label: 'Remove Selected',
+            icon: Trash2,
+            variant: 'destructive',
+            loading: isBulkDeleting,
+            onClick: handleBulkDelete,
+          },
+        ]}
       />
     </div>
   );

@@ -11,6 +11,8 @@ import {
     updateTaskStatus,
     deleteTask,
     getTaskStats,
+    bulkDeleteTasks,
+    bulkUpdateTaskStatus,
 } from "../../controllers/usersControllers/task.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 
@@ -21,13 +23,16 @@ router.use(userAuthenticated);
 router.get("/stats", authorizeRoles("admin", "team"), getTaskStats);
 router.get("/my", getMyTasks);
 
+// Bulk routes – must come before /:id param routes
+router.delete("/bulk", authorizeRoles("admin", "team"), bulkDeleteTasks);
+router.patch("/bulk/status", authorizeRoles("admin", "team"), bulkUpdateTaskStatus);
+
 router.get("/", authorizeRoles("admin", "team"), getAllTasks);
 router.post("/", authorizeRoles("admin", "team"), createTask);
 
 router.get("/:id", getTaskById);
 router.patch("/:id", updateTask);
 router.delete("/:id", authorizeRoles("admin", "team"), deleteTask);
-
 router.patch("/:id/status", updateTaskStatus);
 
 export default router;

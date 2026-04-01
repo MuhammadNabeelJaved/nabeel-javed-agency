@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { io as socketIO } from 'socket.io-client';
 import { cmsApi } from '../api/cms.api';
 import { pageStatusApi, type PageStatusItem } from '../api/pageStatus.api';
 import { announcementsApi, type AnnouncementItem } from '../api/announcements.api';
@@ -81,6 +82,30 @@ export interface Testimonial {
   rating: number;
 }
 
+export interface NavLinkItem {
+  _id?: string;
+  label: string;
+  href: string;
+  order: number;
+  isActive: boolean;
+  openInNewTab: boolean;
+}
+
+export interface FooterLinkItem {
+  _id?: string;
+  label: string;
+  href: string;
+  isActive: boolean;
+  openInNewTab: boolean;
+}
+
+export interface FooterSectionItem {
+  _id?: string;
+  title: string;
+  order: number;
+  links: FooterLinkItem[];
+}
+
 export interface ContentContextType {
   logoUrl: string;
   heroContent: HeroContent;
@@ -122,6 +147,14 @@ export interface ContentContextType {
   // Multi-bar announcements (new source of truth)
   announcementBars: AnnouncementBarGroup[];
   setAnnouncementBars: React.Dispatch<React.SetStateAction<AnnouncementBarGroup[]>>;
+  // Global site theme (admin-controlled, overrides all visitor preferences)
+  globalTheme: 'dark' | 'light' | null;
+  updateGlobalTheme: (theme: 'dark' | 'light' | null) => Promise<void>;
+  // Nav & Footer links
+  navLinks: NavLinkItem[];
+  footerSections: FooterSectionItem[];
+  updateNavLinks: (links: NavLinkItem[]) => Promise<void>;
+  updateFooterSections: (sections: FooterSectionItem[]) => Promise<void>;
   // Refetch from API
   refetch: () => Promise<void>;
 }
@@ -280,6 +313,9 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [separatorVisible, setSeparatorVisible] = useState(true);
   const [separatorColor, setSeparatorColor] = useState('');
   const [itemSpacing, setItemSpacing] = useState(32);
+  const [globalTheme, setGlobalTheme] = useState<'dark' | 'light' | null>(null);
+  const [navLinks, setNavLinks] = useState<NavLinkItem[]>([]);
+  const [footerSections, setFooterSections] = useState<FooterSectionItem[]>([]);
 
   // Hero content stays in localStorage (managed via HomePageHero API separately)
   const [heroContent, setHeroContent] = useState<HeroContent>(() => {
@@ -294,7 +330,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('heroContent', JSON.stringify(content));
   };
 
-  const fetchCMS = async () => {
+  const fetchCMS = useCallback(async () => {
     try {
       const res = await cmsApi.get();
       const cms = res.data.data;
@@ -307,18 +343,33 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       setContactInfo(mapped.contactInfo);
       setSocialLinks(mapped.socialLinks);
       setTestimonials(mapped.testimonials);
+      setGlobalTheme(cms.globalTheme ?? null);
     } catch {
       // Keep defaults on error
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    fetchCMS();
+  const fetchNavLinks = useCallback(() => {
+    cmsApi.getNavLinks()
+      .then(res => setNavLinks((res.data as any).data?.navLinks ?? []))
+      .catch(() => {});
+  }, []);
+
+  const fetchFooterSections = useCallback(() => {
+    cmsApi.getFooterSections()
+      .then(res => setFooterSections((res.data as any).data?.footerSections ?? []))
+      .catch(() => {});
+  }, []);
+
+  const fetchPageStatuses = useCallback(() => {
     pageStatusApi.getAll()
       .then(res => setPageStatuses(res.data.data ?? []))
       .catch(() => {});
+  }, []);
+
+  const fetchAnnouncements = useCallback(() => {
     announcementsApi.getActive()
       .then(res => setAnnouncements((res.data as any).data ?? []))
       .catch(() => {});
@@ -337,6 +388,43 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {});
   }, []);
+
+  // Initial data load
+  useEffect(() => {
+    fetchCMS();
+    fetchNavLinks();
+    fetchFooterSections();
+    fetchPageStatuses();
+    fetchAnnouncements();
+  }, []);
+
+  // Real-time CMS updates via public socket namespace (no auth required)
+  useEffect(() => {
+    const socket = socketIO('/public', {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+    });
+
+    socket.on('cms:updated', ({ section }: { section: string }) => {
+      // Refetch ContentContext-owned data
+      switch (section) {
+        case 'navLinks':       fetchNavLinks();       break;
+        case 'footerSections': fetchFooterSections(); break;
+        case 'pageStatus':     fetchPageStatuses();   break;
+        case 'announcements':  fetchAnnouncements();  break;
+        case 'globalTheme':
+        case 'cms':            fetchCMS();            break;
+      }
+      // Always broadcast to the whole app so any page can react via useDataRealtime
+      window.dispatchEvent(new CustomEvent('cms:updated', { detail: { section } }));
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [fetchCMS, fetchNavLinks, fetchFooterSections, fetchPageStatuses, fetchAnnouncements]);
 
   const updateLogoUrl = async (url: string) => {
     setLogoUrl(url);
@@ -391,6 +479,21 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     await cmsApi.updateSocialLinks(links);
   };
 
+  const updateGlobalTheme = async (theme: 'dark' | 'light' | null) => {
+    setGlobalTheme(theme);
+    await cmsApi.updateGlobalTheme(theme);
+  };
+
+  const updateNavLinks = async (links: NavLinkItem[]) => {
+    setNavLinks(links);
+    await cmsApi.updateNavLinks(links);
+  };
+
+  const updateFooterSections = async (sections: FooterSectionItem[]) => {
+    setFooterSections(sections);
+    await cmsApi.updateFooterSections(sections);
+  };
+
   const updateTestimonials = async (items: Testimonial[]) => {
     setTestimonials(items);
     await cmsApi.updateTestimonials(items);
@@ -412,6 +515,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       itemSpacing, setItemSpacing,
       updateLogoUrl, updateTechStack, updateProcessSteps, updateWhyChooseUs,
       updateContactInfo, updateSocialLinks, updateTestimonials,
+      globalTheme, updateGlobalTheme,
+      navLinks, footerSections, updateNavLinks, updateFooterSections,
       refetch: fetchCMS,
     }}>
       {children}

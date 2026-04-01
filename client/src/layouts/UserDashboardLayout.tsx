@@ -6,13 +6,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { UserSidebar } from '../components/UserSidebar';
 import { PageStatusGate } from '../components/PageStatusGate';
-import { Menu, MessageSquare, Sun, Moon } from 'lucide-react';
+import { Menu, MessageSquare, Sun, Moon, User as UserIcon, Bell, Briefcase, LayoutDashboard, HeadphonesIcon, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardSearch } from '../components/DashboardSearch';
 import { useTheme } from '../contexts/ThemeContext';
 import { NotificationBell } from '../components/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
+import { ProfileDropdown, type ProfileMenuItem } from '../components/ProfileDropdown';
 
 export function UserDashboardLayout() {
   const { theme, setTheme } = useTheme();
@@ -21,6 +22,16 @@ export function UserDashboardLayout() {
   useNotifications();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const userMenuItems: ProfileMenuItem[] = [
+    { label: 'Dashboard',     icon: LayoutDashboard, to: '/user-dashboard' },
+    { label: 'My Profile',    icon: UserIcon,        to: '/user-dashboard/profile' },
+    { label: 'My Projects',   icon: Briefcase,       to: '/user-dashboard/projects' },
+    { label: 'Applied Jobs',  icon: Briefcase,       to: '/user-dashboard/applied-jobs' },
+    { label: 'Support Chat',  icon: HeadphonesIcon,  to: '/user-dashboard/messages' },
+    { label: 'Notifications', icon: Bell,            to: '/user-dashboard/notifications', divider: true },
+  ];
 
   useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
@@ -83,14 +94,31 @@ export function UserDashboardLayout() {
               <span className="text-sm font-medium">Support Chat</span>
             </motion.button>
 
+            {/* Go to Website */}
+            <div className="relative group">
+              <motion.button
+                onClick={() => navigate('/')}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                className="p-2 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Go to website"
+              >
+                <Home className="h-5 w-5" />
+              </motion.button>
+              <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded-lg bg-popover border border-border text-xs text-popover-foreground whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-md">
+                Go to Website
+              </div>
+            </div>
+
             <NotificationBell notificationsRoute="/user-dashboard/notifications" chatRoute="/user-dashboard/messages" />
 
-            <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-border/50">
+            <div className="relative flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-border/50">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-medium text-foreground leading-tight">{user?.name ?? 'User'}</p>
                 <p className="text-xs text-muted-foreground capitalize">{user?.role ?? 'User'}</p>
               </div>
               <motion.div
+                onClick={() => setProfileOpen(o => !o)}
                 className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-blue-600 p-[2px] cursor-pointer shrink-0"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -104,6 +132,12 @@ export function UserDashboardLayout() {
                   )}
                 </div>
               </motion.div>
+              <ProfileDropdown
+                open={profileOpen}
+                onClose={() => setProfileOpen(false)}
+                items={userMenuItems}
+                subLabel={user?.role ?? 'User'}
+              />
             </div>
           </div>
         </header>

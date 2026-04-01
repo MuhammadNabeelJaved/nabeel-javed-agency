@@ -2,7 +2,7 @@
  * Admin Job Management Page
  * Full CRUD functionality for Jobs via API
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 // Local type matching the DB schema (Jobs.model.js)
 interface JobDB {
   _id?: string;
@@ -32,7 +32,10 @@ import {
   Save,
   CheckCircle2,
   DollarSign,
-  Loader2
+  Loader2,
+  Trash2,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -49,6 +52,9 @@ import { Select, SelectItem } from '../../components/ui/select';
 import { toast } from 'sonner';
 import { jobsApi } from '../../api/jobs.api';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
+import { useBulkSelect } from '../../hooks/useBulkSelect';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
+import { BulkActionBar } from '../../components/BulkActionBar';
 
 export default function JobManagement() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -59,8 +65,9 @@ export default function JobManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     setLoading(true);
     try {
       const response = await jobsApi.getAll();
@@ -71,16 +78,44 @@ export default function JobManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  useDataRealtime('jobs', loadJobs);
   useEffect(() => {
     loadJobs();
-  }, []);
+  }, [loadJobs]);
 
   const filteredJobs = jobs.filter(job =>
     (job.jobTitle || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (job.department || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const bulk = useBulkSelect(filteredJobs);
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      await jobsApi.bulkDelete(bulk.ids);
+      toast.success(`${bulk.count} job(s) deleted`);
+      bulk.clear();
+      loadJobs();
+    } catch (err: any) {
+      toast.error('Bulk delete failed', { description: err?.response?.data?.message });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleBulkStatusUpdate = async (status: string) => {
+    try {
+      await jobsApi.bulkUpdateStatus(bulk.ids, status);
+      toast.success(`${bulk.count} job(s) set to ${status}`);
+      bulk.clear();
+      loadJobs();
+    } catch (err: any) {
+      toast.error('Status update failed', { description: err?.response?.data?.message });
+    }
+  };
 
   const handleAddNew = () => {
     setCurrentJob({
@@ -209,9 +244,19 @@ export default function JobManagement() {
             return (
               <div
                 key={jobId}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-card hover:shadow-md border border-border/40 rounded-xl transition-all"
+                className={`group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-card hover:shadow-md border rounded-xl transition-all ${bulk.isSelected(jobId) ? 'border-primary ring-1 ring-primary' : 'border-border/40'}`}
               >
-                <div className="space-y-3 mb-4 sm:mb-0 w-full">
+                <div className="flex items-start gap-3 w-full">
+                  <button
+                    className="mt-1 shrink-0"
+                    onClick={() => bulk.toggle(jobId)}
+                  >
+                    {bulk.isSelected(jobId)
+                      ? <CheckSquare className="h-4 w-4 text-primary" />
+                      : <Square className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    }
+                  </button>
+                <div className="space-y-3 mb-4 sm:mb-0 flex-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     <h3 className="font-semibold text-lg text-foreground">{job.jobTitle}</h3>
                     <Badge className={`${
@@ -274,6 +319,7 @@ export default function JobManagement() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                </div>
                 </div>
               </div>
             );
@@ -506,6 +552,29 @@ export default function JobManagement() {
         onClose={() => setDeleteTargetId(null)}
         onConfirm={handleDelete}
         description="Are you sure you want to delete this job posting? This action cannot be undone."
+      />
+
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clear}
+        itemLabel="job"
+        actions={[
+          {
+            label: 'Activate',
+            onClick: () => handleBulkStatusUpdate('Active'),
+          },
+          {
+            label: 'Close',
+            onClick: () => handleBulkStatusUpdate('Closed'),
+          },
+          {
+            label: 'Delete Selected',
+            icon: Trash2,
+            variant: 'destructive',
+            loading: isBulkDeleting,
+            onClick: handleBulkDelete,
+          },
+        ]}
       />
     </div>
   );

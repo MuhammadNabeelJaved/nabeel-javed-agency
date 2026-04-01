@@ -127,6 +127,8 @@ export const updatePageStatus = asyncHandler(async (req, res) => {
         { new: true, upsert: true }
     );
 
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "pageStatus" });
     successResponse(res, `Page "${page.label}" updated`, page);
 });
 
@@ -157,6 +159,8 @@ export const createPageStatus = asyncHandler(async (req, res) => {
         isCustom: true,
     });
 
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "pageStatus" });
     successResponse(res, "Custom page created", page, 201);
 });
 
@@ -175,5 +179,7 @@ export const deletePageStatus = asyncHandler(async (req, res) => {
     const page = await PageStatus.findOneAndDelete({ key });
     if (!page) throw new AppError("Page not found", 404);
 
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "pageStatus" });
     successResponse(res, "Custom page deleted", {});
 });
