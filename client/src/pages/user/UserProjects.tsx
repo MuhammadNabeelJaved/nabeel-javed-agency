@@ -105,6 +105,7 @@ export default function UserProjects() {
   const [formType, setFormType]         = useState('');
   const [formBudget, setFormBudget]     = useState('');
   const [formDetails, setFormDetails]   = useState('');
+  const [formDeadline, setFormDeadline] = useState('');
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -152,6 +153,7 @@ export default function UserProjects() {
       fd.append('projectType', formType);
       fd.append('budgetRange', formBudget);
       fd.append('projectDetails', formDetails.trim());
+      if (formDeadline) fd.append('deadline', formDeadline);
       files.forEach(f => fd.append('files', f));
 
       await projectsApi.create(fd);
@@ -168,6 +170,7 @@ export default function UserProjects() {
 
   const resetForm = () => {
     setFormName(''); setFormType(''); setFormBudget(''); setFormDetails('');
+    setFormDeadline('');
     setFiles([]);
   };
 
@@ -496,6 +499,19 @@ export default function UserProjects() {
                 <SelectItem value="$1,000 - $5,000">$1,000 - $5,000</SelectItem>
                 <SelectItem value="$5,000+">$5,000+</SelectItem>
               </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="pdeadline">
+                Deadline <span className="text-muted-foreground text-xs">(optional — when do you need it?)</span>
+              </Label>
+              <Input
+                id="pdeadline"
+                type="date"
+                value={formDeadline}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={e => setFormDeadline(e.target.value)}
+              />
             </div>
 
             <div className="grid gap-2">

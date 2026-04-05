@@ -3,7 +3,7 @@
  * View, filter, and manage all client-submitted project requests.
  * Admin can accept, reject, delete, edit, and assign team members.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Search, Loader2, X, Eye, CheckCircle2, Clock, RefreshCw,
   AlertCircle, FolderKanban, FileText, Save, Trash2, Check, XCircle,
@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 import { toast } from 'sonner';
 import apiClient from '../../api/apiClient';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -123,7 +124,7 @@ export default function ClientProjectRequests() {
 
   // ── Fetch requests ────────────────────────────────────────────────────────
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     setError(null);
     setLoading(true);
     try {
@@ -135,11 +136,11 @@ export default function ClientProjectRequests() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // ── Fetch team members (admin + team roles) ───────────────────────────────
 
-  const fetchTeamMembers = async () => {
+  const fetchTeamMembers = useCallback(async () => {
     try {
       const res = await apiClient.get('/users');
       const all: TeamMember[] = res.data.data ?? [];
@@ -147,12 +148,15 @@ export default function ClientProjectRequests() {
     } catch {
       // non-critical — team list just won't populate
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchRequests();
     fetchTeamMembers();
-  }, []);
+  }, [fetchRequests, fetchTeamMembers]);
+
+  // Real-time: refresh when a user submits/deletes a project, or admin updates one
+  useDataRealtime('projects', fetchRequests);
 
   // ── Quick: Approve ────────────────────────────────────────────────────────
 
@@ -377,6 +381,7 @@ export default function ClientProjectRequests() {
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Submitted</TableHead>
+                <TableHead>Deadline</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -459,6 +464,27 @@ export default function ClientProjectRequests() {
                       <p className="font-medium">{new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                       <p className="text-muted-foreground">{timeAgo(req.createdAt)}</p>
                     </div>
+                  </TableCell>
+
+                  {/* Deadline */}
+                  <TableCell>
+                    {req.deadline ? (() => {
+                      const daysLeft = Math.ceil((new Date(req.deadline).getTime() - Date.now()) / 86400000);
+                      const isPast   = daysLeft < 0;
+                      const isUrgent = daysLeft >= 0 && daysLeft <= 7;
+                      return (
+                        <div className="text-xs">
+                          <p className={`font-medium ${isPast ? 'text-red-500' : isUrgent ? 'text-amber-500' : ''}`}>
+                            {new Date(req.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                          <p className={`mt-0.5 ${isPast ? 'text-red-400' : isUrgent ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                            {isPast ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
+                          </p>
+                        </div>
+                      );
+                    })() : (
+                      <span className="text-xs text-muted-foreground italic">Not set</span>
+                    )}
                   </TableCell>
 
                   {/* Actions */}
@@ -584,6 +610,37 @@ export default function ClientProjectRequests() {
               <div className="bg-secondary/30 rounded-lg p-3">
                 <p className="text-xs text-muted-foreground mb-1">Budget</p>
                 <p className="font-medium">{selected?.budgetRange}</p>
+              </div>
+              <div className={`rounded-lg p-3 col-span-2 ${
+                selected?.deadline
+                  ? (() => {
+                      const d = Math.ceil((new Date(selected.deadline).getTime() - Date.now()) / 86400000);
+                      return d < 0 ? 'bg-red-500/10 border border-red-500/20' : d <= 7 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-secondary/30';
+                    })()
+                  : 'bg-secondary/30'
+              }`}>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <CalendarDays className="h-3 w-3" /> Client Requested Deadline
+                </p>
+                {selected?.deadline ? (() => {
+                  const daysLeft = Math.ceil((new Date(selected.deadline).getTime() - Date.now()) / 86400000);
+                  const isPast   = daysLeft < 0;
+                  const isUrgent = daysLeft >= 0 && daysLeft <= 7;
+                  return (
+                    <div className="flex items-center justify-between">
+                      <p className={`font-semibold ${isPast ? 'text-red-500' : isUrgent ? 'text-amber-500' : ''}`}>
+                        {new Date(selected.deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        isPast ? 'bg-red-500/20 text-red-500' : isUrgent ? 'bg-amber-500/20 text-amber-500' : 'bg-green-500/20 text-green-600'
+                      }`}>
+                        {isPast ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
+                      </span>
+                    </div>
+                  );
+                })() : (
+                  <p className="font-medium text-muted-foreground italic text-sm">No deadline set by client</p>
+                )}
               </div>
             </div>
 

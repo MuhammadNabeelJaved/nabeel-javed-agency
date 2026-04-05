@@ -19,6 +19,7 @@ import {
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { jobApplicationsApi } from '../../api/jobApplications.api';
 import { toast } from 'sonner';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface Application {
@@ -146,6 +147,9 @@ export default function AdminJobApplications() {
     const t = setTimeout(fetchApplications, search ? 400 : 0);
     return () => clearTimeout(t);
   }, [fetchApplications]);
+
+  // Real-time: refresh when a new application is submitted or status is updated
+  useDataRealtime('job-applications', fetchApplications);
 
   // Reset to page 1 when filter/search changes
   useEffect(() => { setCurrentPage(1); }, [search, statusFilter]);

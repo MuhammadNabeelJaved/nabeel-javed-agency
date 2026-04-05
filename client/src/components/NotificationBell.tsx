@@ -6,15 +6,39 @@
  */
 import React, { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, AlertCircle, Info, Clock, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import {
+    Bell, X, CheckCheck, FolderOpen, UserCheck, UserX,
+    MessageSquare, Paperclip, ClipboardList, RefreshCw, Info,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../hooks/useNotifications';
 
 interface NotificationBellProps {
-    /** Route for the "See all" link. E.g. "/admin/notifications" */
     notificationsRoute: string;
-    /** Route for the chat page. When provided, message notifications navigate to it with ?convoId= param. */
     chatRoute?: string;
+}
+
+// ─── Per-type config ────────────────────────────────────────────────────────
+const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+    project_accepted:  { icon: UserCheck,     color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    project_rejected:  { icon: UserX,         color: 'text-red-500',     bg: 'bg-red-500/10'     },
+    project_assigned:  { icon: FolderOpen,    color: 'text-blue-500',    bg: 'bg-blue-500/10'    },
+    project_submitted: { icon: FolderOpen,    color: 'text-violet-500',  bg: 'bg-violet-500/10'  },
+    status_updated:    { icon: RefreshCw,     color: 'text-amber-500',   bg: 'bg-amber-500/10'   },
+    task_assigned:     { icon: ClipboardList, color: 'text-sky-500',     bg: 'bg-sky-500/10'     },
+    file_received:     { icon: Paperclip,     color: 'text-purple-500',  bg: 'bg-purple-500/10'  },
+    message:           { icon: MessageSquare, color: 'text-primary',     bg: 'bg-primary/10'     },
+};
+
+const DEFAULT_CONFIG = { icon: Info, color: 'text-blue-500', bg: 'bg-blue-500/10' };
+
+function formatTime(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    if (diff < 60_000)          return 'Just now';
+    if (diff < 3_600_000)       return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86_400_000)      return `${Math.floor(diff / 3_600_000)}h ago`;
+    if (diff < 7 * 86_400_000)  return `${Math.floor(diff / 86_400_000)}d ago`;
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export function NotificationBell({ notificationsRoute, chatRoute }: NotificationBellProps) {
@@ -23,7 +47,6 @@ export function NotificationBell({ notificationsRoute, chatRoute }: Notification
     const [open, setOpen] = React.useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
-    // Close on outside click
     useEffect(() => {
         function onClickOutside(e: MouseEvent) {
             if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -32,146 +55,173 @@ export function NotificationBell({ notificationsRoute, chatRoute }: Notification
         return () => document.removeEventListener('mousedown', onClickOutside);
     }, []);
 
-    const getIcon = (type: string) => {
-        switch (type) {
-            case 'project_accepted': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-            case 'project_rejected': return <AlertTriangle className="h-4 w-4 text-red-500" />;
-            case 'project_assigned': return <Info className="h-4 w-4 text-blue-500" />;
-            case 'file_received': return <Info className="h-4 w-4 text-purple-500" />;
-            case 'message': return <Bell className="h-4 w-4 text-primary" />;
-            default: return <Info className="h-4 w-4 text-blue-500" />;
-        }
-    };
-
-    const formatTime = (dateStr: string) => {
-        const d = new Date(dateStr);
-        const now = new Date();
-        const diff = now.getTime() - d.getTime();
-        if (diff < 60 * 1000) return 'Now';
-        if (diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)}m ago`;
-        if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / 3600000)}h ago`;
-        return `${Math.floor(diff / 86400000)}d ago`;
-    };
-
-    // Show only the most recent 6 in the dropdown
-    const recent = notifications.slice(0, 6);
+    const recent = notifications.slice(0, 8);
 
     return (
         <div className="relative" ref={ref}>
-            <button
+            {/* Bell button */}
+            <motion.button
                 onClick={() => setOpen((o) => !o)}
-                className="relative group p-2 rounded-full hover:bg-accent transition-colors outline-none"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                className="relative p-2 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground transition-colors outline-none"
                 aria-label="Notifications"
             >
-                <Bell className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-[10px] text-primary-foreground font-bold flex items-center justify-center shadow-[0_0_8px_rgba(var(--primary),0.5)]">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                )}
-            </button>
+                <Bell className={`h-5 w-5 transition-colors ${open ? 'text-primary' : ''}`} />
 
+                {/* Unread badge */}
+                <AnimatePresence>
+                    {unreadCount > 0 && (
+                        <motion.span
+                            key="badge"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-[10px] text-primary-foreground font-bold flex items-center justify-center shadow-lg ring-2 ring-background"
+                        >
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </motion.button>
+
+            {/* Dropdown */}
             <AnimatePresence>
                 {open && (
                     <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                        className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card border border-border/50 rounded-xl shadow-2xl backdrop-blur-xl z-50 overflow-hidden"
+                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute right-0 top-full mt-2 w-[340px] sm:w-[400px] bg-card/95 backdrop-blur-xl border border-border/60 rounded-2xl shadow-2xl z-50 overflow-hidden"
                     >
                         {/* Header */}
-                        <div className="p-4 border-b border-border/50 flex items-center justify-between bg-muted/30">
-                            <div>
-                                <h3 className="font-semibold text-foreground">Notifications</h3>
-                                <p className="text-xs text-muted-foreground">
-                                    {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
-                                </p>
+                        <div className="px-4 py-3 flex items-center justify-between border-b border-border/50 bg-muted/20">
+                            <div className="flex items-center gap-2.5">
+                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Bell className="h-4 w-4 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-foreground leading-tight">Notifications</p>
+                                    <p className="text-[11px] text-muted-foreground leading-tight">
+                                        {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+                                    </p>
+                                </div>
                             </div>
-                            <button
-                                onClick={() => setOpen(false)}
-                                className="p-1 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                                {unreadCount > 0 && (
+                                    <button
+                                        onClick={markAllAsRead}
+                                        title="Mark all as read"
+                                        className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
+                                    >
+                                        <CheckCheck className="h-4 w-4" />
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setOpen(false)}
+                                    className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
 
-                        {/* List */}
-                        <div className="max-h-[400px] overflow-y-auto">
+                        {/* Notification list */}
+                        <div className="max-h-[420px] overflow-y-auto overscroll-contain divide-y divide-border/30">
                             {recent.length === 0 ? (
-                                <div className="p-8 text-center text-muted-foreground">
-                                    <Bell className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                                    <p className="text-sm">No notifications yet</p>
+                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-3">
+                                    <div className="h-14 w-14 rounded-full bg-muted/50 flex items-center justify-center">
+                                        <Bell className="h-6 w-6 opacity-30" />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-sm font-medium">No notifications yet</p>
+                                        <p className="text-xs opacity-60 mt-0.5">We'll let you know when something happens</p>
+                                    </div>
                                 </div>
                             ) : (
-                                recent.map((notif) => (
-                                    <div
-                                        key={notif._id}
-                                        className={`p-4 border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer flex gap-3 ${
-                                            !notif.isRead ? 'bg-primary/5' : ''
-                                        }`}
-                                        onClick={() => {
-                                            if (!notif.isRead) markAsRead(notif._id);
-                                            const isChatNotif = notif.type === 'message' || notif.type === 'file_received';
-                                            if (isChatNotif && chatRoute && notif.payload?.conversationId) {
-                                                setOpen(false);
-                                                const convoId = notif.payload.conversationId as string;
-                                                const msgId = notif.payload.messageId as string | undefined;
-                                                const url = msgId
-                                                    ? `${chatRoute}?convoId=${convoId}&messageId=${msgId}`
-                                                    : `${chatRoute}?convoId=${convoId}`;
-                                                navigate(url);
-                                            }
-                                        }}
-                                    >
-                                        <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center shrink-0 bg-background border`}>
-                                            {getIcon(notif.type)}
-                                        </div>
-                                        <div className="flex-1 space-y-0.5 min-w-0">
-                                            <div className="flex items-center justify-between">
-                                                <p className={`text-sm font-medium truncate ${!notif.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                                    {notif.title}
-                                                </p>
-                                                <span className="text-[10px] text-muted-foreground flex items-center gap-1 ml-1 shrink-0">
-                                                    <Clock className="h-3 w-3" /> {formatTime(notif.createdAt)}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground line-clamp-2">
-                                                {notif.message}
-                                            </p>
-                                        </div>
-                                        {!notif.isRead && (
-                                            <div className="self-center shrink-0">
-                                                <div className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
+                                <AnimatePresence initial={false}>
+                                    {recent.map((notif, i) => {
+                                        const cfg = TYPE_CONFIG[notif.type] ?? DEFAULT_CONFIG;
+                                        const Icon = cfg.icon;
+                                        const isChatNotif = notif.type === 'message' || notif.type === 'file_received';
+
+                                        return (
+                                            <motion.div
+                                                key={notif._id}
+                                                initial={{ opacity: 0, x: -8 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: i * 0.03 }}
+                                                onClick={() => {
+                                                    if (!notif.isRead) markAsRead(notif._id);
+                                                    if (isChatNotif && chatRoute && notif.payload?.conversationId) {
+                                                        setOpen(false);
+                                                        const convoId = notif.payload.conversationId as string;
+                                                        const msgId = notif.payload.messageId as string | undefined;
+                                                        navigate(msgId
+                                                            ? `${chatRoute}?convoId=${convoId}&messageId=${msgId}`
+                                                            : `${chatRoute}?convoId=${convoId}`
+                                                        );
+                                                    }
+                                                }}
+                                                className={`group relative flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors duration-150
+                                                    ${!notif.isRead
+                                                        ? 'bg-primary/[0.04] hover:bg-primary/[0.07]'
+                                                        : 'hover:bg-muted/40'
+                                                    }`}
+                                            >
+                                                {/* Unread stripe */}
+                                                {!notif.isRead && (
+                                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-8 rounded-r-full bg-primary" />
+                                                )}
+
+                                                {/* Icon */}
+                                                <div className={`mt-0.5 h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg}`}>
+                                                    <Icon className={`h-4 w-4 ${cfg.color}`} />
+                                                </div>
+
+                                                {/* Content */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <p className={`text-sm leading-snug font-medium truncate ${!notif.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                            {notif.title}
+                                                        </p>
+                                                        <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">
+                                                            {formatTime(notif.createdAt)}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                                                        {notif.message}
+                                                    </p>
+                                                </div>
+
+                                                {/* Unread dot */}
+                                                {!notif.isRead && (
+                                                    <div className="mt-1.5 shrink-0 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
+                                                )}
+                                            </motion.div>
+                                        );
+                                    })}
+                                </AnimatePresence>
                             )}
                         </div>
 
                         {/* Footer */}
-                        <div className="p-3 bg-muted/30 border-t border-border/50 flex items-center justify-between">
-                            {unreadCount > 0 ? (
+                        {recent.length > 0 && (
+                            <div className="px-4 py-3 border-t border-border/50 bg-muted/10 flex items-center justify-between">
+                                <p className="text-[11px] text-muted-foreground">
+                                    Showing {recent.length} of {notifications.length}
+                                </p>
                                 <button
-                                    className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-                                    onClick={markAllAsRead}
+                                    onClick={() => { setOpen(false); navigate(notificationsRoute); }}
+                                    className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 group"
                                 >
-                                    Mark all as read
+                                    View all
+                                    <span className="group-hover:translate-x-0.5 transition-transform inline-block">→</span>
                                 </button>
-                            ) : (
-                                <span />
-                            )}
-                            <button
-                                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                                onClick={() => {
-                                    setOpen(false);
-                                    navigate(notificationsRoute);
-                                }}
-                            >
-                                See all →
-                            </button>
-                        </div>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

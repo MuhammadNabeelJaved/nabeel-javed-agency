@@ -27,6 +27,7 @@ import {
     sendJobApplicationConfirmation,
     sendJobApplicationAdminNotification,
 } from "../../utils/sendEmails.js";
+import { emitDataUpdate } from "../../utils/dataUpdateService.js";
 
 // =========================
 // SUBMIT APPLICATION (public)
@@ -87,6 +88,10 @@ export const submitApplication = asyncHandler(async (req, res) => {
 
     // Increment applications count on the job
     await jobPosting.incrementApplications();
+
+    // Notify admin dashboard in real-time
+    const io = req.app.get("io");
+    emitDataUpdate(io, "job-applications", ["admin:global"]);
 
     // Send confirmation email to applicant + admin notification (non-blocking)
     Promise.allSettled([
@@ -198,13 +203,24 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
     if (!application) throw new AppError("Application not found", 404);
 
     // When hired: upgrade the applicant's user account role to 'team'
+    let applicantUserId = null;
     if (status === "hired") {
         const user = await User.findOne({ email: application.email });
         if (user && user.role !== "admin") {
             user.role = "team";
             await user.save();
+            applicantUserId = user._id.toString();
         }
+    } else {
+        const user = await User.findOne({ email: application.email }).select("_id");
+        if (user) applicantUserId = user._id.toString();
     }
+
+    // Notify admin + the applicant's user dashboard in real-time
+    const io = req.app.get("io");
+    const rooms = ["admin:global"];
+    if (applicantUserId) rooms.push(`user:${applicantUserId}`);
+    emitDataUpdate(io, "job-applications", rooms);
 
     successResponse(res, "Application status updated", application);
 });
@@ -215,6 +231,10 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
 export const deleteApplication = asyncHandler(async (req, res) => {
     const application = await JobApplication.findByIdAndDelete(req.params.id);
     if (!application) throw new AppError("Application not found", 404);
+
+    const io = req.app.get("io");
+    emitDataUpdate(io, "job-applications", ["admin:global"]);
+
     successResponse(res, "Application deleted successfully", {});
 });
 

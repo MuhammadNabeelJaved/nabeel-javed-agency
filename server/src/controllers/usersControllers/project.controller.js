@@ -3,7 +3,7 @@ import asyncHandler from "../../middlewares/asyncHandler.js";
 import Project from "../../models/usersModels/Project.model.js";
 import User from "../../models/usersModels/User.model.js";
 import { successResponse } from "../../utils/apiResponse.js";
-import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
+import { uploadFile, deleteImage } from "../../middlewares/Cloudinary.js";
 import { createAndEmitNotification } from "../../utils/notificationService.js";
 import { emitDataUpdate } from "../../utils/dataUpdateService.js";
 
@@ -28,8 +28,7 @@ export const createProject = asyncHandler(async (req, res) => {
             projectType,
             budgetRange,
             projectDetails,
-            // deadline,
-            // totalCost
+            deadline,
         } = req.body;
         const files = req?.files;
 
@@ -49,13 +48,12 @@ export const createProject = asyncHandler(async (req, res) => {
         // In createProject controller
         if (files && files.length > 0) {
             for (const file of files) {
-                const uploaded = await uploadImage(file.path, "projects");
-
+                const uploaded = await uploadFile(file.path, "projects");
                 if (uploaded) {
                     uploadedFiles.push({
                         fileName: file.originalname,
                         fileUrl: uploaded.secure_url || uploaded.url,
-                        publicId: uploaded.public_id, // Store public_id
+                        publicId: uploaded.public_id,
                         fileType: getFileType(file.mimetype)
                     });
                 }
@@ -76,7 +74,8 @@ export const createProject = asyncHandler(async (req, res) => {
             status: 'pending',
             progress: 0,
             paidAmount: 0,
-            requestedBy: user._id
+            requestedBy: user._id,
+            ...(deadline && { deadline: new Date(deadline) }),
         });
 
         if (!project) {
@@ -211,8 +210,11 @@ export const getProjectById = asyncHandler(async (req, res) => {
             throw new AppError("Project not found", 404);
         }
 
-        // Check authorization
-        if (req?.user?.role !== 'admin' && project.requestedBy._id.toString() !== req.user.id) {
+        // Check authorization: admin sees all; owner sees their own; team sees assigned projects
+        const userId = req.user._id.toString();
+        const isOwner = project.requestedBy._id.toString() === userId;
+        const isAssigned = (project.assignedTeam || []).some(m => m._id.toString() === userId);
+        if (req?.user?.role !== 'admin' && !isOwner && !isAssigned) {
             throw new AppError("You are not authorized to view this project", 403);
         }
 
@@ -283,17 +285,13 @@ export const updateProject = asyncHandler(async (req, res) => {
         if (files && files.length > 0) {
             for (const file of files) {
                 try {
-                    const uploadResult = await uploadImage(file.path, "projects");
+                    const uploadResult = await uploadFile(file.path, "projects");
                     if (uploadResult && uploadResult.secure_url) {
-                        const fileType = file.mimetype.startsWith('image/') ? 'image'
-                            : file.mimetype === 'application/pdf' ? 'pdf'
-                                : file.mimetype.includes('document') ? 'doc'
-                                    : 'other';
-
                         project.attachments.push({
                             fileName: file.originalname,
                             fileUrl: uploadResult.secure_url,
-                            fileType: fileType
+                            publicId: uploadResult.public_id,
+                            fileType: getFileType(file.mimetype)
                         });
                     }
                 } catch (error) {

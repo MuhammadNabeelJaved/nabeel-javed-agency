@@ -4,7 +4,7 @@
  * Configures and exports the Express app with:
  *  - CORS (origin controlled via CORS_ORIGIN env var, credentials allowed)
  *  - Helmet security headers
- *  - Rate limiting (100 req / 15 min per IP)
+ *  - Rate limiting (100 req / 1 min per IP global; tighter limits per endpoint type)
  *  - Cookie parser
  *  - JSON + URL-encoded body parsing (10 MB limit)
  *  - Static file serving for locally uploaded files
