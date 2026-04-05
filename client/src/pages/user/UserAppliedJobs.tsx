@@ -2,7 +2,7 @@
  * User Applied Jobs Page
  * Shows all job applications submitted by the logged-in user.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Briefcase, Calendar, ExternalLink, Loader2, FileText } from 'lucide-react';
@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { getMyApplications } from '../../api/jobApplications.api';
 import { toast } from 'sonner';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
 
 const STATUS_STYLES: Record<string, string> = {
   pending:     'bg-yellow-500/10 text-yellow-600 border-yellow-500/30',
@@ -24,12 +25,21 @@ export default function UserAppliedJobs() {
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    getMyApplications()
-      .then(res => setApplications(res.data.data?.applications || []))
-      .catch(() => toast.error('Failed to load your applications'))
-      .finally(() => setLoading(false));
+  const fetchApplications = useCallback(async () => {
+    try {
+      const res = await getMyApplications();
+      setApplications(res.data.data?.applications || []);
+    } catch {
+      toast.error('Failed to load your applications');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { fetchApplications(); }, [fetchApplications]);
+
+  // Real-time: refresh when admin updates application status
+  useDataRealtime('job-applications', fetchApplications);
 
   if (loading) {
     return (

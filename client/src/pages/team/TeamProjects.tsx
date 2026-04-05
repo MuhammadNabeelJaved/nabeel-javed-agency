@@ -3,7 +3,7 @@
  * Shows both admin portfolio projects (assigned via AdminProject model)
  * and client project requests assigned to this team member.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Users, Clock, ArrowRight, Loader2, Briefcase, FolderKanban } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -12,6 +12,7 @@ import { Badge } from '../../components/ui/badge';
 import { adminProjectsApi } from '../../api/adminProjects.api';
 import { projectsApi } from '../../api/projects.api';
 import { toast } from 'sonner';
+import { useDataRealtime } from '../../hooks/useDataRealtime';
 
 // ─── Admin Portfolio Project ───────────────────────────────────────────────
 interface AdminProject {
@@ -77,7 +78,7 @@ export default function TeamProjects() {
   const [activeTab, setActiveTab]           = useState<'portfolio' | 'client'>('client');
 
   // ── Fetch both project sources in parallel ──
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
       const [adminRes, clientRes] = await Promise.allSettled([
@@ -98,9 +99,12 @@ export default function TeamProjects() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Real-time: refresh when admin assigns this member to a project or updates status
+  useDataRealtime('projects', fetchAll);
 
   const handleUpdateStatus = async (id: string, status: string) => {
     try {

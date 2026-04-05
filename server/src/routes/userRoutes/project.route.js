@@ -19,7 +19,7 @@ const router = express.Router();
 router.route('/create').post(userAuthenticated, authorizeRoles("admin", "user"), uploadLimiter, upload.array('files', 5), createProjectSchema, createProject);
 router.route('/').get(userAuthenticated, authorizeRoles('admin', 'user', 'team'), getAllProjects);
 router.route('/stats').get(userAuthenticated, authorizeRoles('admin', 'user'), getProjectStats);
-router.route('/:id').get(userAuthenticated, authorizeRoles("admin", "user"), validate([mongoIdParam('id')]), getProjectById);
+router.route('/:id').get(userAuthenticated, authorizeRoles("admin", "user", "team"), validate([mongoIdParam('id')]), getProjectById);
 router.route('/:id').patch(userAuthenticated, authorizeRoles("admin", "user"), uploadLimiter, upload.array('files', 5), validate([mongoIdParam('id')]), updateProject);
 router.route('/:id/status').patch(userAuthenticated, authorizeRoles('admin'), mutationLimiter, validate([mongoIdParam('id')]), updateProjectStatus);
 router.route('/:id').delete(userAuthenticated, authorizeRoles('admin', 'user'), mutationLimiter, validate([mongoIdParam('id')]), deleteProject);

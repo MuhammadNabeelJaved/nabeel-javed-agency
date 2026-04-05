@@ -22,7 +22,8 @@ export function useDataRealtime(section: string, refetch: () => void) {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ section: string }>).detail;
-      if (detail?.section === section) stableRefetch();
+      // '*' is the wildcard fired by the topbar Refresh button — triggers all hooks
+      if (detail?.section === section || detail?.section === '*') stableRefetch();
     };
     window.addEventListener('cms:updated', handler);
     return () => window.removeEventListener('cms:updated', handler);

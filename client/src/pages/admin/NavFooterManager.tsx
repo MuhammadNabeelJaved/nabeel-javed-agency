@@ -9,7 +9,7 @@ import {
   Plus, Trash2, Save, Loader2, GripVertical,
   Link as LinkIcon, ExternalLink, Eye, EyeOff,
   ChevronDown, ChevronRight, Navigation, LayoutTemplate,
-  RotateCcw, Pencil, Check, X,
+  RotateCcw, Pencil, Check, X, Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
@@ -28,6 +28,20 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
     </button>
   );
 }
+
+// ── Predefined existing pages ──────────────────────────────────────────────
+const EXISTING_PAGES = [
+  { label: 'Home',           href: '/' },
+  { label: 'Services',       href: '/services' },
+  { label: 'About',          href: '/about' },
+  { label: 'Portfolio',      href: '/portfolio' },
+  { label: 'Careers',        href: '/careers' },
+  { label: 'Blog',           href: '/blog' },
+  { label: 'Contact',        href: '/contact' },
+  { label: 'Privacy Policy', href: '/privacy-policy' },
+  { label: 'Terms of Service', href: '/terms-of-service' },
+  { label: 'Cookie Policy',  href: '/cookies' },
+];
 
 type Tab = 'navbar' | 'footer';
 
@@ -165,6 +179,32 @@ function NavbarTab() {
                 ) : (
                   /* Expanded edit form */
                   <div className="p-4 space-y-3">
+                    {/* Quick-pick from existing pages */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                        <Globe className="h-3 w-3" /> Quick-pick an existing page
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {EXISTING_PAGES.map(page => (
+                          <button
+                            key={page.href}
+                            type="button"
+                            onClick={() => {
+                              updateField(link._id!, 'href', page.href);
+                              if (!link.label) updateField(link._id!, 'label', page.label);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                              link.href === page.href
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border/60 bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                            }`}
+                          >
+                            {page.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground font-medium">Label</label>

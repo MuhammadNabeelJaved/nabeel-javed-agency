@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { UserSidebar } from '../components/UserSidebar';
 import { PageStatusGate } from '../components/PageStatusGate';
-import { Menu, MessageSquare, Sun, Moon, User as UserIcon, Bell, Briefcase, LayoutDashboard, HeadphonesIcon, Home } from 'lucide-react';
+import { Menu, MessageSquare, Sun, Moon, User as UserIcon, Bell, Briefcase, LayoutDashboard, HeadphonesIcon, Home, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardSearch } from '../components/DashboardSearch';
 import { useTheme } from '../contexts/ThemeContext';
@@ -23,6 +23,24 @@ export function UserDashboardLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    localStorage.getItem('user-sidebar-collapsed') === 'true'
+  );
+
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('user-sidebar-collapsed', String(next));
+      return next;
+    });
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    window.dispatchEvent(new CustomEvent('cms:updated', { detail: { section: '*' } }));
+    setTimeout(() => setRefreshing(false), 1000);
+  };
 
   const userMenuItems: ProfileMenuItem[] = [
     { label: 'Dashboard',     icon: LayoutDashboard, to: '/user-dashboard' },
@@ -43,9 +61,9 @@ export function UserDashboardLayout() {
         <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/5 rounded-full blur-[120px]" />
       </div>
 
-      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
 
-      <div className="sm:pl-20 lg:pl-72 relative z-10 transition-all duration-300">
+      <div className={`sm:pl-20 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} relative z-10 transition-all duration-300`}>
         {/* Topbar */}
         <header className="h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-background/50 border-b border-border/50">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -62,6 +80,22 @@ export function UserDashboardLayout() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* Refresh data */}
+            <div className="relative group">
+              <motion.button
+                onClick={handleRefresh}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                className="p-2 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Refresh data"
+              >
+                <RefreshCw className={`h-5 w-5 transition-transform ${refreshing ? 'animate-spin' : ''}`} />
+              </motion.button>
+              <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded-lg bg-popover border border-border text-xs text-popover-foreground whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-md">
+                Refresh data
+              </div>
+            </div>
+
             {/* Theme toggle with animated icon swap */}
             <motion.button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
