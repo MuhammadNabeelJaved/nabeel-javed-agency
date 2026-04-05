@@ -55,6 +55,7 @@ import ProjectCreated from './pages/emails/ProjectCreated';
 import ProjectCompleted from './pages/emails/ProjectCompleted';
 import FeedbackRequest from './pages/emails/FeedbackRequest';
 import OtpVerification from './pages/OtpVerification';
+import OAuthCallback from './pages/public/OAuthCallback';
 
 // Admin Pages
 import DashboardHome from './pages/admin/DashboardHome';
@@ -249,6 +250,7 @@ export default function App() {
                 
                 {/* Auth Pages */}
                 <Route path="/otp-verification" element={<OtpVerification />} />
+                <Route path="/auth/callback" element={<OAuthCallback />} />
 
                 <Route path="*" element={<NotFound />} />
               </Route>

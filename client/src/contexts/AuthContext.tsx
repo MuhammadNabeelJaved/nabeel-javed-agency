@@ -10,6 +10,7 @@ interface AuthContextValue {
   register: (name: string, email: string, password: string) => Promise<{ requiresVerification: boolean; user: AuthUser }>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<AuthUser>) => void;
+  loginFromOAuth: (userData: AuthUser) => void;
   error: string | null;
   clearError: () => void;
 }
@@ -111,6 +112,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearError = useCallback(() => setError(null), []);
 
+  const loginFromOAuth = useCallback((userData: AuthUser) => {
+    persistUser(userData);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -121,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         updateUser,
+        loginFromOAuth,
         error,
         clearError,
       }}

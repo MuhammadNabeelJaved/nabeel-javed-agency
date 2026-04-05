@@ -45,10 +45,23 @@ const userSchema = new mongoose.Schema(
 
         password: {
             type: String,
-            required: [true, "Password is required"],
+            required: false, // Optional for OAuth users (Google/GitHub sign-in)
             minlength: [8, "Password must be at least 8 characters"],
             // maxlength: [20, "Password cannot exceed 20 characters"],
             select: false, // Never returned in queries unless explicitly requested
+        },
+
+        // OAuth provider IDs (sparse index: only indexed when field is present)
+        googleId: {
+            type: String,
+            sparse: true,
+            index: true,
+        },
+
+        githubId: {
+            type: String,
+            sparse: true,
+            index: true,
         },
 
         photo: {
