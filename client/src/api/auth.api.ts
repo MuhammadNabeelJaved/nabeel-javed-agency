@@ -37,4 +37,12 @@ export const authApi = {
 
   refreshToken: () =>
     apiClient.post('/users/refresh-token'),
+
+  // OAuth — full-page browser navigations (not axios calls)
+  initiateGoogleOAuth: () => {
+    window.location.href = '/api/v1/users/auth/google';
+  },
+  initiateGitHubOAuth: () => {
+    window.location.href = '/api/v1/users/auth/github';
+  },
 };

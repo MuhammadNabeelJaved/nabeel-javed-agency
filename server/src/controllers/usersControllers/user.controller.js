@@ -26,41 +26,7 @@ import { successResponse } from "../../utils/apiResponse.js";
 import User from "../../models/usersModels/User.model.js";
 import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
 import { logAuthFail, logAuthSuccess } from "../../middlewares/requestLogger.js";
-
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERNAL HELPER – Generate and store JWT access + refresh tokens
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Generates a JWT access token and refresh token for the given user,
- * saves the user document (to persist the refresh token), and returns both.
- *
- * @param {Document} user - Mongoose User document
- * @returns {{ accessToken: string, refreshToken: string }}
- * @throws {AppError} 500 on token generation failure
- */
-const jwtTokens = async (user) => {
-    try {
-        if (!user) {
-            throw new AppError("User not found", 404);
-        }
-
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
-
-        // Persist the refresh token so the /refresh-token endpoint can validate it
-        user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave: false });
-
-        return { accessToken, refreshToken };
-    } catch (error) {
-        console.error("Error in jwtTokens:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Token generation failed: ${error.message}`, 500);
-    }
-}
+import { generateTokens } from "../../utils/generateTokens.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTER
@@ -113,7 +79,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         const code = await createdUser.generateVerificationCode();
 
         // Issue JWT tokens and set them in HTTP-only cookies
-        const { accessToken, refreshToken } = await jwtTokens(createdUser);
+        const { accessToken, refreshToken } = await generateTokens(createdUser);
 
         if (!accessToken || !refreshToken) {
             throw new AppError("Token generation failed", 500);
@@ -267,7 +233,7 @@ export const loginUser = asyncHandler(async (req, res) => {
         throw new AppError("Invalid password", 401);
     }
 
-    const { accessToken, refreshToken } = await jwtTokens(user);
+    const { accessToken, refreshToken } = await generateTokens(user);
     logAuthSuccess(req, user._id);
 
     const userResponse = user.toObject();
@@ -511,6 +477,9 @@ export const updateUserPassword = asyncHandler(async (req, res) => {
 
         if (!user) {
             throw new AppError("User not found", 404);
+        }
+        if (!user.password) {
+            throw new AppError("This account uses OAuth sign-in (Google/GitHub). Please set a password first.", 400);
         }
         const isPasswordValid = await user.comparePassword(oldPassword);
         if (!isPasswordValid) {

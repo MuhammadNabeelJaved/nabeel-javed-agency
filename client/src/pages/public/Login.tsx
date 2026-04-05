@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Zap, ArrowLeft, Github, Mail } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { authApi } from '../../api/auth.api';
 import { toast } from 'sonner';
 
 export default function Login() {
@@ -26,6 +27,16 @@ export default function Login() {
       toast.error('Login Failed', { description: error });
     }
   }, [error]);
+
+  // Show error toast if redirected back from OAuth failure
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('error') === 'oauth_failed') {
+      toast.error('OAuth sign-in failed', {
+        description: 'Could not sign in. If using GitHub, ensure your primary email is public in GitHub settings.',
+      });
+    }
+  }, [location.search]);
 
   const getDashboardPath = (role: string) => {
     if (role === 'admin') return '/admin';
@@ -148,11 +159,11 @@ export default function Login() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button variant="outline" className="w-full">
+            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGitHubOAuth()}>
               <Github className="mr-2 h-4 w-4" />
               Github
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGoogleOAuth()}>
               <Mail className="mr-2 h-4 w-4" />
               Google
             </Button>

@@ -23,6 +23,7 @@ import notFound from "./middlewares/notFound.js";
 import { globalLimiter } from "./middlewares/rateLimiter.js";
 import { sanitizeMongo, trimBody, preventHPP } from "./middlewares/sanitize.js";
 import { requestLogger } from "./middlewares/requestLogger.js";
+import { configurePassport } from "./config/passport.js";
 
 
 dotenv.config();
@@ -87,6 +88,7 @@ app.use(requestLogger);
 
 // ─── Request Parsing ────────────────────────────────────────────────────────
 app.use(cookieParser())
+configurePassport(app);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
