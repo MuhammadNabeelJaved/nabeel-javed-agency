@@ -6,7 +6,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Users, LayoutDashboard, MessageSquare, FolderKanban, Settings, LogOut, Zap,
-  CreditCard, Bot, HelpCircle, Bell, ChevronRight, Briefcase, PenTool,
+  Bot, HelpCircle, Bell, ChevronRight, Briefcase, PenTool,
   Database, Mail, LayoutList, Megaphone, X, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -50,8 +50,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
     { name: 'Content Editor',   path: '/admin/content-editor',   icon: PenTool },
     { name: 'AI Tools',         path: '/admin/ai-tools',         icon: Bot },
     { name: 'Messages',         path: '/admin/messages',         icon: MessageSquare },
-    { name: 'Billing',          path: '/admin/billing',          icon: CreditCard },
-    { name: 'Support',          path: '/admin/support',          icon: HelpCircle },
+    { name: 'Client Tickets',   path: '/admin/support',          icon: HelpCircle },
     { name: 'Notifications',    path: '/admin/notifications',    icon: Bell },
     { name: 'Settings',         path: '/admin/settings',         icon: Settings },
   ];

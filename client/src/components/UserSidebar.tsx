@@ -6,7 +6,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, FolderKanban, User, LogOut, Bell,
-  ChevronRight, PlusCircle, Sparkles, Briefcase, HelpCircle, X,
+  ChevronRight, PlusCircle, Sparkles, Briefcase, HelpCircle, CreditCard, X,
   PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -41,6 +41,7 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
     { name: 'Messages',           path: '/user-dashboard/messages',       icon: MessageSquare },
     { name: 'AI Assistant',       path: '/user-dashboard/ai-assistant',   icon: Sparkles },
     { name: 'Applied Jobs',       path: '/user-dashboard/applied-jobs',   icon: Briefcase },
+    { name: 'Billing',            path: '/user-dashboard/billing',        icon: CreditCard },
     { name: 'Profile & Settings', path: '/user-dashboard/profile',        icon: User },
     { name: 'Notifications',      path: '/user-dashboard/notifications',  icon: Bell },
     { name: 'Support',            path: '/user-dashboard/support',        icon: HelpCircle },
