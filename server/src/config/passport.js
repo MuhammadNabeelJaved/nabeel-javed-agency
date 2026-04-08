@@ -7,6 +7,12 @@ import User from "../models/usersModels/User.model.js";
  * Configure Passport with Google and GitHub OAuth strategies.
  * Uses session: false — this project is stateless JWT-based auth.
  *
+ * Mode is passed via the OAuth `state` param (?mode=login|signup on the
+ * initiating route, forwarded as state= in the callback query string).
+ *
+ * LOGIN  mode: user must already exist — never auto-creates an account.
+ * SIGNUP mode: user must NOT exist — creates with isVerified:false + OTP.
+ *
  * @param {import('express').Application} app
  */
 export const configurePassport = (app) => {
@@ -19,50 +25,63 @@ export const configurePassport = (app) => {
         passport.use(
             new GoogleStrategy(
                 {
-                    clientID:     process.env.GOOGLE_CLIENT_ID,
-                    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-                    callbackURL:  process.env.GOOGLE_CALLBACK_URL,
+                    clientID:          process.env.GOOGLE_CLIENT_ID,
+                    clientSecret:      process.env.GOOGLE_CLIENT_SECRET,
+                    callbackURL:       process.env.GOOGLE_CALLBACK_URL,
+                    passReqToCallback: true,
                 },
-                async (accessToken, refreshToken, profile, done) => {
+                async (req, accessToken, refreshToken, profile, done) => {
                     try {
+                        // state param carries the mode ('login' | 'signup')
+                        const mode  = req.query.state || 'login';
                         const email = profile.emails?.[0]?.value;
+
                         if (!email) {
-                            return done(null, false, { message: "No email returned from Google." });
+                            return done(null, false, { message: "no_email" });
                         }
 
-                        // Try to find existing user by googleId first, then by email
+                        // Find by provider ID first, then fall back to email
                         let user = await User.findOne({ googleId: profile.id });
+                        if (!user) user = await User.findOne({ email });
 
-                        if (!user) {
-                            user = await User.findOne({ email });
-
-                            if (user) {
-                                // Link Google to existing email/password account
-                                if (user.deletedAt || !user.isActive) {
-                                    return done(null, false, { message: "Account is deactivated." });
-                                }
-                                user.googleId = profile.id;
-                                user.isVerified = true;
-                                await user.save({ validateBeforeSave: false });
-                            } else {
-                                // Create brand-new OAuth user
-                                user = await User.create({
-                                    name:       profile.displayName || email.split("@")[0],
-                                    email,
-                                    googleId:   profile.id,
-                                    photo:      profile.photos?.[0]?.value || "default.jpg",
-                                    role:       "user",
-                                    isVerified: true,
-                                    isActive:   true,
-                                });
+                        // ── LOGIN flow ────────────────────────────────────────
+                        if (mode === 'login') {
+                            if (!user) {
+                                return done(null, false, { message: "account_not_found" });
                             }
-                        } else {
                             if (user.deletedAt || !user.isActive) {
-                                return done(null, false, { message: "Account is deactivated." });
+                                return done(null, false, { message: "account_deactivated" });
                             }
+                            // Link Google ID if the user originally signed up with email/password
+                            if (!user.googleId) {
+                                user.googleId = profile.id;
+                                await user.save({ validateBeforeSave: false });
+                            }
+                            return done(null, user);
                         }
 
+                        // ── SIGNUP flow ───────────────────────────────────────
+                        if (user) {
+                            if (user.deletedAt || !user.isActive) {
+                                return done(null, false, { message: "account_deactivated" });
+                            }
+                            return done(null, false, { message: "account_exists" });
+                        }
+
+                        // Create new user — unverified; oauth.controller will send OTP email
+                        user = new User({
+                            name:       profile.displayName || email.split("@")[0],
+                            email,
+                            googleId:   profile.id,
+                            provider:   "google",
+                            photo:      profile.photos?.[0]?.value || "default.jpg",
+                            role:       "user",
+                            isVerified: false,
+                            isActive:   true,
+                        });
+                        await user.save();
                         return done(null, user);
+
                     } catch (err) {
                         return done(err, false);
                     }
@@ -78,55 +97,61 @@ export const configurePassport = (app) => {
         passport.use(
             new GitHubStrategy(
                 {
-                    clientID:     process.env.GITHUB_CLIENT_ID,
-                    clientSecret: process.env.GITHUB_CLIENT_SECRET,
-                    callbackURL:  process.env.GITHUB_CALLBACK_URL,
-                    scope:        ["user:email"],
+                    clientID:          process.env.GITHUB_CLIENT_ID,
+                    clientSecret:      process.env.GITHUB_CLIENT_SECRET,
+                    callbackURL:       process.env.GITHUB_CALLBACK_URL,
+                    scope:             ["user:email"],
+                    passReqToCallback: true,
                 },
-                async (accessToken, refreshToken, profile, done) => {
+                async (req, accessToken, refreshToken, profile, done) => {
                     try {
-                        const email = profile.emails?.[0]?.value;
-                        if (!email) {
-                            return done(null, false, {
-                                message: "GitHub email is private. Please make your primary email public in GitHub settings.",
-                            });
-                        }
-
+                        const mode    = req.query.state || 'login';
+                        const email   = profile.emails?.[0]?.value;
                         const githubId = String(profile.id);
 
-                        // Try to find existing user by githubId first, then by email
-                        let user = await User.findOne({ githubId });
-
-                        if (!user) {
-                            user = await User.findOne({ email });
-
-                            if (user) {
-                                // Link GitHub to existing email/password account
-                                if (user.deletedAt || !user.isActive) {
-                                    return done(null, false, { message: "Account is deactivated." });
-                                }
-                                user.githubId = githubId;
-                                user.isVerified = true;
-                                await user.save({ validateBeforeSave: false });
-                            } else {
-                                // Create brand-new OAuth user
-                                user = await User.create({
-                                    name:       profile.displayName || profile.username || email.split("@")[0],
-                                    email,
-                                    githubId,
-                                    photo:      profile.photos?.[0]?.value || "default.jpg",
-                                    role:       "user",
-                                    isVerified: true,
-                                    isActive:   true,
-                                });
-                            }
-                        } else {
-                            if (user.deletedAt || !user.isActive) {
-                                return done(null, false, { message: "Account is deactivated." });
-                            }
+                        if (!email) {
+                            return done(null, false, { message: "github_no_email" });
                         }
 
+                        let user = await User.findOne({ githubId });
+                        if (!user) user = await User.findOne({ email });
+
+                        // ── LOGIN flow ────────────────────────────────────────
+                        if (mode === 'login') {
+                            if (!user) {
+                                return done(null, false, { message: "account_not_found" });
+                            }
+                            if (user.deletedAt || !user.isActive) {
+                                return done(null, false, { message: "account_deactivated" });
+                            }
+                            if (!user.githubId) {
+                                user.githubId = githubId;
+                                await user.save({ validateBeforeSave: false });
+                            }
+                            return done(null, user);
+                        }
+
+                        // ── SIGNUP flow ───────────────────────────────────────
+                        if (user) {
+                            if (user.deletedAt || !user.isActive) {
+                                return done(null, false, { message: "account_deactivated" });
+                            }
+                            return done(null, false, { message: "account_exists" });
+                        }
+
+                        user = new User({
+                            name:       profile.displayName || profile.username || email.split("@")[0],
+                            email,
+                            githubId,
+                            provider:   "github",
+                            photo:      profile.photos?.[0]?.value || "default.jpg",
+                            role:       "user",
+                            isVerified: false,
+                            isActive:   true,
+                        });
+                        await user.save();
                         return done(null, user);
+
                     } catch (err) {
                         return done(err, false);
                     }

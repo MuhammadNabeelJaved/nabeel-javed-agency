@@ -45,23 +45,51 @@ const requireOAuthProvider = (envKey) => (req, res, next) => {
     next();
 };
 
+/**
+ * Build a custom Passport callback that forwards Passport's `info.message`
+ * (e.g. "account_not_found") as an `?error=` param on the failure redirect,
+ * so the frontend can show the right toast without needing server-side sessions.
+ */
+const oauthCallback = (strategy) => (req, res, next) => {
+    passport.authenticate(strategy, { session: false }, (err, user, info) => {
+        if (err) return next(err);
+        if (!user) {
+            const code = info?.message || 'oauth_failed';
+            const base = process.env.OAUTH_FAILURE_REDIRECT || '/oauth-callback';
+            return res.redirect(`${base}?error=${encodeURIComponent(code)}`);
+        }
+        req.user = user;
+        next();
+    })(req, res, next);
+};
+
+// Initiate Google OAuth — ?mode=login (default) or ?mode=signup
+// The mode value is forwarded as the OAuth `state` parameter and read back
+// in the strategy's passReqToCallback verify function via req.query.state.
 router.get('/auth/google',
     requireOAuthProvider('GOOGLE_CLIENT_ID'),
-    passport.authenticate('google', { scope: ['profile', 'email'], session: false })
+    (req, res, next) => {
+        const mode = req.query.mode === 'signup' ? 'signup' : 'login';
+        passport.authenticate('google', { scope: ['profile', 'email'], session: false, state: mode })(req, res, next);
+    }
 );
 router.get('/auth/google/callback',
     requireOAuthProvider('GOOGLE_CLIENT_ID'),
-    passport.authenticate('google', { failureRedirect: process.env.OAUTH_FAILURE_REDIRECT, session: false }),
+    oauthCallback('google'),
     handleGoogleCallback
 );
 
+// Initiate GitHub OAuth — ?mode=login (default) or ?mode=signup
 router.get('/auth/github',
     requireOAuthProvider('GITHUB_CLIENT_ID'),
-    passport.authenticate('github', { scope: ['user:email'], session: false })
+    (req, res, next) => {
+        const mode = req.query.mode === 'signup' ? 'signup' : 'login';
+        passport.authenticate('github', { scope: ['user:email'], session: false, state: mode })(req, res, next);
+    }
 );
 router.get('/auth/github/callback',
     requireOAuthProvider('GITHUB_CLIENT_ID'),
-    passport.authenticate('github', { failureRedirect: process.env.OAUTH_FAILURE_REDIRECT, session: false }),
+    oauthCallback('github'),
     handleGitHubCallback
 );
 

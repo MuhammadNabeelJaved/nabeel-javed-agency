@@ -51,6 +51,17 @@ const userSchema = new mongoose.Schema(
             select: false, // Never returned in queries unless explicitly requested
         },
 
+        // =====================
+        // AUTH PROVIDER
+        // =====================
+        // Which method was used to create this account
+        provider: {
+            type: String,
+            enum: ['local', 'google', 'github'],
+            default: 'local',
+            index: true,
+        },
+
         // OAuth provider IDs (sparse index: only indexed when field is present)
         googleId: {
             type: String,
