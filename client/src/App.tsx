@@ -64,7 +64,6 @@ import Projects from './pages/admin/Projects';
 import ServicesAdmin from './pages/admin/ServicesAdmin';
 import CategoriesAdmin from './pages/admin/CategoriesAdmin';
 import AITools from './pages/admin/AITools';
-import Billing from './pages/admin/Billing';
 import Support from './pages/admin/Support';
 import Notifications from './pages/admin/Notifications';
 import Settings from './pages/admin/Settings';
@@ -104,6 +103,7 @@ import UserAIChat from './pages/user/UserAIChat';
 import UserProfile from './pages/user/UserProfile';
 import UserNotifications from './pages/user/UserNotifications';
 import UserAppliedJobs from './pages/user/UserAppliedJobs';
+import UserBilling from './pages/user/UserBilling';
 import UserSupport from './pages/user/UserSupport';
 
 import { CookieConsent } from './components/CookieConsent';
@@ -267,7 +267,6 @@ export default function App() {
                 <Route path="services" element={<ServicesAdmin />} />
                 <Route path="categories" element={<CategoriesAdmin />} />
                 <Route path="ai-tools" element={<AITools />} />
-                <Route path="billing" element={<Billing />} />
                 <Route path="support" element={<Support />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="team" element={<TeamManagement />} />
@@ -315,6 +314,7 @@ export default function App() {
                 <Route path="messages" element={<UserChat />} />
                 <Route path="ai-assistant" element={<UserAIChat />} />
                 <Route path="applied-jobs" element={<UserAppliedJobs />} />
+                <Route path="billing" element={<UserBilling />} />
                 <Route path="profile" element={<UserProfile />} />
                 <Route path="notifications" element={<UserNotifications />} />
                 <Route path="support" element={<UserSupport />} />
