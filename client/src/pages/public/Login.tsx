@@ -31,9 +31,21 @@ export default function Login() {
   // Show error toast if redirected back from OAuth failure
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('error') === 'oauth_failed') {
+    const error = params.get('error');
+    if (!error) return;
+    if (error === 'account_not_found') {
+      toast.error('Account not found', {
+        description: "No account exists for that email. Please sign up first.",
+      });
+    } else if (error === 'github_no_email') {
       toast.error('OAuth sign-in failed', {
-        description: 'Could not sign in. If using GitHub, ensure your primary email is public in GitHub settings.',
+        description: 'GitHub email is private. Please make your primary email public in GitHub settings.',
+      });
+    } else if (error === 'account_deactivated') {
+      toast.error('Account deactivated', { description: 'This account has been deactivated.' });
+    } else {
+      toast.error('OAuth sign-in failed', {
+        description: 'Could not sign in. Please try again.',
       });
     }
   }, [location.search]);
@@ -159,11 +171,11 @@ export default function Login() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGitHubOAuth()}>
+            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGitHubLogin()}>
               <Github className="mr-2 h-4 w-4" />
               Github
             </Button>
-            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGoogleOAuth()}>
+            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGoogleLogin()}>
               <Mail className="mr-2 h-4 w-4" />
               Google
             </Button>

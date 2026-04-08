@@ -39,10 +39,25 @@ export const authApi = {
     apiClient.post('/users/refresh-token'),
 
   // OAuth — full-page browser navigations (not axios calls)
+  // Kept for backwards-compat; defaults to login mode
   initiateGoogleOAuth: () => {
-    window.location.href = '/api/v1/users/auth/google';
+    window.location.href = '/api/v1/users/auth/google?mode=login';
   },
   initiateGitHubOAuth: () => {
-    window.location.href = '/api/v1/users/auth/github';
+    window.location.href = '/api/v1/users/auth/github?mode=login';
+  },
+
+  // Explicit login / signup variants
+  initiateGoogleLogin: () => {
+    window.location.href = '/api/v1/users/auth/google?mode=login';
+  },
+  initiateGoogleSignup: () => {
+    window.location.href = '/api/v1/users/auth/google?mode=signup';
+  },
+  initiateGitHubLogin: () => {
+    window.location.href = '/api/v1/users/auth/github?mode=login';
+  },
+  initiateGitHubSignup: () => {
+    window.location.href = '/api/v1/users/auth/github?mode=signup';
   },
 };

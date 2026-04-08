@@ -1,24 +1,24 @@
 /**
  * User controller – authentication, profile management, and team endpoints.
  *
- * Exported functions:
- *  - registerUser          POST /api/v1/users/register
- *  - verifyUserEmail       POST /api/v1/users/verify
- *  - resendVerificationEmail POST /api/v1/users/resend-verification
- *  - loginUser             POST /api/v1/users/login
- *  - logoutUser            POST /api/v1/users/logout
- *  - getAllUserProfile      GET  /api/v1/users/          (admin)
- *  - getUserProfile        GET  /api/v1/users/profile/:id
- *  - deleteUser            DELETE /api/v1/users/:id
- *  - updateUserProfile     PUT  /api/v1/users/update/:id
- *  - updateUserPassword    PUT  /api/v1/users/update-password/:id
- *  - forgotPassword        POST /api/v1/users/forgot-password
- *  - resetPassword         POST /api/v1/users/reset-password/:token
- *  - refreshAccessToken    POST /api/v1/users/refresh-token
- *  - getPublicTeamMembers  GET  /api/v1/users/team
+ * Routes (all prefixed with /api/v1/users):
+ *  POST   /register                  → registerUser
+ *  POST   /login                     → loginUser
+ *  POST   /logout                    → logoutUser
+ *  POST   /verify                    → verifyUserEmail
+ *  POST   /resend-verification       → resendVerificationEmail
+ *  POST   /forgot-password           → forgotPassword
+ *  POST   /reset-password/:token     → resetPassword
+ *  POST   /refresh-token             → refreshAccessToken
+ *  GET    /team                      → getPublicTeamMembers
+ *  GET    /                          → getAllUserProfile  (admin)
+ *  POST   /create-team-member        → adminCreateTeamMember  (admin)
+ *  GET    /profile/:id               → getUserProfile
+ *  PUT    /update/:id                → updateUserProfile
+ *  PUT    /update-password/:id       → updateUserPassword
+ *  DELETE /:id                       → deleteUser
  */
 import crypto from "crypto";
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import asyncHandler from "../../middlewares/asyncHandler.js";
 import AppError from "../../utils/AppError.js";
@@ -27,189 +27,152 @@ import User from "../../models/usersModels/User.model.js";
 import { uploadImage, deleteImage } from "../../middlewares/Cloudinary.js";
 import { logAuthFail, logAuthSuccess } from "../../middlewares/requestLogger.js";
 import { generateTokens } from "../../utils/generateTokens.js";
+import {
+    sendVerificationEmail,
+    sendPasswordResetEmail,
+} from "../../utils/sendEmails.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// REGISTER
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Cookie helpers ───────────────────────────────────────────────────────────
+
+const setAuthCookies = (res, accessToken, refreshToken) => {
+    const secure = process.env.NODE_ENV === "production";
+    res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure,
+        sameSite: "Strict",
+        maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+    res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure,
+        sameSite: "Strict",
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+};
+
+// ─── REGISTER ────────────────────────────────────────────────────────────────
 
 /**
- * Creates a new user account.
+ * Creates a new local (email/password) account.
  *
- * - Optionally accepts an avatar file (via multer `upload.single("avatar")`)
- * - Generates a 6-digit email verification code (not yet emailed — placeholder)
- * - Issues access and refresh tokens and stores them in HTTP-only cookies
+ * - Rejects if the email is already registered (no silent overwrite).
+ * - Generates a 6-digit OTP and sends a verification email via Resend.
+ * - Issues JWT cookies so the user can immediately reach /verification.
  */
 export const registerUser = asyncHandler(async (req, res) => {
-    try {
-        const { name, email, password } = req.body || {};
-        const avatar = req.file?.path;
+    const { name, email, password } = req.body;
+    const avatar = req.file?.path;
 
-        if (!name || !email || !password) {
-            throw new AppError("Name, email and password are required", 400);
-        }
-
-        // Reject if email or username already exists
-        const userExists = await User.findOne({
-            $or: [{ email }, { name }],
-        });
-        if (userExists) {
-            throw new AppError("User already exists", 409);
-        }
-
-        // Upload avatar to Cloudinary if provided
-        let avatarUrl;
-        if (avatar) {
-            const uploaded = await uploadImage(avatar, "avatars");
-            avatarUrl = uploaded?.secure_url;
-        }
-
-        const createdUser = await User.create({
-            name,
-            email,
-            password,
-            ...(avatarUrl && { photo: avatarUrl }),
-        });
-
-        if (!createdUser) {
-            throw new AppError("User registration failed", 500);
-        }
-
-        // Generate a verification code and save it to the user document
-        // TODO: send the code via email using sendVerificationEmail()
-        const code = await createdUser.generateVerificationCode();
-
-        // Issue JWT tokens and set them in HTTP-only cookies
-        const { accessToken, refreshToken } = await generateTokens(createdUser);
-
-        if (!accessToken || !refreshToken) {
-            throw new AppError("Token generation failed", 500);
-        }
-
-        // Access token: short-lived (15 min)
-        res.cookie("accessToken", accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "Strict",
-            maxAge: 15 * 60 * 1000, // 15 minutes
-        });
-
-        // Refresh token: long-lived (30 days)
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "Strict",
-            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        });
-
-        const user = createdUser.toObject();
-        delete user.password; // Never expose the password hash in responses
-
-        successResponse(res, "User registered successfully", user, 201);
-    } catch (error) {
-        console.error("Error in registerUser:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Registration failed: ${error.message}`, 500);
-
+    if (!name || !email || !password) {
+        throw new AppError("Name, email and password are required", 400);
     }
+
+    const existing = await User.findOne({ email });
+    if (existing) {
+        throw new AppError("An account with this email already exists. Please sign in.", 409);
+    }
+
+    let avatarUrl;
+    if (avatar) {
+        const uploaded = await uploadImage(avatar, "avatars");
+        avatarUrl = uploaded?.secure_url;
+    }
+
+    const user = await User.create({
+        name,
+        email,
+        password,
+        provider: "local",
+        ...(avatarUrl && { photo: avatarUrl }),
+    });
+
+    // Generate OTP — method saves the user internally, returns the plain code
+    const code = await user.generateVerificationCode();
+
+    // Send verification email — non-blocking so a Resend hiccup never fails registration
+    Promise.allSettled([
+        sendVerificationEmail({ to: email, name, code }),
+    ]).then(([result]) => {
+        if (result.status === "rejected") {
+            console.error("[Register] Verification email failed:", result.reason?.message);
+        }
+    });
+
+    const { accessToken, refreshToken } = await generateTokens(user);
+    setAuthCookies(res, accessToken, refreshToken);
+
+    const userObj = user.toObject();
+    delete userObj.password;
+
+    successResponse(res, "Account created. Check your email for the verification code.", userObj, 201);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EMAIL VERIFICATION
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── EMAIL VERIFICATION ───────────────────────────────────────────────────────
 
 /**
- * Verifies a user's email address using the 6-digit code sent after registration.
- *
- * Checks: code exists, code not expired, code matches stored value.
+ * Verifies a user's email using the 6-digit OTP sent at registration.
  */
 export const verifyUserEmail = asyncHandler(async (req, res) => {
-    try {
-        const { code, email } = req.body;
+    const { code, email } = req.body;
 
-        if (!email || !code) {
-            throw new AppError("Email and verification code are required", 400);
-        }
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            throw new AppError("User not found", 404);
-        }
-        if (user.isVerified) {
-            throw new AppError("User is already verified", 400);
-        }
-
-        // Check if a code has been generated for this user
-        if (!user.emailVerificationToken) {
-            throw new AppError("No verification code found. Please request a new one", 400);
-        }
-
-        // Check if the code has expired (10-minute TTL)
-        if (user.emailVerificationExpires < Date.now()) {
-            throw new AppError("Verification code has expired. Please request a new one", 400);
-        }
-
-        // Validate the code
-        if (user.emailVerificationToken !== code) {
-            throw new AppError("Invalid verification code", 400);
-        }
-
-        // Mark account as verified and clear the one-time code
-        user.isVerified = true;
-        user.emailVerificationToken = undefined;
-        user.emailVerificationExpires = undefined;
-        await user.save({ validateBeforeSave: false });
-
-        successResponse(res, "Email verified successfully", null, 200);
-    } catch (error) {
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to verify email: ${error.message}`, 500);
+    if (!email || !code) {
+        throw new AppError("Email and verification code are required", 400);
     }
+
+    const user = await User.findOne({ email });
+    if (!user) throw new AppError("No account found with this email", 404);
+    if (user.isVerified) throw new AppError("This account is already verified", 400);
+
+    if (!user.emailVerificationToken) {
+        throw new AppError("No verification code found. Please request a new one.", 400);
+    }
+    if (user.emailVerificationExpires < Date.now()) {
+        throw new AppError("Verification code has expired. Please request a new one.", 400);
+    }
+    if (user.emailVerificationToken !== code) {
+        throw new AppError("Invalid verification code", 400);
+    }
+
+    user.isVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    successResponse(res, "Email verified successfully", null, 200);
 });
 
 /**
- * Re-generates and stores a fresh 6-digit verification code.
- * Use when the previous code has expired.
- * TODO: send the new code via email.
+ * Re-generates and emails a fresh 6-digit OTP.
+ * Use when the original code expired before the user could enter it.
  */
 export const resendVerificationEmail = asyncHandler(async (req, res) => {
-    try {
-        const { email } = req.body;
+    const { email } = req.body;
+    if (!email) throw new AppError("Email is required", 400);
 
-        if (!email) {
-            throw new AppError("Email is required", 400);
+    const user = await User.findOne({ email });
+    if (!user) throw new AppError("No account found with this email", 404);
+    if (user.isVerified) throw new AppError("This account is already verified", 400);
+
+    const code = await user.generateVerificationCode();
+
+    Promise.allSettled([
+        sendVerificationEmail({ to: email, name: user.name, code }),
+    ]).then(([result]) => {
+        if (result.status === "rejected") {
+            console.error("[ResendVerify] Email failed:", result.reason?.message);
         }
+    });
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            throw new AppError("User not found", 404);
-        }
-        if (user.isVerified) {
-            throw new AppError("User is already verified", 400);
-        }
-
-        // Generate a new verification code (saves the user internally)
-        const code = await user.generateVerificationCode();
-
-        if (!code) {
-            throw new AppError("Failed to generate verification code", 500);
-        }
-
-        successResponse(res, "Verification code resent successfully", null, 200);
-    } catch (error) {
-        console.error("Error in resendVerificationEmail:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to resend verification email: ${error.message}`, 500);
-    }
+    successResponse(res, "A new verification code has been sent to your email.", null, 200);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AUTH – LOGIN / LOGOUT / REFRESH
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── LOGIN / LOGOUT / REFRESH ─────────────────────────────────────────────────
 
 /**
- * Authenticates a user by email and password, then issues JWT cookies.
- * Rejected if: user not found, password wrong.
- * Note: email verification is NOT required to log in (only to access protected routes).
+ * Authenticates an existing user with email and password.
+ *
+ * Strict LOGIN-only rule: this endpoint NEVER creates accounts.
+ * Rejects with a clear error if the user signed up via OAuth and has no password.
  */
 export const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
@@ -218,7 +181,6 @@ export const loginUser = asyncHandler(async (req, res) => {
         throw new AppError("Email and password are required", 400);
     }
 
-    // Fetch user with password hash (excluded by default)
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
@@ -226,63 +188,49 @@ export const loginUser = asyncHandler(async (req, res) => {
         throw new AppError("No account found with this email address", 401);
     }
 
-    const isPasswordValid = await user.comparePassword(password);
+    // Account created via Google or GitHub — has no password
+    if (!user.password) {
+        const providers = [user.googleId && "Google", user.githubId && "GitHub"]
+            .filter(Boolean)
+            .join(" or ");
+        logAuthFail(req, "oauth_only_account");
+        throw new AppError(
+            `This account was created with ${providers || "OAuth"}. Please sign in using that method.`,
+            401
+        );
+    }
 
+    const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
         logAuthFail(req, "wrong_password");
-        throw new AppError("Invalid password", 401);
+        throw new AppError("Incorrect password", 401);
     }
 
     const { accessToken, refreshToken } = await generateTokens(user);
     logAuthSuccess(req, user._id);
+    setAuthCookies(res, accessToken, refreshToken);
 
     const userResponse = user.toObject();
     delete userResponse.password;
 
-    // Set short-lived access token cookie
-    res.cookie("accessToken", accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Strict",
-        maxAge: 15 * 60 * 1000,
-    });
-
-    // Set long-lived refresh token cookie
-    res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Strict",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
-    successResponse(res, "User logged in successfully", userResponse, 200);
+    successResponse(res, "Signed in successfully", userResponse, 200);
 });
 
 /**
- * Clears the access and refresh token cookies, effectively ending the session.
+ * Clears auth cookies, ending the session.
  */
 export const logoutUser = asyncHandler(async (req, res) => {
-    try {
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
-        successResponse(res, "User logged out successfully", null, 200);
-    } catch (error) {
-        console.error("Error in logoutUser:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to logout user: ${error.message}`, 500);
-    }
-})
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+    successResponse(res, "Signed out successfully", null, 200);
+});
 
 /**
- * Issues a new access token using a valid refresh token.
- *
- * The refresh token can be sent as:
- *  - The `refreshToken` HTTP-only cookie (preferred)
- *  - The `refreshToken` field in the request body (fallback)
+ * Issues a new access token from a valid refresh token.
+ * The refresh token is read from the HTTP-only cookie (or request body as fallback).
  */
 export const refreshAccessToken = asyncHandler(async (req, res) => {
     const token = req.cookies?.refreshToken || req.body?.refreshToken;
-
     if (!token) throw new AppError("Refresh token not provided", 401);
 
     let decoded;
@@ -296,7 +244,6 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     if (!user) throw new AppError("User not found", 401);
     if (!user.isVerified) throw new AppError("Account not verified", 403);
 
-    // Issue a fresh access token and update the cookie
     const accessToken = user.generateAccessToken();
     await user.save({ validateBeforeSave: false });
 
@@ -310,343 +257,244 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     successResponse(res, "Access token refreshed", { accessToken });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROFILE – READ
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── PASSWORD MANAGEMENT ──────────────────────────────────────────────────────
 
 /**
- * Returns all user profiles (admin only).
- * Password hash is excluded from results.
+ * Initiates the forgot-password flow.
+ * Generates a signed reset token and emails a reset link to the user.
+ * OAuth-only accounts (no password) are rejected with a clear message.
+ */
+export const forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    if (!email) throw new AppError("Email is required", 400);
+
+    const user = await User.findOne({ email });
+    if (!user) throw new AppError("No account found with this email", 404);
+
+    if (!user.password) {
+        const providers = [user.googleId && "Google", user.githubId && "GitHub"]
+            .filter(Boolean)
+            .join(" or ");
+        throw new AppError(
+            `This account uses ${providers || "OAuth"} sign-in. Password reset is not available.`,
+            400
+        );
+    }
+
+    const resetToken = await user.forgetPasswordToken();
+    // Use the frontend CLIENT_URL so the user lands on the React reset-password page
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
+    await Promise.allSettled([
+        sendPasswordResetEmail({ to: email, name: user.name, resetUrl }),
+    ]);
+
+    successResponse(res, "Password reset email sent. Check your inbox.", null, 200);
+});
+
+/**
+ * Completes the forgot-password flow.
+ * Validates the raw reset token from the URL, then sets the new password.
+ */
+export const resetPassword = asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const { newPassword, confirmPassword } = req.body;
+
+    if (!token) throw new AppError("Reset token is required", 400);
+    if (!newPassword || !confirmPassword) {
+        throw new AppError("New password and confirmation are required", 400);
+    }
+    if (newPassword !== confirmPassword) {
+        throw new AppError("Passwords do not match", 400);
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { $gt: Date.now() },
+    });
+
+    if (!user) throw new AppError("Reset token is invalid or has expired", 400);
+
+    user.password = newPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    successResponse(res, "Password reset successfully. You can now sign in.", null, 200);
+});
+
+/**
+ * Changes a user's password after verifying the current password.
+ */
+export const updateUserPassword = asyncHandler(async (req, res) => {
+    const userId = req.params.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!userId) throw new AppError("User ID is required", 400);
+    if (!oldPassword || !newPassword) {
+        throw new AppError("Current password and new password are required", 400);
+    }
+
+    const user = await User.findById(userId).select("+password");
+    if (!user) throw new AppError("User not found", 404);
+
+    if (!user.password) {
+        throw new AppError(
+            "This account uses OAuth sign-in. Please set a password first.",
+            400
+        );
+    }
+
+    const isValid = await user.comparePassword(oldPassword);
+    if (!isValid) throw new AppError("Current password is incorrect", 401);
+
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+
+    successResponse(res, "Password updated successfully", null, 200);
+});
+
+// ─── PROFILE ──────────────────────────────────────────────────────────────────
+
+/**
+ * Returns all user profiles (admin only). Password excluded.
  */
 export const getAllUserProfile = asyncHandler(async (req, res) => {
-    try {
-        const allUser = await User.find().select("-password");
-
-        if (!allUser) {
-            throw new AppError("User not found", 404);
-        }
-
-        successResponse(res, "User profile retrieved successfully", allUser, 200);
-    } catch (error) {
-        console.error("Error in getAllUserProfile:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to retrieve user profile: ${error.message}`, 500);
-    }
+    const users = await User.find().select("-password");
+    successResponse(res, "Users retrieved successfully", users, 200);
 });
 
 /**
- * Returns a single user's profile by ID.
- * Password hash is excluded from results.
+ * Returns a single user's profile by ID. Password excluded.
  */
 export const getUserProfile = asyncHandler(async (req, res) => {
-    try {
-        const userId = req.params.id;
-        const user = await User.findById(userId).select("-password");
-
-        if (!user) {
-            throw new AppError("User not found", 404);
-        }
-
-        successResponse(res, "User profile retrieved successfully", user, 200);
-    } catch (error) {
-        console.error("Error in getUserProfile:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to retrieve user profile: ${error.message}`, 500);
-    }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PROFILE – UPDATE / DELETE
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Permanently deletes a user account by ID.
- * Returns 404 if no user was found with the provided ID.
- */
-export const deleteUser = asyncHandler(async (req, res) => {
-    try {
-        const userId = req.params.id;
-        if (!userId) {
-            throw new AppError("User ID is required", 400);
-        }
-        const deletedUser = await User.findByIdAndDelete(userId);
-        if (!deletedUser) {
-            throw new AppError("User not found", 404);
-        }
-        successResponse(res, "User deleted successfully", null, 200);
-    } catch (error) {
-        console.error("Error in deleteUser:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to delete user: ${error.message}`, 500);
-    }
+    const user = await User.findById(req.params.id).select("-password");
+    if (!user) throw new AppError("User not found", 404);
+    successResponse(res, "User profile retrieved successfully", user, 200);
 });
 
 /**
  * Updates a user's profile fields.
  *
- * - Password and email changes are blocked (dedicated endpoints exist for those)
- * - If a new avatar is uploaded, the old Cloudinary image is deleted first
- *   (unless the current photo is the default placeholder "default.jpg")
+ * Password and email are intentionally blocked here — use their dedicated endpoints.
+ * Replaces the Cloudinary avatar if a new file is uploaded.
  */
 export const updateUserProfile = asyncHandler(async (req, res) => {
-    try {
-        const userId = req.params.id;
-        const rawUpdates = req.body || {};
-        const avatar = req.file?.path;
+    const userId = req.params.id;
+    const rawUpdates = req.body || {};
+    const avatar = req.file?.path;
 
-        if (!userId) {
-            throw new AppError("User ID is required", 400);
-        }
+    if (!userId) throw new AppError("User ID is required", 400);
 
-        // Whitelist of fields that may be changed through this route.
-        // Any field not in this list is silently dropped — prevents mass-
-        // assignment attacks where an attacker tries to escalate role, change
-        // email, or inject arbitrary model fields via the request body.
-        const ALLOWED_FIELDS = new Set([
-            "name", "phone", "bio", "position", "department",
-            "teamProfile", "skills", "location", "website",
-        ]);
+    const ALLOWED_FIELDS = new Set([
+        "name", "phone", "bio", "position", "department",
+        "teamProfile", "skills", "location", "website",
+    ]);
 
-        const updates = Object.fromEntries(
-            Object.entries(rawUpdates).filter(([k]) => ALLOWED_FIELDS.has(k))
-        );
+    const updates = Object.fromEntries(
+        Object.entries(rawUpdates).filter(([k]) => ALLOWED_FIELDS.has(k))
+    );
 
-        // At least one field or a new avatar must be provided
-        if (Object.keys(updates).length === 0 && !avatar) {
-            throw new AppError("No data provided for update", 400);
-        }
-
-        // Handle avatar replacement
-        if (avatar) {
-            const user = await User.findById(userId);
-
-            if (!user) {
-                throw new AppError("User not found", 404);
-            }
-
-            // Only delete the old avatar if it is not the default placeholder
-            if (user.photo && user.photo !== "default.jpg") {
-                await deleteImage(user.photo);
-            }
-
-            const avatarUpload = await uploadImage(avatar, "avatars"); // Creates "user-avatars" folder
-            updates.photo = avatarUpload.secure_url;
-        }
-
-        const updatedUser = await User.findByIdAndUpdate(userId, updates, {
-            new: true,
-            runValidators: true,
-        });
-
-        if (!updatedUser) {
-            throw new AppError("User not found", 404);
-        }
-
-        successResponse(
-            res,
-            "User profile updated successfully",
-            updatedUser,
-            200
-        );
-    } catch (error) {
-        console.error("Error in updateUserProfile:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to update user profile: ${error.message}`, 500);
+    if (Object.keys(updates).length === 0 && !avatar) {
+        throw new AppError("No data provided for update", 400);
     }
+
+    if (avatar) {
+        const user = await User.findById(userId);
+        if (!user) throw new AppError("User not found", 404);
+
+        if (user.photo && user.photo !== "default.jpg") {
+            await deleteImage(user.photo);
+        }
+
+        const uploaded = await uploadImage(avatar, "avatars");
+        updates.photo = uploaded.secure_url;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+        new: true,
+        runValidators: true,
+    });
+
+    if (!updatedUser) throw new AppError("User not found", 404);
+
+    successResponse(res, "Profile updated successfully", updatedUser, 200);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PASSWORD MANAGEMENT
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
- * Changes a user's password after verifying the current (old) password.
- * The new password is automatically hashed by the User model's pre-save hook.
+ * Permanently deletes a user account.
  */
-export const updateUserPassword = asyncHandler(async (req, res) => {
-    try {
-        const userId = req.params.id;
-        const { oldPassword, newPassword } = req.body;
-        if (!userId) {
-            throw new AppError("User ID is required", 400);
-        }
-        if (!oldPassword || !newPassword) {
-            throw new AppError("Old password and new password are required", 400);
-        }
-        const user = await User.findById(userId).select("+password");
+export const deleteUser = asyncHandler(async (req, res) => {
+    const userId = req.params.id;
+    if (!userId) throw new AppError("User ID is required", 400);
 
-        if (!user) {
-            throw new AppError("User not found", 404);
-        }
-        if (!user.password) {
-            throw new AppError("This account uses OAuth sign-in (Google/GitHub). Please set a password first.", 400);
-        }
-        const isPasswordValid = await user.comparePassword(oldPassword);
-        if (!isPasswordValid) {
-            throw new AppError("Invalid old password", 401);
-        }
-        user.password = newPassword;
-        await user.save({ validateBeforeSave: false });
-        successResponse(res, "Password updated successfully", null, 200);
-    } catch (error) {
-        console.error("Error in updateUserPassword:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to update password: ${error.message}`, 500);
-    }
+    const deleted = await User.findByIdAndDelete(userId);
+    if (!deleted) throw new AppError("User not found", 404);
+
+    successResponse(res, "Account deleted successfully", null, 200);
 });
 
-/**
- * Initiates the forgot-password flow.
- *
- * Generates a SHA-256 hashed reset token, stores it on the user document,
- * and returns the reset URL (in production this URL should be emailed to the user).
- * TODO: send the resetUrl via sendPasswordResetEmail().
- */
-export const forgotPassword = asyncHandler(async (req, res) => {
-    try {
-        const { email } = req.body;
-        if (!email) {
-            throw new AppError("Email is required", 400);
-        }
-        const user = await User.findOne({ email }).select("+password");
-        if (!user) {
-            throw new AppError("User not found", 404);
-        }
-
-        // forgetPasswordToken() generates the raw token, hashes and saves it, returns raw
-        const resetToken = await user.forgetPasswordToken();
-        const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/reset-password/${resetToken}`;
-
-        // TODO: Send password reset email
-        successResponse(res, "Password reset email sent successfully", resetUrl, 200);
-    } catch (error) {
-        console.error("Error in forgotPassword:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to send password reset email: ${error.message}`, 500);
-    }
-});
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
 
 /**
- * Completes the forgot-password flow.
- *
- * Accepts the raw reset token from the URL, SHA-256 hashes it, looks up the
- * user by the hash (and checks expiry), then sets the new password.
- */
-export const resetPassword = asyncHandler(async (req, res) => {
-    try {
-        const { token } = req.params;
-        const { newPassword, confirmPassword } = req.body;
-        if (!token) {
-            throw new AppError("Reset token is required", 400);
-        }
-        if (!newPassword || !confirmPassword) {
-            throw new AppError("New password and confirm password are required", 400);
-        }
-        if (newPassword !== confirmPassword) {
-            throw new AppError("New password and confirm password do not match", 400);
-        }
-
-        // Hash the raw token to compare against the stored hash
-        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-        if (!hashedToken) {
-            throw new AppError("Invalid reset token", 400);
-        }
-
-        // Find user with a matching, unexpired token
-        const user = await User.findOne({
-            passwordResetToken: hashedToken,
-            passwordResetExpires: { $gt: Date.now() },
-        });
-
-        if (!user) {
-            throw new AppError("Invalid or expired reset token", 400);
-        }
-
-        user.password = newPassword
-        user.passwordResetToken = undefined;
-        user.passwordResetExpires = undefined;
-        await user.save();
-        successResponse(res, "Password reset successfully", null, 200);
-    } catch (error) {
-        console.error("Error in resetPassword:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to reset password: ${error.message}`, 500);
-    }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN – CREATE TEAM MEMBER
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Admin-only: Creates a new user with role 'team' (or 'admin'), pre-verified.
- * Accepts: name, email, password, role (team|admin), and teamProfile fields.
+ * Admin-only: Creates a pre-verified team member or admin account.
  */
 export const adminCreateTeamMember = asyncHandler(async (req, res) => {
-    try {
-        const { name, email, password, role = 'team', teamProfile = {} } = req.body;
+    const { name, email, password, role = "team", teamProfile = {} } = req.body;
 
-        if (!name || !email || !password) {
-            throw new AppError("Name, email, and password are required", 400);
-        }
-
-        if (!['team', 'admin'].includes(role)) {
-            throw new AppError("Role must be 'team' or 'admin'", 400);
-        }
-
-        const existing = await User.findOne({ email });
-        if (existing) throw new AppError("A user with this email already exists", 409);
-
-        let photoUrl;
-        if (req.file?.path) {
-            const uploaded = await uploadImage(req.file.path, "avatars");
-            photoUrl = uploaded?.secure_url;
-        }
-
-        const newUser = await User.create({
-            name,
-            email,
-            password,
-            role,
-            isVerified: true,
-            isActive: true,
-            ...(photoUrl && { photo: photoUrl }),
-            teamProfile: {
-                position: teamProfile.position || name,
-                department: teamProfile.department || 'Other',
-                bio: teamProfile.bio || '',
-                phone: teamProfile.phone || '',
-                skills: teamProfile.skills || [],
-                experience: teamProfile.experience || '',
-                status: teamProfile.status || 'Active',
-                memberRole: teamProfile.memberRole || 'Member',
-                socialLinks: teamProfile.socialLinks || {},
-                featured: teamProfile.featured || false,
-                displayOrder: teamProfile.displayOrder || 0,
-            },
-        });
-
-        const userObj = newUser.toObject();
-        delete userObj.password;
-
-        successResponse(res, "Team member created successfully", userObj, 201);
-    } catch (error) {
-        console.error("Error in adminCreateTeamMember:", error);
-        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
-        throw new AppError(`Failed to create team member: ${error.message}`, 500);
+    if (!name || !email || !password) {
+        throw new AppError("Name, email and password are required", 400);
     }
+    if (!["team", "admin"].includes(role)) {
+        throw new AppError("Role must be 'team' or 'admin'", 400);
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) throw new AppError("A user with this email already exists", 409);
+
+    let photoUrl;
+    if (req.file?.path) {
+        const uploaded = await uploadImage(req.file.path, "avatars");
+        photoUrl = uploaded?.secure_url;
+    }
+
+    const newUser = await User.create({
+        name,
+        email,
+        password,
+        role,
+        provider: "local",
+        isVerified: true,
+        isActive: true,
+        ...(photoUrl && { photo: photoUrl }),
+        teamProfile: {
+            position:     teamProfile.position     || name,
+            department:   teamProfile.department   || "Other",
+            bio:          teamProfile.bio          || "",
+            phone:        teamProfile.phone        || "",
+            skills:       teamProfile.skills       || [],
+            experience:   teamProfile.experience   || "",
+            status:       teamProfile.status       || "Active",
+            memberRole:   teamProfile.memberRole   || "Member",
+            socialLinks:  teamProfile.socialLinks  || {},
+            featured:     teamProfile.featured     || false,
+            displayOrder: teamProfile.displayOrder || 0,
+        },
+    });
+
+    const userObj = newUser.toObject();
+    delete userObj.password;
+
+    successResponse(res, "Team member created successfully", userObj, 201);
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC – TEAM MEMBERS
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── PUBLIC ───────────────────────────────────────────────────────────────────
 
 /**
- * Returns publicly visible team member profiles for the "Meet the Team" page.
- *
- * Filters: role is "team" or "admin", account is active, deletedAt is null,
- *          and teamProfile.status is "Active".
- * Only a curated subset of fields is returned (no email, no sensitive data).
+ * Returns publicly visible team member profiles for the "Meet the Team" section.
+ * Only active members with status "Active" are returned; no sensitive fields exposed.
  */
 export const getPublicTeamMembers = asyncHandler(async (req, res) => {
     const members = await User.find({
@@ -655,7 +503,11 @@ export const getPublicTeamMembers = asyncHandler(async (req, res) => {
         deletedAt: null,
         "teamProfile.status": "Active",
     })
-        .select("name photo teamProfile.position teamProfile.department teamProfile.bio teamProfile.socialLinks teamProfile.skills teamProfile.featured teamProfile.displayOrder")
+        .select(
+            "name photo teamProfile.position teamProfile.department " +
+            "teamProfile.bio teamProfile.socialLinks teamProfile.skills " +
+            "teamProfile.featured teamProfile.displayOrder"
+        )
         .sort({ "teamProfile.displayOrder": 1, createdAt: 1 });
 
     successResponse(res, "Team members fetched", { members, total: members.length });
