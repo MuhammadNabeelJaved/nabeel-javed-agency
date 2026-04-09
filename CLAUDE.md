@@ -367,6 +367,68 @@ Every CRUD operation instantly reflects across all dashboards without a page rel
 
 ---
 
+## Nova AI Chatbot System
+
+### Architecture
+- **Widget**: `client/src/components/Chatbot.tsx` — public-facing chat UI; loads config on mount, streams responses via SSE, hides itself if `isEnabled: false`
+- **Admin page**: `client/src/pages/admin/ChatbotManager.tsx` — 4 tabs: Overview, Knowledge Base, Configuration, Conversation Logs; route `/admin/chatbot-manager`
+- **API client**: `client/src/api/chatbot.api.ts` — typed wrappers for all endpoints
+- **Controller**: `server/src/controllers/usersControllers/chatbot.controller.js`
+- **Routes**: `server/src/routes/userRoutes/chatbot.route.js` → mounted at `/api/v1/chatbot`
+
+### MongoDB Models
+| Model | File | Purpose |
+|---|---|---|
+| `ChatbotConfig` | `models/usersModels/ChatbotConfig.model.js` | **Singleton** (`singleton:'main'`) — one document; stores API keys (encrypted), system prompt, model settings |
+| `ChatbotKnowledge` | `models/usersModels/ChatbotKnowledge.model.js` | Knowledge base entries with full-text index on `title+content+tags` |
+| `ChatbotSession` | `models/usersModels/ChatbotSession.model.js` | Conversation history — one doc per `sessionId` UUID |
+
+### Knowledge Entry Types
+| Type | How added | Notes |
+|---|---|---|
+| `text` | Admin types content | Plain text / markdown |
+| `faq` | Admin types content | Q&A pair |
+| `file` | Upload button (PDF/TXT/MD/DOC/CSV/JSON) | Stored in Cloudinary; `fileUrl` = Cloudinary URL |
+| `url` | "Add Page URL" button | Server fetches the page, strips HTML to plain text, stores in `content`; `sourceUrl` = original URL; `fileUrl` = same URL for display |
+| `auto` | Reserved for future CMS sync | — |
+
+### Adding a Website Page to the Knowledge Base
+1. Go to `/admin/chatbot-manager` → **Knowledge Base** tab
+2. Click **Add Page URL**
+3. Paste the full page URL (e.g. `https://yoursite.com/services`)
+4. Optionally set a custom title and tags
+5. Click **Fetch & Add** — the server crawls the page, extracts text (up to 10 000 chars), and saves it
+6. Repeat for each important page: Services, About, Pricing, Contact, Portfolio, etc.
+
+### Crawl endpoint
+`POST /api/v1/chatbot/knowledge/crawl` (admin only)
+- Body: `{ url, title?, tags? }`
+- Fetches with a 20 s timeout, validates HTTP + content-type
+- Strips `<script>`, `<style>`, `<head>`, `<svg>` blocks; converts block elements to newlines
+- Truncates to 10 000 chars with a `[Content truncated]` suffix
+- Creates `ChatbotKnowledge` entry with `type:'url'`, `sourceUrl`, `fileUrl` set to the page URL
+- **Route must be declared before `/knowledge/:id`** to avoid Express treating `'crawl'` as an `:id`
+
+### API Key storage
+- Keys are encrypted with **AES-256-GCM** using `ENCRYPTION_KEY` env var (64-char hex = 32 bytes)
+- Dev fallback: `crypto.scryptSync('default-chatbot-secret', 'salt', 32)` — NOT secure for prod
+- `resolveApiKey(cfg)` finds the entry with `isActive: true` (no provider filter — avoids mismatch between `provider:'anthropic'` and legacy `activeProvider:'claude'`)
+- Fallback: `process.env.ANTHROPIC_API_KEY` if no DB key exists
+
+### Adding a new knowledge type
+1. Add the new value to the `type` enum in `ChatbotKnowledge.model.js`
+2. Add it to the `KnowledgeEntry` TypeScript interface in `chatbot.api.ts`
+3. Add a colour entry in `typeColor()` in `ChatbotManager.tsx`
+4. Add display logic in the entry card (icon, link, etc.)
+
+### Environment variables required
+| Variable | Purpose |
+|---|---|
+| `ANTHROPIC_API_KEY` | Fallback API key (used if no active DB key exists) |
+| `ENCRYPTION_KEY` | 64-char hex string — encrypts/decrypts stored API keys |
+
+---
+
 ## Git Rules
 - Branch: `main` → remote: `github.com/MuhammadNabeelJaved/nabeel-javed-agency`
 - **Never** stage `server/.claude/settings.local.json`
