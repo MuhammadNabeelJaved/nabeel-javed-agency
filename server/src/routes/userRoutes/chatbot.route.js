@@ -47,6 +47,7 @@ import {
   deleteKnowledge,
   uploadKnowledgeFile,
   crawlUrl,
+  syncFromDatabase,
 } from '../../controllers/usersControllers/chatbot.controller.js';
 
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
@@ -103,6 +104,7 @@ router.get   ('/knowledge',          ...adminOnly, getKnowledge);
 router.post  ('/knowledge',          ...adminOnly, mutationLimiter, createKnowledge);
 router.post  ('/knowledge/upload',   ...adminOnly, mutationLimiter, kbUpload.single('file'), uploadKnowledgeFile);
 router.post  ('/knowledge/crawl',    ...adminOnly, mutationLimiter, crawlUrl);
+router.post  ('/knowledge/sync',     ...adminOnly, mutationLimiter, syncFromDatabase);
 router.put   ('/knowledge/:id',      ...adminOnly, mutationLimiter, updateKnowledge);
 router.delete('/knowledge/:id',      ...adminOnly, deleteKnowledge);
 

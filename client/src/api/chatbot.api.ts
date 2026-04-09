@@ -21,6 +21,8 @@ export interface PublicChatbotConfig {
   isEnabled: boolean;
 }
 
+export type ChatbotTone = 'professional' | 'friendly' | 'formal' | 'casual' | 'expert' | 'empathetic';
+
 export interface ChatbotConfigFull {
   activeProvider: string;
   activeModel: string;
@@ -29,6 +31,7 @@ export interface ChatbotConfigFull {
   botName: string;
   welcomeMessage: string;
   isEnabled: boolean;
+  tone: ChatbotTone;
   maxTokens: number;
   temperature: number;
   maxMessagesPerHour: number;
@@ -276,6 +279,20 @@ export async function crawlUrl(payload: {
   const data = await apiFetch<{ data: KnowledgeEntry }>(`${BASE}/knowledge/crawl`, {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+  return data.data;
+}
+
+export interface SyncResult {
+  created: number;
+  updated: number;
+  total: number;
+  details: { action: 'created' | 'updated'; title: string }[];
+}
+
+export async function syncFromDatabase(): Promise<SyncResult> {
+  const data = await apiFetch<{ data: SyncResult }>(`${BASE}/knowledge/sync`, {
+    method: 'POST',
   });
   return data.data;
 }

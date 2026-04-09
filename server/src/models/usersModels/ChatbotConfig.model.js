@@ -58,6 +58,16 @@ const chatbotConfigSchema = new mongoose.Schema({
   /** Whether the chatbot widget is active on the public site. */
   isEnabled: { type: Boolean, default: true },
 
+  /**
+   * Conversational tone / personality style injected into the system prompt.
+   * Each option maps to a pre-written instruction paragraph in the controller.
+   */
+  tone: {
+    type:    String,
+    enum:    ['professional', 'friendly', 'formal', 'casual', 'expert', 'empathetic'],
+    default: 'professional',
+  },
+
   /** Claude generation parameters. */
   maxTokens:   { type: Number, default: 1024, min: 256, max: 8192 },
   temperature: { type: Number, default: 0.7,  min: 0,   max: 1 },
