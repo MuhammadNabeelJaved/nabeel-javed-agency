@@ -300,7 +300,7 @@ export const getStats = asyncHandler(async (req, res) => {
     { $sort: { _id: 1 } },
   ]);
 
-  successResponse(res, 200, 'Stats retrieved', {
+  successResponse(res, 'Stats retrieved', {
     totalSessions,
     totalMessages,
     totalKnowledge,
@@ -333,7 +333,7 @@ export const getSessions = asyncHandler(async (req, res) => {
     ChatbotSession.countDocuments(filter),
   ]);
 
-  successResponse(res, 200, 'Sessions retrieved', {
+  successResponse(res, 'Sessions retrieved', {
     sessions,
     pagination: { total, page, limit, pages: Math.ceil(total / limit) },
   });
@@ -347,7 +347,7 @@ export const getSession = asyncHandler(async (req, res) => {
     .lean();
 
   if (!session) throw new AppError('Session not found', 404);
-  successResponse(res, 200, 'Session retrieved', session);
+  successResponse(res, 'Session retrieved', session);
 });
 
 export const deleteSession = asyncHandler(async (req, res) => {
@@ -355,7 +355,7 @@ export const deleteSession = asyncHandler(async (req, res) => {
 
   const session = await ChatbotSession.findByIdAndDelete(req.params.id);
   if (!session) throw new AppError('Session not found', 404);
-  successResponse(res, 200, 'Session deleted');
+  successResponse(res, 'Session deleted');
 });
 
 export const resolveSession = asyncHandler(async (req, res) => {
@@ -367,7 +367,7 @@ export const resolveSession = asyncHandler(async (req, res) => {
     { new: true }
   );
   if (!session) throw new AppError('Session not found', 404);
-  successResponse(res, 200, 'Session resolved', session);
+  successResponse(res, 'Session resolved', session);
 });
 
 // ─── Admin: Config ────────────────────────────────────────────────────────────
@@ -391,7 +391,7 @@ export const getConfig = asyncHandler(async (req, res) => {
     })(),
   }));
 
-  successResponse(res, 200, 'Config retrieved', {
+  successResponse(res, 'Config retrieved', {
     activeProvider:     cfg.activeProvider,
     activeModel:        cfg.activeModel,
     systemPrompt:       cfg.systemPrompt,
@@ -427,7 +427,7 @@ export const updateConfig = asyncHandler(async (req, res) => {
     { new: true, upsert: true }
   );
 
-  successResponse(res, 200, 'Config updated', { isEnabled: cfg.isEnabled });
+  successResponse(res, 'Config updated', { isEnabled: cfg.isEnabled });
 });
 
 // ─── Admin: API Keys ──────────────────────────────────────────────────────────
@@ -453,7 +453,7 @@ export const addApiKey = asyncHandler(async (req, res) => {
   cfg.apiKeys.push({ provider, encryptedKey, label: label || '', isActive: !!setActive });
   await cfg.save();
 
-  successResponse(res, 201, 'API key added');
+  successResponse(res, 'API key added', {}, 201);
 });
 
 export const removeApiKey = asyncHandler(async (req, res) => {
@@ -466,7 +466,7 @@ export const removeApiKey = asyncHandler(async (req, res) => {
   if (cfg.apiKeys.length === before) throw new AppError('Key not found', 404);
   await cfg.save();
 
-  successResponse(res, 200, 'API key removed');
+  successResponse(res, 'API key removed');
 });
 
 export const activateApiKey = asyncHandler(async (req, res) => {
@@ -487,7 +487,7 @@ export const activateApiKey = asyncHandler(async (req, res) => {
   if (!found) throw new AppError('Key not found', 404);
   await cfg.save();
 
-  successResponse(res, 200, 'API key activated');
+  successResponse(res, 'API key activated');
 });
 
 // ─── Admin: Knowledge Base ────────────────────────────────────────────────────
@@ -513,7 +513,7 @@ export const getKnowledge = asyncHandler(async (req, res) => {
     ChatbotKnowledge.countDocuments(filter),
   ]);
 
-  successResponse(res, 200, 'Knowledge entries retrieved', {
+  successResponse(res, 'Knowledge entries retrieved', {
     entries,
     pagination: { total, page, limit, pages: Math.ceil(total / limit) },
   });
@@ -537,7 +537,7 @@ export const createKnowledge = asyncHandler(async (req, res) => {
     createdBy: req.user._id,
   });
 
-  successResponse(res, 201, 'Knowledge entry created', entry);
+  successResponse(res, 'Knowledge entry created', entry, 201);
 });
 
 export const updateKnowledge = asyncHandler(async (req, res) => {
@@ -554,7 +554,7 @@ export const updateKnowledge = asyncHandler(async (req, res) => {
   );
 
   if (!entry) throw new AppError('Entry not found', 404);
-  successResponse(res, 200, 'Knowledge entry updated', entry);
+  successResponse(res, 'Knowledge entry updated', entry);
 });
 
 export const deleteKnowledge = asyncHandler(async (req, res) => {
@@ -562,7 +562,7 @@ export const deleteKnowledge = asyncHandler(async (req, res) => {
 
   const entry = await ChatbotKnowledge.findByIdAndDelete(req.params.id);
   if (!entry) throw new AppError('Entry not found', 404);
-  successResponse(res, 200, 'Knowledge entry deleted');
+  successResponse(res, 'Knowledge entry deleted');
 });
 
 /** Upload a file to Cloudinary and create a knowledge entry from it. */
@@ -586,5 +586,5 @@ export const uploadKnowledgeFile = asyncHandler(async (req, res) => {
     createdBy: req.user._id,
   });
 
-  successResponse(res, 201, 'File uploaded and knowledge entry created', entry);
+  successResponse(res, 'File uploaded and knowledge entry created', entry, 201);
 });

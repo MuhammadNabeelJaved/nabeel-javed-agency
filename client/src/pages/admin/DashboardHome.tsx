@@ -233,9 +233,9 @@ export default function DashboardHome() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold mt-1">
+                <div className="text-2xl font-bold mt-1">
                   {loading ? <Skeleton className="h-8 w-24 inline-block" /> : formatRevenue(clientStats?.totalRevenue??0)}
-                </p>
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {loading ? '' : `${formatRevenue(projectStats?.totalPaid??0)} collected · ${formatRevenue(outstanding)} outstanding`}
                 </p>
