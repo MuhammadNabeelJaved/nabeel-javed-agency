@@ -30,10 +30,51 @@ import Anthropic from '@anthropic-ai/sdk';
 import asyncHandler from '../../middlewares/asyncHandler.js';
 import AppError from '../../utils/AppError.js';
 import { successResponse } from '../../utils/apiResponse.js';
-import ChatbotConfig from '../../models/usersModels/ChatbotConfig.model.js';
+import ChatbotConfig    from '../../models/usersModels/ChatbotConfig.model.js';
 import ChatbotKnowledge from '../../models/usersModels/ChatbotKnowledge.model.js';
-import ChatbotSession from '../../models/usersModels/ChatbotSession.model.js';
-import { uploadFile } from '../../middlewares/Cloudinary.js';
+import ChatbotSession   from '../../models/usersModels/ChatbotSession.model.js';
+import { uploadFile }   from '../../middlewares/Cloudinary.js';
+// Models used for database auto-sync
+import Services      from '../../models/usersModels/Services.model.js';
+import AdminProject  from '../../models/usersModels/AdminProject.model.js';
+import CMS           from '../../models/usersModels/CMS.model.js';
+import Jobs          from '../../models/usersModels/Jobs.model.js';
+import Reviews       from '../../models/usersModels/Reviews.model.js';
+import User          from '../../models/usersModels/User.model.js';
+
+// ─── Tone instructions ────────────────────────────────────────────────────────
+
+const TONE_INSTRUCTIONS = {
+  professional:
+    'Maintain a professional, polished tone throughout the conversation. ' +
+    'Be concise, accurate, and solution-oriented. Use proper grammar, avoid slang, ' +
+    'and keep responses structured and to the point.',
+
+  friendly:
+    'Be warm, approachable, and genuinely helpful. Use a conversational tone that makes ' +
+    'users feel welcome. It is fine to use light casual language, contractions, and show ' +
+    'enthusiasm when relevant.',
+
+  formal:
+    'Use strictly formal language at all times. Maintain decorum and proper etiquette. ' +
+    'Avoid contractions, slang, and overly casual phrasing. Structure responses clearly ' +
+    'with complete sentences.',
+
+  casual:
+    'Be casual, relaxed, and natural — like chatting with a knowledgeable friend. ' +
+    'Keep sentences short, use everyday language, and do not over-explain. ' +
+    'Occasional light humour is welcome.',
+
+  expert:
+    'Communicate as a seasoned domain expert. Show depth of knowledge, use accurate ' +
+    'technical terminology where appropriate, and provide insightful, authoritative ' +
+    'answers. Back up statements with specifics from the knowledge base.',
+
+  empathetic:
+    'Lead with empathy and genuine understanding. Acknowledge the user\'s question or ' +
+    'situation before answering. Show that you care about their needs and provide ' +
+    'supportive, considerate responses. Never be dismissive.',
+};
 
 // ─── Encryption helpers ───────────────────────────────────────────────────────
 const ALGO        = 'aes-256-gcm';
@@ -185,8 +226,11 @@ export const chat = asyncHandler(async (req, res) => {
   const knowledge = await getRelevantKnowledge(message);
   const knowledgeContext = buildKnowledgeContext(knowledge);
 
-  // Build system prompt
-  const systemPrompt = cfg.systemPrompt +
+  // Build system prompt — base + tone + business context + knowledge
+  const toneInstruction = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
+  const systemPrompt =
+    cfg.systemPrompt +
+    `\n\n## Tone & Communication Style\n${toneInstruction}` +
     (cfg.businessContext ? `\n\n## About the Business\n${cfg.businessContext}` : '') +
     knowledgeContext;
 
@@ -405,6 +449,7 @@ export const getConfig = asyncHandler(async (req, res) => {
     botName:            cfg.botName,
     welcomeMessage:     cfg.welcomeMessage,
     isEnabled:          cfg.isEnabled,
+    tone:               cfg.tone || 'professional',
     maxTokens:          cfg.maxTokens,
     temperature:        cfg.temperature,
     maxMessagesPerHour: cfg.maxMessagesPerHour,
@@ -418,8 +463,8 @@ export const updateConfig = asyncHandler(async (req, res) => {
 
   const allowed = [
     'activeProvider', 'activeModel', 'systemPrompt', 'businessContext',
-    'botName', 'welcomeMessage', 'isEnabled', 'maxTokens', 'temperature',
-    'maxMessagesPerHour', 'maxMessagesPerDay',
+    'botName', 'welcomeMessage', 'isEnabled', 'tone',
+    'maxTokens', 'temperature', 'maxMessagesPerHour', 'maxMessagesPerDay',
   ];
 
   const updates = {};
@@ -716,4 +761,229 @@ export const crawlUrl = asyncHandler(async (req, res) => {
   });
 
   successResponse(res, 'Page crawled and added to knowledge base', entry, 201);
+});
+
+// ─── Database sync helpers ────────────────────────────────────────────────────
+
+/**
+ * Upsert a knowledge entry by its unique `syncKey` tag.
+ * If an entry with that tag already exists it is updated; otherwise created.
+ */
+async function upsertKnowledgeEntry({ syncKey, title, content, type, tags, createdBy }) {
+  const allTags = ['auto-sync', syncKey, ...tags];
+  const existing = await ChatbotKnowledge.findOne({ tags: syncKey });
+  if (existing) {
+    existing.title   = title;
+    existing.content = content.slice(0, 20000);
+    existing.tags    = allTags;
+    await existing.save();
+    return { action: 'updated', title };
+  }
+  await ChatbotKnowledge.create({
+    title, type,
+    content: content.slice(0, 20000),
+    tags:    allTags,
+    isActive: true,
+    createdBy,
+  });
+  return { action: 'created', title };
+}
+
+// ─── Admin: Sync knowledge from database ─────────────────────────────────────
+
+/**
+ * POST /api/v1/chatbot/knowledge/sync
+ * Auto-generates / updates knowledge entries from live DB data:
+ *   Services, Portfolio Projects, CMS (contact/testimonials/why-us),
+ *   Active Jobs, Approved Reviews, Team Members.
+ */
+export const syncFromDatabase = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const results = [];
+  const adminId = req.user._id;
+
+  // ── 1. Services ────────────────────────────────────────────────────────────
+  const services = await Services.find({ isActive: true }).lean();
+  for (const svc of services) {
+    const pricingText = (svc.pricingPlans || [])
+      .map(p => `  • ${p.name}: ${p.price ? '$' + p.price : 'Contact for pricing'} — ${p.description || ''}`)
+      .join('\n');
+    const faqText = (svc.faqs || [])
+      .map(f => `  Q: ${f.question}\n  A: ${f.answer}`)
+      .join('\n');
+    const featuresText = (svc.features || []).map(f => `  • ${f.title || f}`).join('\n');
+
+    const content =
+      `Service: ${svc.title}\n` +
+      (svc.subtitle        ? `Tagline: ${svc.subtitle}\n`          : '') +
+      (svc.description     ? `Description: ${svc.description}\n`   : '') +
+      (svc.category        ? `Category: ${svc.category}\n`         : '') +
+      (svc.deliveryTime    ? `Delivery Time: ${svc.deliveryTime}\n` : '') +
+      (featuresText        ? `\nKey Features:\n${featuresText}\n`   : '') +
+      (pricingText         ? `\nPricing Plans:\n${pricingText}\n`   : '') +
+      (faqText             ? `\nFrequently Asked Questions:\n${faqText}\n` : '');
+
+    results.push(await upsertKnowledgeEntry({
+      syncKey:   `sync:service:${svc.slug || svc._id}`,
+      title:     `Service — ${svc.title}`,
+      content,
+      type:      'auto',
+      tags:      ['service', svc.category || ''].filter(Boolean),
+      createdBy: adminId,
+    }));
+  }
+
+  // ── 2. Portfolio Projects (public only) ────────────────────────────────────
+  const projects = await AdminProject.find({ isPublic: true, isArchived: false }).lean();
+  for (const proj of projects) {
+    const content =
+      `Portfolio Project: ${proj.projectTitle}\n` +
+      (proj.clientName       ? `Client: ${proj.clientName}\n`        : '') +
+      (proj.category         ? `Category: ${proj.category}\n`        : '') +
+      (proj.yourRole         ? `Our Role: ${proj.yourRole}\n`        : '') +
+      (proj.projectDescription ? `Description: ${proj.projectDescription}\n` : '') +
+      (proj.techStack?.length  ? `Technologies: ${proj.techStack.join(', ')}\n` : '') +
+      (proj.tags?.length       ? `Tags: ${proj.tags.join(', ')}\n`           : '') +
+      (proj.clientFeedback?.comment ? `\nClient Feedback: "${proj.clientFeedback.comment}" (${proj.clientFeedback.rating}/5 stars)\n` : '');
+
+    results.push(await upsertKnowledgeEntry({
+      syncKey:   `sync:project:${proj._id}`,
+      title:     `Portfolio — ${proj.projectTitle}`,
+      content,
+      type:      'auto',
+      tags:      ['portfolio', 'project', proj.category || ''].filter(Boolean),
+      createdBy: adminId,
+    }));
+  }
+
+  // ── 3. CMS — Contact Info + Why Choose Us + Testimonials ──────────────────
+  const cms = await CMS.findOne().lean();
+  if (cms) {
+    // Contact info
+    if (cms.contactInfo) {
+      const ci = cms.contactInfo;
+      const content =
+        `Business Contact Information\n` +
+        (ci.email         ? `Email: ${ci.email}\n`                : '') +
+        (ci.phone         ? `Phone: ${ci.phone}\n`                : '') +
+        (ci.address       ? `Address: ${ci.address}\n`            : '') +
+        (ci.businessHours ? `Business Hours: ${ci.businessHours}\n` : '') +
+        (cms.socialLinks?.linkedin  ? `LinkedIn: ${cms.socialLinks.linkedin}\n`  : '') +
+        (cms.socialLinks?.twitter   ? `Twitter/X: ${cms.socialLinks.twitter}\n`  : '') +
+        (cms.socialLinks?.instagram ? `Instagram: ${cms.socialLinks.instagram}\n` : '') +
+        (cms.socialLinks?.github    ? `GitHub: ${cms.socialLinks.github}\n`       : '');
+
+      results.push(await upsertKnowledgeEntry({
+        syncKey:   'sync:cms:contact',
+        title:     'Contact Information',
+        content,
+        type:      'auto',
+        tags:      ['contact', 'location', 'hours'],
+        createdBy: adminId,
+      }));
+    }
+
+    // Why Choose Us
+    if (cms.whyChooseUs) {
+      const wcu = cms.whyChooseUs;
+      const points = (wcu.keyPoints || []).map(p => `  • ${p.title}: ${p.description || ''}`).join('\n');
+      const content =
+        `Why Choose Us\n` +
+        (wcu.titleLine1 ? `${wcu.titleLine1} ${wcu.titleLine2Highlighted || ''}\n` : '') +
+        (wcu.description ? `${wcu.description}\n` : '') +
+        (points ? `\nKey Advantages:\n${points}` : '');
+
+      results.push(await upsertKnowledgeEntry({
+        syncKey:   'sync:cms:why-us',
+        title:     'Why Choose Us',
+        content,
+        type:      'auto',
+        tags:      ['about', 'why-us', 'advantages'],
+        createdBy: adminId,
+      }));
+    }
+
+    // Testimonials
+    if (cms.testimonials?.length) {
+      const testimonialText = cms.testimonials
+        .slice(0, 10)
+        .map(t => `"${t.quote || t.text}" — ${t.name || t.author}${t.company ? `, ${t.company}` : ''}`)
+        .join('\n\n');
+      results.push(await upsertKnowledgeEntry({
+        syncKey:   'sync:cms:testimonials',
+        title:     'Client Testimonials',
+        content:   `Client Testimonials & Reviews\n\n${testimonialText}`,
+        type:      'auto',
+        tags:      ['testimonials', 'reviews', 'clients'],
+        createdBy: adminId,
+      }));
+    }
+  }
+
+  // ── 4. Active Job Postings ─────────────────────────────────────────────────
+  const jobs = await Jobs.find({ status: 'Active' }).lean();
+  if (jobs.length) {
+    const jobsText = jobs.map(j => {
+      const salary = j.salaryRange?.min
+        ? `$${Math.round(j.salaryRange.min / 1000)}k–$${Math.round(j.salaryRange.max / 1000)}k`
+        : 'Competitive';
+      return `• ${j.jobTitle} (${j.department}) — ${j.employmentType}, ${j.workMode}, ${salary}`;
+    }).join('\n');
+
+    results.push(await upsertKnowledgeEntry({
+      syncKey:   'sync:jobs:active',
+      title:     'Current Job Openings',
+      content:   `We Are Hiring! Current Open Positions:\n\n${jobsText}\n\nVisit our Careers page to apply.`,
+      type:      'auto',
+      tags:      ['jobs', 'hiring', 'careers'],
+      createdBy: adminId,
+    }));
+  }
+
+  // ── 5. Approved Reviews ────────────────────────────────────────────────────
+  const reviews = await Reviews.find({ status: 'approved' })
+    .populate('client', 'name')
+    .lean();
+  if (reviews.length) {
+    const reviewsText = reviews
+      .slice(0, 10)
+      .map(r => `★${r.rating}/5 — "${r.reviewText}" — ${r.client?.name || 'Client'}`)
+      .join('\n\n');
+    results.push(await upsertKnowledgeEntry({
+      syncKey:   'sync:reviews',
+      title:     'Client Reviews & Ratings',
+      content:   `Client Reviews\n\n${reviewsText}`,
+      type:      'auto',
+      tags:      ['reviews', 'testimonials', 'ratings'],
+      createdBy: adminId,
+    }));
+  }
+
+  // ── 6. Team Members ────────────────────────────────────────────────────────
+  const team = await User.find({ role: 'team', deletedAt: null })
+    .select('name teamProfile')
+    .lean();
+  if (team.length) {
+    const teamText = team.map(m => {
+      const tp = m.teamProfile || {};
+      return `• ${m.name}${tp.position ? ` — ${tp.position}` : ''}${tp.department ? ` (${tp.department})` : ''}${tp.bio ? `\n  ${tp.bio}` : ''}${tp.skills?.length ? `\n  Skills: ${tp.skills.join(', ')}` : ''}`;
+    }).join('\n\n');
+
+    results.push(await upsertKnowledgeEntry({
+      syncKey:   'sync:team',
+      title:     'Our Team',
+      content:   `Our Team Members\n\n${teamText}`,
+      type:      'auto',
+      tags:      ['team', 'people', 'staff'],
+      createdBy: adminId,
+    }));
+  }
+
+  const created = results.filter(r => r.action === 'created').length;
+  const updated = results.filter(r => r.action === 'updated').length;
+
+  successResponse(res, `Sync complete — ${created} created, ${updated} updated`, {
+    created, updated, total: results.length, details: results,
+  });
 });

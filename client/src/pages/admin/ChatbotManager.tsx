@@ -26,11 +26,11 @@ import {
   getStats, getSessions, getSession, deleteSession, resolveSession,
   getConfig, updateConfig, addApiKey, removeApiKey, activateApiKey,
   getKnowledge, createKnowledge, updateKnowledge, deleteKnowledge,
-  uploadKnowledgeFile, crawlUrl,
+  uploadKnowledgeFile, crawlUrl, syncFromDatabase,
 } from '../../api/chatbot.api';
 import type {
   ChatbotStats, ChatbotSession, ChatbotConfigFull,
-  KnowledgeEntry, ApiKeyMeta,
+  KnowledgeEntry, ApiKeyMeta, ChatbotTone, SyncResult,
 } from '../../api/chatbot.api';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -215,6 +215,8 @@ function KnowledgeTab() {
   const [pages,   setPages]     = useState(1);
   const [showForm,    setShowForm]    = useState(false);
   const [showUrlForm, setShowUrlForm] = useState(false);
+  const [syncing,     setSyncing]     = useState(false);
+  const [syncResult,  setSyncResult]  = useState<SyncResult | null>(null);
   const [editing,  setEditing]  = useState<KnowledgeEntry | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -343,6 +345,21 @@ function KnowledgeTab() {
     }
   };
 
+  const handleSyncFromDatabase = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await syncFromDatabase();
+      setSyncResult(result);
+      toast.success(`Sync complete — ${result.created} created, ${result.updated} updated`);
+      load(1);
+    } catch (err: any) {
+      toast.error(err.message || 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const typeColor = (t: string) => {
     const m: Record<string, string> = {
       text: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -367,8 +384,12 @@ function KnowledgeTab() {
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Upload File
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowUrlForm(true)} disabled={saving} className="gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowUrlForm(true)} disabled={saving || syncing} className="gap-2">
             <Globe className="h-4 w-4" /> Add Page URL
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSyncFromDatabase} disabled={saving || syncing} className="gap-2 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10">
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Sync from DB
           </Button>
           <Button size="sm" onClick={openCreate} className="gap-2">
             <Plus className="h-4 w-4" /> Add Entry
@@ -580,6 +601,55 @@ function KnowledgeTab() {
   );
 }
 
+// ─── Business Context Template ─────────────────────────────────────────────────
+const BUSINESS_CONTEXT_TEMPLATE = `## Agency Overview
+[Agency Name] is a full-service digital agency specialising in web development, UI/UX design, branding, and digital marketing. We work with startups, SMEs, and enterprise clients worldwide.
+
+## Our Services
+- **Web Development**: Custom websites, web apps, e-commerce (React, Next.js, Node.js, Laravel)
+- **Mobile Apps**: iOS & Android development (React Native, Flutter)
+- **UI/UX Design**: User research, wireframing, prototyping, design systems (Figma)
+- **Branding**: Logo design, brand identity, style guides
+- **Digital Marketing**: SEO, social media management, paid advertising, email campaigns
+- **Maintenance & Support**: Hosting, updates, performance optimisation, security audits
+
+## Pricing
+- Projects are quoted individually based on scope and complexity
+- Typical web project range: $1,500 – $25,000+
+- Monthly retainers available for ongoing support: starting at $500/month
+- Free initial consultation for all new clients
+
+## Our Process
+1. **Discovery** — Understanding your goals, audience, and requirements (1–2 days)
+2. **Proposal** — Detailed scope, timeline, and cost estimate (2–3 days)
+3. **Design** — Wireframes + visual designs with your feedback (1–2 weeks)
+4. **Development** — Agile build with regular progress updates (2–8 weeks)
+5. **Testing & QA** — Cross-browser, responsive, and accessibility testing (1 week)
+6. **Launch** — Deployment, handover, and documentation
+7. **Support** — Post-launch monitoring and ongoing maintenance
+
+## Why Choose Us
+- 5+ years of industry experience with 100+ successful projects delivered
+- Dedicated project manager assigned to every client
+- Transparent communication — weekly updates, shared project board
+- On-time delivery guarantee with milestone-based payments
+- Post-launch support included for 30 days on all projects
+
+## Team
+- [Number] full-time designers, developers, and marketers
+- Experienced with both startups and Fortune 500 clients
+- Remote-first, distributed across multiple time zones for fast turnaround
+
+## Contact & Availability
+- Email: hello@[yourdomain].com
+- Phone: +1 (000) 000-0000
+- Working hours: Mon–Fri, 9 AM – 6 PM (your timezone)
+- Response time: Within 24 hours on business days
+- Book a free call: [calendly/scheduling link]
+
+## Location
+[City, Country] — serving clients globally with remote project delivery.`;
+
 // ─── Config Tab ────────────────────────────────────────────────────────────────
 function ConfigTab() {
   const [cfg,     setCfg]     = useState<ChatbotConfigFull | null>(null);
@@ -612,6 +682,7 @@ function ConfigTab() {
         maxMessagesPerHour:  c.maxMessagesPerHour,
         maxMessagesPerDay:   c.maxMessagesPerDay,
         isEnabled:           c.isEnabled,
+        tone:                c.tone,
       });
     } catch {
       toast.error('Failed to load configuration');
@@ -718,6 +789,39 @@ function ConfigTab() {
             <Label>Welcome Message</Label>
             <Textarea value={local.welcomeMessage ?? ''} onChange={e => setLocal(l => ({ ...l, welcomeMessage: e.target.value }))} rows={3} />
           </div>
+
+          {/* Tone selector */}
+          <div className="space-y-3">
+            <Label>Conversation Tone</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {([
+                { value: 'professional', label: 'Professional', desc: 'Polished & business-focused', emoji: '💼' },
+                { value: 'friendly',     label: 'Friendly',     desc: 'Warm, approachable & helpful', emoji: '😊' },
+                { value: 'formal',       label: 'Formal',       desc: 'Strictly formal language', emoji: '🎩' },
+                { value: 'casual',       label: 'Casual',       desc: 'Relaxed & conversational', emoji: '✌️' },
+                { value: 'expert',       label: 'Expert',       desc: 'Technical & authoritative', emoji: '🧠' },
+                { value: 'empathetic',   label: 'Empathetic',   desc: 'Caring & understanding', emoji: '🤝' },
+              ] as { value: ChatbotTone; label: string; desc: string; emoji: string }[]).map((t) => {
+                const active = (local.tone || 'professional') === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setLocal(l => ({ ...l, tone: t.value }))}
+                    className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                      active
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border/50 bg-muted/30 text-muted-foreground hover:border-border hover:bg-muted/60'
+                    }`}
+                  >
+                    <span className="text-lg mb-1">{t.emoji}</span>
+                    <span className={`text-sm font-medium ${active ? 'text-primary' : ''}`}>{t.label}</span>
+                    <span className="text-xs mt-0.5 leading-snug">{t.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -735,8 +839,18 @@ function ConfigTab() {
             <Textarea value={local.systemPrompt ?? ''} onChange={e => setLocal(l => ({ ...l, systemPrompt: e.target.value }))} rows={5} className="font-mono text-xs" />
           </div>
           <div className="space-y-1.5">
-            <Label>Business Context</Label>
-            <Textarea value={local.businessContext ?? ''} onChange={e => setLocal(l => ({ ...l, businessContext: e.target.value }))} rows={4} placeholder="Describe your business, services, and contact info here…" />
+            <div className="flex items-center justify-between">
+              <Label>Business Context</Label>
+              <button
+                type="button"
+                onClick={() => setLocal(l => ({ ...l, businessContext: BUSINESS_CONTEXT_TEMPLATE }))}
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                <Sparkles className="h-3 w-3" /> Use Template
+              </button>
+            </div>
+            <Textarea value={local.businessContext ?? ''} onChange={e => setLocal(l => ({ ...l, businessContext: e.target.value }))} rows={6} placeholder="Describe your business, services, and contact info here…" />
+            <p className="text-xs text-muted-foreground">This context is appended to every Claude request so the AI knows your business thoroughly.</p>
           </div>
         </CardContent>
       </Card>
