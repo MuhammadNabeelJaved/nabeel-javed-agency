@@ -1,0 +1,590 @@
+/**
+ * Chatbot Controller
+ *
+ * Public endpoint:
+ *   POST /api/v1/chatbot/chat        — stream a Claude response (SSE)
+ *   GET  /api/v1/chatbot/config/public — fetch botName + welcomeMessage + isEnabled
+ *
+ * Admin endpoints (all require admin role):
+ *   GET    /api/v1/chatbot/stats
+ *   GET    /api/v1/chatbot/sessions
+ *   GET    /api/v1/chatbot/sessions/:id
+ *   DELETE /api/v1/chatbot/sessions/:id
+ *   PATCH  /api/v1/chatbot/sessions/:id/resolve
+ *
+ *   GET    /api/v1/chatbot/config
+ *   PUT    /api/v1/chatbot/config
+ *   POST   /api/v1/chatbot/config/keys          — add API key
+ *   DELETE /api/v1/chatbot/config/keys/:keyId   — remove API key
+ *   PATCH  /api/v1/chatbot/config/keys/:keyId/activate
+ *
+ *   GET    /api/v1/chatbot/knowledge
+ *   POST   /api/v1/chatbot/knowledge
+ *   PUT    /api/v1/chatbot/knowledge/:id
+ *   DELETE /api/v1/chatbot/knowledge/:id
+ *   POST   /api/v1/chatbot/knowledge/upload     — upload file to Cloudinary
+ */
+
+import crypto from 'crypto';
+import Anthropic from '@anthropic-ai/sdk';
+import asyncHandler from '../../middlewares/asyncHandler.js';
+import AppError from '../../utils/AppError.js';
+import { successResponse } from '../../utils/apiResponse.js';
+import ChatbotConfig from '../../models/usersModels/ChatbotConfig.model.js';
+import ChatbotKnowledge from '../../models/usersModels/ChatbotKnowledge.model.js';
+import ChatbotSession from '../../models/usersModels/ChatbotSession.model.js';
+import { uploadFile } from '../../middlewares/Cloudinary.js';
+
+// ─── Encryption helpers ───────────────────────────────────────────────────────
+const ALGO        = 'aes-256-gcm';
+const ENC_KEY_HEX = process.env.ENCRYPTION_KEY || '';
+
+/** Derive a 32-byte Buffer from the hex env var (or a random fallback in dev). */
+function getEncKey() {
+  if (ENC_KEY_HEX.length === 64) return Buffer.from(ENC_KEY_HEX, 'hex');
+  // Fallback: derive from a default secret (NOT secure for production)
+  return crypto.scryptSync('default-chatbot-secret', 'salt', 32);
+}
+
+function encryptKey(plaintext) {
+  const key = getEncKey();
+  const iv  = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv(ALGO, key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  // Store iv + tag + ciphertext as a single hex string
+  return iv.toString('hex') + ':' + tag.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decryptKey(stored) {
+  try {
+    const [ivHex, tagHex, encHex] = stored.split(':');
+    const key       = getEncKey();
+    const iv        = Buffer.from(ivHex, 'hex');
+    const tag       = Buffer.from(tagHex, 'hex');
+    const encrypted = Buffer.from(encHex, 'hex');
+    const decipher  = crypto.createDecipheriv(ALGO, key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+  } catch {
+    throw new AppError('Failed to decrypt API key — ENCRYPTION_KEY may have changed', 500);
+  }
+}
+
+// ─── Config helpers ───────────────────────────────────────────────────────────
+
+/** Always returns the singleton config, creating it if absent. */
+async function getOrCreateConfig() {
+  let cfg = await ChatbotConfig.findOne({ singleton: 'main' });
+  if (!cfg) cfg = await ChatbotConfig.create({ singleton: 'main' });
+  return cfg;
+}
+
+/** Find the active API key entry for the given provider, decrypt and return the key string. */
+function resolveApiKey(cfg, provider) {
+  const entry = cfg.apiKeys.find(k => k.provider === provider && k.isActive);
+  if (!entry) return null;
+  return decryptKey(entry.encryptedKey);
+}
+
+// ─── Knowledge retrieval ──────────────────────────────────────────────────────
+
+/**
+ * Returns up to `limit` active knowledge entries most relevant to `query`.
+ * Uses MongoDB full-text search; falls back to returning top entries by date
+ * if the query is empty.
+ */
+async function getRelevantKnowledge(query, limit = 5) {
+  if (query && query.trim().length > 2) {
+    try {
+      const results = await ChatbotKnowledge.find(
+        { isActive: true, $text: { $search: query } },
+        { score: { $meta: 'textScore' }, title: 1, content: 1 }
+      )
+        .sort({ score: { $meta: 'textScore' } })
+        .limit(limit)
+        .lean();
+
+      if (results.length) return results;
+    } catch {
+      // Text index might not be built yet — fall through to latest entries
+    }
+  }
+
+  // Fallback: just return the most recently added active entries
+  return ChatbotKnowledge.find({ isActive: true })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .select('title content')
+    .lean();
+}
+
+/** Build a knowledge context string to inject into the system prompt. */
+function buildKnowledgeContext(entries) {
+  if (!entries.length) return '';
+  const sections = entries.map(e => `### ${e.title}\n${e.content}`).join('\n\n');
+  return `\n\n---\n## Business Knowledge Base\nUse the following information to answer user questions:\n\n${sections}\n---`;
+}
+
+// ─── Public: GET /config/public ──────────────────────────────────────────────
+
+export const getPublicConfig = asyncHandler(async (req, res) => {
+  const cfg = await getOrCreateConfig();
+  res.json({
+    success: true,
+    data: {
+      botName:        cfg.botName,
+      welcomeMessage: cfg.welcomeMessage,
+      isEnabled:      cfg.isEnabled,
+    },
+  });
+});
+
+// ─── Public: POST /chat ───────────────────────────────────────────────────────
+
+/**
+ * Streams a Claude response via Server-Sent Events.
+ *
+ * Request body:
+ *   { message: string, sessionId: string, history?: {role,content}[] }
+ *
+ * SSE events emitted:
+ *   data: {"type":"delta","text":"..."}\n\n
+ *   data: {"type":"done"}\n\n
+ *   data: {"type":"error","message":"..."}\n\n
+ */
+export const chat = asyncHandler(async (req, res) => {
+  const { message, sessionId, history = [] } = req.body;
+
+  if (!message || typeof message !== 'string' || !message.trim()) {
+    throw new AppError('message is required', 400);
+  }
+  if (!sessionId || typeof sessionId !== 'string') {
+    throw new AppError('sessionId is required', 400);
+  }
+
+  const cfg = await getOrCreateConfig();
+
+  if (!cfg.isEnabled) {
+    throw new AppError('Chatbot is currently disabled', 503);
+  }
+
+  // Resolve the active API key
+  const apiKey = resolveApiKey(cfg, cfg.activeProvider);
+  if (!apiKey) {
+    throw new AppError('No active API key configured for the chatbot', 503);
+  }
+
+  // Retrieve relevant knowledge
+  const knowledge = await getRelevantKnowledge(message);
+  const knowledgeContext = buildKnowledgeContext(knowledge);
+
+  // Build system prompt
+  const systemPrompt = cfg.systemPrompt +
+    (cfg.businessContext ? `\n\n## About the Business\n${cfg.businessContext}` : '') +
+    knowledgeContext;
+
+  // Trim history to the last 10 turns to keep context manageable
+  const trimmedHistory = history.slice(-10).map(m => ({
+    role:    m.role === 'assistant' ? 'assistant' : 'user',
+    content: String(m.content || ''),
+  }));
+
+  // Build Anthropic messages array
+  const messages = [
+    ...trimmedHistory,
+    { role: 'user', content: message.trim() },
+  ];
+
+  // ── SSE setup ────────────────────────────────────────────────────────────────
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (res.flush) res.flush(); // compression middleware
+  };
+
+  let fullResponse = '';
+
+  try {
+    const client = new Anthropic({ apiKey });
+
+    const stream = await client.messages.stream({
+      model:      cfg.activeModel || 'claude-opus-4-6',
+      max_tokens: cfg.maxTokens   || 1024,
+      system:     systemPrompt,
+      messages,
+    });
+
+    for await (const event of stream) {
+      if (
+        event.type === 'content_block_delta' &&
+        event.delta?.type === 'text_delta'
+      ) {
+        const text = event.delta.text || '';
+        fullResponse += text;
+        sendEvent({ type: 'delta', text });
+      }
+    }
+
+    sendEvent({ type: 'done' });
+
+  } catch (err) {
+    console.error('[Chatbot] Anthropic error:', err.message);
+    sendEvent({ type: 'error', message: 'AI service error. Please try again.' });
+    res.end();
+    return;
+  }
+
+  res.end();
+
+  // ── Persist session (non-blocking) ──────────────────────────────────────────
+  try {
+    const userAgent = (req.headers['user-agent'] || '').substring(0, 300);
+    const rawIp     = req.ip || '';
+    // Strip last octet for privacy: 192.168.1.X → 192.168.1.0
+    const ip        = rawIp.replace(/\.\d+$/, '.0').replace(/:[^:]+$/, ':0');
+
+    let session = await ChatbotSession.findOne({ sessionId });
+    if (!session) {
+      session = new ChatbotSession({
+        sessionId,
+        userId:   req.user?._id || null,
+        metadata: { userAgent, ip },
+      });
+    }
+
+    session.messages.push({ role: 'user',      content: message.trim() });
+    session.messages.push({ role: 'assistant', content: fullResponse });
+    await session.save();
+  } catch (err) {
+    console.error('[Chatbot] Session save error:', err.message);
+  }
+});
+
+// ─── Admin: Stats ─────────────────────────────────────────────────────────────
+
+export const getStats = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const [totalSessions, totalKnowledge, resolvedSessions, recentActivity] = await Promise.all([
+    ChatbotSession.countDocuments(),
+    ChatbotKnowledge.countDocuments({ isActive: true }),
+    ChatbotSession.countDocuments({ isResolved: true }),
+    ChatbotSession.find()
+      .sort({ lastActivity: -1 })
+      .limit(5)
+      .select('sessionId totalMessages lastActivity isResolved userId')
+      .lean(),
+  ]);
+
+  // Total messages across all sessions
+  const msgAgg = await ChatbotSession.aggregate([
+    { $group: { _id: null, total: { $sum: '$totalMessages' } } },
+  ]);
+  const totalMessages = msgAgg[0]?.total || 0;
+
+  // Sessions per day for the past 7 days
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+  const dailyAgg = await ChatbotSession.aggregate([
+    { $match: { createdAt: { $gte: since } } },
+    { $group: {
+      _id:   { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+      count: { $sum: 1 },
+    }},
+    { $sort: { _id: 1 } },
+  ]);
+
+  successResponse(res, 200, 'Stats retrieved', {
+    totalSessions,
+    totalMessages,
+    totalKnowledge,
+    resolvedSessions,
+    recentActivity,
+    dailyActivity: dailyAgg,
+  });
+});
+
+// ─── Admin: Sessions ──────────────────────────────────────────────────────────
+
+export const getSessions = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit = Math.min(50, parseInt(req.query.limit) || 20);
+  const skip  = (page - 1) * limit;
+
+  const filter = {};
+  if (req.query.resolved === 'true')  filter.isResolved = true;
+  if (req.query.resolved === 'false') filter.isResolved = false;
+
+  const [sessions, total] = await Promise.all([
+    ChatbotSession.find(filter)
+      .sort({ lastActivity: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('userId', 'name email')
+      .lean(),
+    ChatbotSession.countDocuments(filter),
+  ]);
+
+  successResponse(res, 200, 'Sessions retrieved', {
+    sessions,
+    pagination: { total, page, limit, pages: Math.ceil(total / limit) },
+  });
+});
+
+export const getSession = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const session = await ChatbotSession.findById(req.params.id)
+    .populate('userId', 'name email')
+    .lean();
+
+  if (!session) throw new AppError('Session not found', 404);
+  successResponse(res, 200, 'Session retrieved', session);
+});
+
+export const deleteSession = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const session = await ChatbotSession.findByIdAndDelete(req.params.id);
+  if (!session) throw new AppError('Session not found', 404);
+  successResponse(res, 200, 'Session deleted');
+});
+
+export const resolveSession = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const session = await ChatbotSession.findByIdAndUpdate(
+    req.params.id,
+    { isResolved: true },
+    { new: true }
+  );
+  if (!session) throw new AppError('Session not found', 404);
+  successResponse(res, 200, 'Session resolved', session);
+});
+
+// ─── Admin: Config ────────────────────────────────────────────────────────────
+
+export const getConfig = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const cfg = await getOrCreateConfig();
+
+  // Strip encrypted keys — only return metadata (provider, label, isActive)
+  const safeKeys = cfg.apiKeys.map(k => ({
+    _id:       k._id,
+    provider:  k.provider,
+    label:     k.label,
+    isActive:  k.isActive,
+    addedAt:   k.addedAt,
+    // Show last 4 chars of decrypted key for identification
+    keyHint:   (() => {
+      try { const d = decryptKey(k.encryptedKey); return '***' + d.slice(-4); }
+      catch { return '***'; }
+    })(),
+  }));
+
+  successResponse(res, 200, 'Config retrieved', {
+    activeProvider:     cfg.activeProvider,
+    activeModel:        cfg.activeModel,
+    systemPrompt:       cfg.systemPrompt,
+    businessContext:    cfg.businessContext,
+    botName:            cfg.botName,
+    welcomeMessage:     cfg.welcomeMessage,
+    isEnabled:          cfg.isEnabled,
+    maxTokens:          cfg.maxTokens,
+    temperature:        cfg.temperature,
+    maxMessagesPerHour: cfg.maxMessagesPerHour,
+    maxMessagesPerDay:  cfg.maxMessagesPerDay,
+    apiKeys:            safeKeys,
+  });
+});
+
+export const updateConfig = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const allowed = [
+    'activeProvider', 'activeModel', 'systemPrompt', 'businessContext',
+    'botName', 'welcomeMessage', 'isEnabled', 'maxTokens', 'temperature',
+    'maxMessagesPerHour', 'maxMessagesPerDay',
+  ];
+
+  const updates = {};
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) updates[key] = req.body[key];
+  }
+
+  const cfg = await ChatbotConfig.findOneAndUpdate(
+    { singleton: 'main' },
+    { $set: updates },
+    { new: true, upsert: true }
+  );
+
+  successResponse(res, 200, 'Config updated', { isEnabled: cfg.isEnabled });
+});
+
+// ─── Admin: API Keys ──────────────────────────────────────────────────────────
+
+export const addApiKey = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const { provider, apiKey, label, setActive } = req.body;
+
+  if (!provider || !apiKey) {
+    throw new AppError('provider and apiKey are required', 400);
+  }
+
+  const encryptedKey = encryptKey(apiKey);
+
+  const cfg = await getOrCreateConfig();
+
+  // If setActive, deactivate all other keys
+  if (setActive) {
+    cfg.apiKeys.forEach(k => { k.isActive = false; });
+  }
+
+  cfg.apiKeys.push({ provider, encryptedKey, label: label || '', isActive: !!setActive });
+  await cfg.save();
+
+  successResponse(res, 201, 'API key added');
+});
+
+export const removeApiKey = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const cfg = await getOrCreateConfig();
+  const before = cfg.apiKeys.length;
+  cfg.apiKeys = cfg.apiKeys.filter(k => k._id.toString() !== req.params.keyId);
+
+  if (cfg.apiKeys.length === before) throw new AppError('Key not found', 404);
+  await cfg.save();
+
+  successResponse(res, 200, 'API key removed');
+});
+
+export const activateApiKey = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const cfg = await getOrCreateConfig();
+  let found = false;
+
+  cfg.apiKeys.forEach(k => {
+    if (k._id.toString() === req.params.keyId) {
+      k.isActive = true;
+      found = true;
+    } else {
+      k.isActive = false;
+    }
+  });
+
+  if (!found) throw new AppError('Key not found', 404);
+  await cfg.save();
+
+  successResponse(res, 200, 'API key activated');
+});
+
+// ─── Admin: Knowledge Base ────────────────────────────────────────────────────
+
+export const getKnowledge = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const page   = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit  = Math.min(100, parseInt(req.query.limit) || 20);
+  const skip   = (page - 1) * limit;
+  const filter = req.query.active === 'false' ? {} : { isActive: true };
+
+  if (req.query.type) filter.type = req.query.type;
+  if (req.query.tag)  filter.tags = req.query.tag;
+
+  const [entries, total] = await Promise.all([
+    ChatbotKnowledge.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('createdBy', 'name')
+      .lean(),
+    ChatbotKnowledge.countDocuments(filter),
+  ]);
+
+  successResponse(res, 200, 'Knowledge entries retrieved', {
+    entries,
+    pagination: { total, page, limit, pages: Math.ceil(total / limit) },
+  });
+});
+
+export const createKnowledge = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const { title, content, type, fileUrl, fileName, tags } = req.body;
+
+  if (!title || !content) throw new AppError('title and content are required', 400);
+
+  const entry = await ChatbotKnowledge.create({
+    title,
+    content,
+    type:      type     || 'text',
+    fileUrl:   fileUrl  || '',
+    fileName:  fileName || '',
+    tags:      Array.isArray(tags) ? tags : [],
+    isActive:  true,
+    createdBy: req.user._id,
+  });
+
+  successResponse(res, 201, 'Knowledge entry created', entry);
+});
+
+export const updateKnowledge = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const allowed = ['title', 'content', 'type', 'fileUrl', 'fileName', 'tags', 'isActive'];
+  const updates = {};
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) updates[key] = req.body[key];
+  }
+
+  const entry = await ChatbotKnowledge.findByIdAndUpdate(
+    req.params.id, { $set: updates }, { new: true, runValidators: true }
+  );
+
+  if (!entry) throw new AppError('Entry not found', 404);
+  successResponse(res, 200, 'Knowledge entry updated', entry);
+});
+
+export const deleteKnowledge = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const entry = await ChatbotKnowledge.findByIdAndDelete(req.params.id);
+  if (!entry) throw new AppError('Entry not found', 404);
+  successResponse(res, 200, 'Knowledge entry deleted');
+});
+
+/** Upload a file to Cloudinary and create a knowledge entry from it. */
+export const uploadKnowledgeFile = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  if (!req.file) throw new AppError('No file uploaded', 400);
+
+  const result   = await uploadFile(req.file.path, 'chatbot-knowledge');
+  const title    = req.body.title    || req.file.originalname;
+  const content  = req.body.content  || `File: ${req.file.originalname}. [Content from uploaded file — add a description or paste the extracted text here.]`;
+
+  const entry = await ChatbotKnowledge.create({
+    title,
+    content,
+    type:      'file',
+    fileUrl:   result.secure_url,
+    fileName:  req.file.originalname,
+    tags:      req.body.tags ? req.body.tags.split(',').map(t => t.trim()) : [],
+    isActive:  true,
+    createdBy: req.user._id,
+  });
+
+  successResponse(res, 201, 'File uploaded and knowledge entry created', entry);
+});

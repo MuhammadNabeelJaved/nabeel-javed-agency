@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, ArrowRight, CornerDownLeft } from 'lucide-react';
 import {
   LayoutDashboard, FolderKanban, Users, Mail, Briefcase, Database,
-  Megaphone, LayoutList, PenTool, Bot, MessageSquare, CreditCard,
+  Megaphone, LayoutList, PenTool, Bot, MessageSquare, MessageCircle, CreditCard,
   HelpCircle, Bell, Settings, Zap, CheckSquare, Calendar, Files,
   BarChart2, Sparkles, User, Activity, Globe, FileText, Star, Package,
 } from 'lucide-react';
@@ -48,6 +48,10 @@ const ADMIN_ITEMS: SearchItem[] = [
   { id: 'a-jobs',        label: 'Job Postings',           description: 'Manage open positions',          path: '/admin/jobs',              icon: Briefcase,       group: 'Pages',   keywords: ['careers', 'hiring', 'positions'] },
   { id: 'a-apps',        label: 'Job Applications',       description: 'Review applicants',              path: '/admin/job-applications',  icon: FileText,        group: 'Pages',   keywords: ['applicants', 'candidates', 'hiring'] },
   { id: 'a-ai',          label: 'AI Tools',               description: 'AI-powered features',            path: '/admin/ai-tools',          icon: Bot,             group: 'Pages',   keywords: ['artificial intelligence', 'gpt', 'automation'] },
+  { id: 'a-chatbot',     label: 'Chatbot Manager',        description: 'Nova AI config, knowledge & logs', path: '/admin/chatbot-manager',              icon: MessageCircle,   group: 'Pages',   keywords: ['nova', 'chatbot', 'claude', 'ai', 'knowledge', 'sessions'] },
+  { id: 'a-chatbot-kb',  label: 'Chatbot Knowledge Base', description: 'Add/edit knowledge entries',        path: '/admin/chatbot-manager?tab=knowledge', icon: MessageCircle,   group: 'Pages',   keywords: ['knowledge', 'faq', 'documents', 'rag'] },
+  { id: 'a-chatbot-cfg', label: 'Chatbot Config',         description: 'API keys, system prompt, model',   path: '/admin/chatbot-manager?tab=config',    icon: MessageCircle,   group: 'Pages',   keywords: ['api key', 'claude', 'model', 'prompt', 'config'] },
+  { id: 'a-chatbot-logs',label: 'Conversation Logs',      description: 'View & manage chat sessions',      path: '/admin/chatbot-manager?tab=logs',      icon: MessageCircle,   group: 'Pages',   keywords: ['sessions', 'conversations', 'logs', 'history'] },
   { id: 'a-support',     label: 'Client Tickets',         description: 'Manage client support tickets',  path: '/admin/support',           icon: HelpCircle,      group: 'Pages',   keywords: ['help', 'tickets', 'issues', 'support', 'client'] },
   { id: 'a-notifs',      label: 'Notifications',          description: 'Notification centre',            path: '/admin/notifications',     icon: Bell,            group: 'Pages',   keywords: ['alerts', 'updates'] },
   { id: 'a-settings',    label: 'Settings',               description: 'Account & system settings',      path: '/admin/settings',          icon: Settings,        group: 'Pages',   keywords: ['config', 'preferences', 'account'] },

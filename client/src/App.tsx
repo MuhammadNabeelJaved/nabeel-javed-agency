@@ -64,6 +64,7 @@ import Projects from './pages/admin/Projects';
 import ServicesAdmin from './pages/admin/ServicesAdmin';
 import CategoriesAdmin from './pages/admin/CategoriesAdmin';
 import AITools from './pages/admin/AITools';
+import ChatbotManager from './pages/admin/ChatbotManager';
 import Support from './pages/admin/Support';
 import Notifications from './pages/admin/Notifications';
 import Settings from './pages/admin/Settings';
@@ -267,6 +268,7 @@ export default function App() {
                 <Route path="services" element={<ServicesAdmin />} />
                 <Route path="categories" element={<CategoriesAdmin />} />
                 <Route path="ai-tools" element={<AITools />} />
+                <Route path="chatbot-manager" element={<ChatbotManager />} />
                 <Route path="support" element={<Support />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="team" element={<TeamManagement />} />

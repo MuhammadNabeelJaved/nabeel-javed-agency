@@ -32,6 +32,17 @@ import {
   ListChecks,
   FilePlus2,
   PenLine,
+  GitBranch,
+  Upload,
+  Table2,
+  Zap,
+  ShieldCheck,
+  Eye,
+  Key,
+  BarChart3,
+  FileUp,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -925,6 +936,8 @@ function DocBrowserDialog({ collection, onClose }: DocBrowserProps) {
 function CollectionsTab({ collections, loading, onRefresh }: { collections: CollectionInfo[]; loading: boolean; onRefresh: () => void }) {
   const [search, setSearch] = useState('');
   const [browserTarget, setBrowserTarget] = useState<CollectionInfo | null>(null);
+  const [indexTarget, setIndexTarget] = useState<string | null>(null);
+  const [schemaTarget, setSchemaTarget] = useState<string | null>(null);
 
   // Bulk create state
   const [showBulkCreate, setShowBulkCreate] = useState(false);
@@ -1073,7 +1086,7 @@ function CollectionsTab({ collections, loading, onRefresh }: { collections: Coll
                 <th className="text-right px-4 py-3 font-medium">Size</th>
                 <th className="text-right px-4 py-3 font-medium">Avg Doc</th>
                 <th className="text-right px-4 py-3 font-medium">Indexes</th>
-                <th className="text-right px-4 py-3 font-medium w-10"></th>
+                <th className="text-right px-4 py-3 font-medium w-28"></th>
               </tr>
             </thead>
             <tbody>
@@ -1108,8 +1121,24 @@ function CollectionsTab({ collections, loading, onRefresh }: { collections: Coll
                     <td className="px-4 py-3 text-right">
                       <Badge variant="outline" className="border-border text-xs">{col.indexCount}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          title="Schema Inspector"
+                          onClick={() => setSchemaTarget(col.name)}
+                          className="h-7 w-7 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-600 flex items-center justify-center transition-colors"
+                        >
+                          <Table2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          title="Index Manager"
+                          onClick={() => setIndexTarget(col.name)}
+                          className="h-7 w-7 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                        >
+                          <Key className="h-3.5 w-3.5" />
+                        </button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" onClick={(e) => { e.stopPropagation(); setBrowserTarget(col); }} />
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1133,6 +1162,22 @@ function CollectionsTab({ collections, loading, onRefresh }: { collections: Coll
         <DocBrowserDialog
           collection={browserTarget}
           onClose={() => setBrowserTarget(null)}
+        />
+      )}
+
+      {/* Index Manager Modal */}
+      {indexTarget && (
+        <IndexManagerModal
+          collectionName={indexTarget}
+          onClose={() => setIndexTarget(null)}
+        />
+      )}
+
+      {/* Schema Inspector Modal */}
+      {schemaTarget && (
+        <SchemaInspectorModal
+          collectionName={schemaTarget}
+          onClose={() => setSchemaTarget(null)}
         />
       )}
 
@@ -1782,6 +1827,611 @@ function ExportTab({ collections }: { collections: CollectionInfo[] }) {
   );
 }
 
+// ─── Index Manager Modal ──────────────────────────────────────────────────────
+interface IndexManagerProps {
+  collectionName: string;
+  onClose: () => void;
+}
+
+function IndexManagerModal({ collectionName, onClose }: IndexManagerProps) {
+  const [indexes, setIndexes] = useState<{ name: string; key: Record<string, unknown>; unique?: boolean; sparse?: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dropping, setDropping] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createKeys, setCreateKeys] = useState('{ "fieldName": 1 }');
+  const [createOptions, setCreateOptions] = useState('{}');
+  const [creating, setCreating] = useState(false);
+  const [jsonError, setJsonError] = useState('');
+
+  const fetchIndexes = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.get(`/database/collections/${collectionName}`);
+      setIndexes(res.data?.data?.indexes ?? []);
+    } catch { toast.error('Failed to load indexes'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchIndexes(); }, []);
+
+  const handleDrop = async (indexName: string) => {
+    if (indexName === '_id_') { toast.error('Cannot drop _id index'); return; }
+    setDropping(indexName);
+    try {
+      await apiClient.delete(`/database/collections/${collectionName}/indexes/${encodeURIComponent(indexName)}`);
+      toast.success(`Index '${indexName}' dropped`);
+      fetchIndexes();
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Drop failed'); }
+    finally { setDropping(null); }
+  };
+
+  const handleCreate = async () => {
+    let keys: unknown, opts: unknown;
+    try { keys = JSON.parse(createKeys); } catch { setJsonError('Invalid keys JSON'); return; }
+    try { opts = JSON.parse(createOptions); } catch { setJsonError('Invalid options JSON'); return; }
+    setCreating(true);
+    try {
+      const res = await apiClient.post(`/database/collections/${collectionName}/indexes`, { keys, options: opts });
+      toast.success(res.data?.message || 'Index created');
+      setShowCreate(false);
+      setJsonError('');
+      fetchIndexes();
+    } catch (err: any) { toast.error(err?.response?.data?.message || 'Create failed'); }
+    finally { setCreating(false); }
+  };
+
+  const themeClass = typeof document !== 'undefined'
+    ? document.documentElement.classList.contains('dark') ? 'dark' : '' : '';
+
+  return createPortal(
+    <div className={themeClass}>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="relative w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Key className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-base font-mono">{collectionName}</h2>
+                <p className="text-xs text-muted-foreground">Index Manager — {indexes.length} index{indexes.length !== 1 ? 'es' : ''}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => { setShowCreate(s => !s); setJsonError(''); }}>
+                <Plus className="h-3.5 w-3.5" /> {showCreate ? 'Cancel' : 'New Index'}
+              </Button>
+              <button onClick={onClose} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent text-muted-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {showCreate && (
+            <div className="px-6 py-4 border-b border-border bg-muted/10 space-y-3 shrink-0">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Create New Index</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Keys (JSON)</label>
+                  <textarea
+                    value={createKeys}
+                    onChange={e => { setCreateKeys(e.target.value); setJsonError(''); }}
+                    rows={3}
+                    spellCheck={false}
+                    className="w-full bg-muted/60 border border-border rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                    placeholder='{ "email": 1 }'
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Options (JSON, optional)</label>
+                  <textarea
+                    value={createOptions}
+                    onChange={e => { setCreateOptions(e.target.value); setJsonError(''); }}
+                    rows={3}
+                    spellCheck={false}
+                    className="w-full bg-muted/60 border border-border rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                    placeholder='{ "unique": true }'
+                  />
+                </div>
+              </div>
+              {jsonError && <p className="text-xs text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{jsonError}</p>}
+              <Button size="sm" onClick={handleCreate} disabled={creating} className="gap-2">
+                {creating ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Create Index
+              </Button>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="p-6 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14" />)}</div>
+            ) : indexes.length === 0 ? (
+              <div className="py-16 text-center text-muted-foreground">
+                <Key className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">No indexes found</p>
+              </div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-muted/60 backdrop-blur-sm border-b border-border">
+                    <th className="text-left px-5 py-3 font-semibold text-muted-foreground">Index Name</th>
+                    <th className="text-left px-5 py-3 font-semibold text-muted-foreground">Key</th>
+                    <th className="text-left px-5 py-3 font-semibold text-muted-foreground">Flags</th>
+                    <th className="w-16 px-5 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {indexes.map(idx => (
+                    <tr key={idx.name} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-3 font-mono font-medium text-foreground">{idx.name}</td>
+                      <td className="px-5 py-3 font-mono text-muted-foreground">{JSON.stringify(idx.key)}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex gap-1 flex-wrap">
+                          {idx.unique && <span className="text-[10px] bg-violet-500/10 text-violet-600 border border-violet-500/20 px-1.5 py-0.5 rounded-md font-medium">unique</span>}
+                          {idx.sparse && <span className="text-[10px] bg-blue-500/10 text-blue-600 border border-blue-500/20 px-1.5 py-0.5 rounded-md font-medium">sparse</span>}
+                          {idx.name === '_id_' && <span className="text-[10px] bg-muted text-muted-foreground border border-border px-1.5 py-0.5 rounded-md font-medium">default</span>}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        {idx.name !== '_id_' && (
+                          <button
+                            onClick={() => handleDrop(idx.name)}
+                            disabled={dropping === idx.name}
+                            className="h-7 w-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center transition-colors mx-auto"
+                            title={`Drop index ${idx.name}`}
+                          >
+                            {dropping === idx.name ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ─── Schema Inspector Modal ───────────────────────────────────────────────────
+interface SchemaInspectorProps {
+  collectionName: string;
+  onClose: () => void;
+}
+
+function SchemaInspectorModal({ collectionName, onClose }: SchemaInspectorProps) {
+  const [fields, setFields] = useState<{ name: string; types: Record<string, number>; presence: number; nullCount: number; dominantType: string }[]>([]);
+  const [sampleSize, setSampleSize] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiClient.get(`/database/collections/${collectionName}/schema`);
+        setFields(res.data?.data?.fields ?? []);
+        setSampleSize(res.data?.data?.sampleSize ?? 0);
+      } catch { toast.error('Failed to infer schema'); }
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  const typeColor = (t: string) => {
+    if (t === 'string')   return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+    if (t === 'number')   return 'bg-green-500/10 text-green-600 border-green-500/20';
+    if (t === 'boolean')  return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+    if (t === 'ObjectId') return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
+    if (t === 'date')     return 'bg-orange-500/10 text-orange-600 border-orange-500/20';
+    if (t === 'array')    return 'bg-pink-500/10 text-pink-600 border-pink-500/20';
+    if (t === 'object')   return 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20';
+    return 'bg-muted text-muted-foreground border-border';
+  };
+
+  const themeClass = typeof document !== 'undefined'
+    ? document.documentElement.classList.contains('dark') ? 'dark' : '' : '';
+
+  return createPortal(
+    <div className={themeClass}>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="relative w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/40 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                <Table2 className="h-4 w-4 text-green-500" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-base font-mono">{collectionName}</h2>
+                <p className="text-xs text-muted-foreground">Schema Inspector — sampled {sampleSize} documents</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-accent text-muted-foreground transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="p-6 space-y-2">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+            ) : fields.length === 0 ? (
+              <div className="py-16 text-center text-muted-foreground">
+                <Table2 className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">No schema data (empty collection)</p>
+              </div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-muted/60 backdrop-blur-sm border-b border-border">
+                    <th className="text-left px-5 py-3 font-semibold text-muted-foreground">Field</th>
+                    <th className="text-left px-5 py-3 font-semibold text-muted-foreground">Type</th>
+                    <th className="text-left px-5 py-3 font-semibold text-muted-foreground">Presence</th>
+                    <th className="text-right px-5 py-3 font-semibold text-muted-foreground">Nulls</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {fields.map(f => (
+                    <tr key={f.name} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-3 font-mono font-medium text-foreground">{f.name}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex gap-1 flex-wrap">
+                          {Object.entries(f.types).map(([t, cnt]) => (
+                            <span key={t} className={`text-[10px] border px-1.5 py-0.5 rounded-md font-medium ${typeColor(t)}`}>
+                              {t} ({cnt})
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[80px]">
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${f.presence}%` }} />
+                          </div>
+                          <span className="text-muted-foreground">{f.presence}%</span>
+                        </div>
+                      </td>
+                      <td className={`px-5 py-3 text-right font-mono ${f.nullCount > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                        {f.nullCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ─── Tab 6: Aggregate Pipeline ────────────────────────────────────────────────
+function AggregateTab({ collections }: { collections: CollectionInfo[] }) {
+  const [collection, setCollection] = useState('');
+  const [pipeline, setPipeline] = useState('[\n  { "$match": {} },\n  { "$limit": 20 }\n]');
+  const [executing, setExecuting] = useState(false);
+  const [result, setResult] = useState<{ collection: string; count: number; executionTimeMs: number; results: Record<string, unknown>[] } | null>(null);
+  const [jsonError, setJsonError] = useState('');
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  const TEMPLATES = [
+    { label: 'Count by field', code: '[\n  { "$group": { "_id": "$fieldName", "count": { "$sum": 1 } } },\n  { "$sort": { "count": -1 } }\n]' },
+    { label: 'Date histogram', code: '[\n  { "$group": {\n    "_id": { "year": { "$year": "$createdAt" }, "month": { "$month": "$createdAt" } },\n    "count": { "$sum": 1 }\n  }},\n  { "$sort": { "_id.year": 1, "_id.month": 1 } }\n]' },
+    { label: 'Top 10 by field', code: '[\n  { "$sort": { "fieldName": -1 } },\n  { "$limit": 10 }\n]' },
+    { label: 'Avg / Sum', code: '[\n  { "$group": {\n    "_id": null,\n    "total": { "$sum": "$amount" },\n    "average": { "$avg": "$amount" }\n  }}\n]' },
+    { label: 'Lookup join', code: '[\n  { "$lookup": {\n    "from": "otherCollection",\n    "localField": "userId",\n    "foreignField": "_id",\n    "as": "joined"\n  }},\n  { "$limit": 20 }\n]' },
+  ];
+
+  async function handleExecute() {
+    if (!collection) { toast.error('Please select a collection'); return; }
+    let parsed: unknown[];
+    try { parsed = JSON.parse(pipeline); } catch { setJsonError('Invalid JSON array'); return; }
+    if (!Array.isArray(parsed)) { setJsonError('Pipeline must be a JSON array [ ... ]'); return; }
+    setJsonError('');
+    setExecuting(true);
+    setResult(null);
+    setExpandedRows(new Set());
+    try {
+      const res = await apiClient.post('/database/aggregate', { collection, pipeline: parsed });
+      setResult(res.data?.data ?? null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Aggregation failed');
+    } finally { setExecuting(false); }
+  }
+
+  const columns = result && result.results.length > 0 ? Object.keys(result.results[0]).slice(0, 8) : [];
+  function trunc(v: unknown) {
+    const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return s.length > 50 ? s.slice(0, 50) + '…' : s;
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <Card className="bg-muted/30 border-border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle className="text-base flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-primary" />
+              Aggregation Pipeline
+            </CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">Templates:</span>
+              {TEMPLATES.map(t => (
+                <button
+                  key={t.label}
+                  onClick={() => { setPipeline(t.code); setJsonError(''); }}
+                  className="text-xs px-2 py-1 rounded-lg bg-muted border border-border hover:bg-accent hover:border-primary/30 transition-colors font-medium"
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Collection</Label>
+              <Select value={collection} onValueChange={setCollection} className="bg-muted/30 border-border">
+                <SelectItem value="">-- Select collection --</SelectItem>
+                {collections.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}
+              </Select>
+            </div>
+            <div className="md:col-span-2 flex items-end gap-2">
+              <div className="flex-1 bg-muted/20 border border-border rounded-xl px-4 py-2.5 text-xs text-muted-foreground space-y-0.5">
+                <p><span className="text-primary font-mono">$match</span> — filter documents</p>
+                <p><span className="text-primary font-mono">$group</span> — group & aggregate</p>
+                <p><span className="text-primary font-mono">$sort $limit $project $lookup</span> — transform</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Pipeline (JSON array of stage objects)</Label>
+            <textarea
+              value={pipeline}
+              onChange={e => { setPipeline(e.target.value); setJsonError(''); }}
+              rows={10}
+              spellCheck={false}
+              className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y leading-relaxed"
+            />
+            {jsonError && <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" />{jsonError}</p>}
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleExecute} disabled={executing} className="gap-2">
+              {executing ? <><RefreshCw className="h-4 w-4 animate-spin" />Running…</> : <><Play className="h-4 w-4" />Run Pipeline</>}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {result ? (
+        <Card className="bg-muted/30 border-border overflow-hidden">
+          <CardHeader className="pb-3 flex-row items-center justify-between">
+            <CardTitle className="text-sm">
+              Results — {result.count} document{result.count !== 1 ? 's' : ''}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="border-border text-xs">
+                <Clock className="h-3 w-3 mr-1" />{result.executionTimeMs}ms
+              </Badge>
+              <Badge variant="outline" className="border-border text-xs font-mono">{result.collection}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {result.results.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground text-sm">
+                <Database className="h-8 w-8 mx-auto mb-3 opacity-30" />No results
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground bg-muted/20">
+                      <th className="px-3 py-2 text-left w-8">#</th>
+                      {columns.map(c => <th key={c} className="px-3 py-2 text-left font-medium font-mono">{c}</th>)}
+                      <th className="px-3 py-2 text-left w-14">JSON</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.results.map((row, i) => (
+                      <React.Fragment key={i}>
+                        <tr className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
+                          {columns.map(c => (
+                            <td key={c} className="px-3 py-2 font-mono max-w-[160px] truncate">{trunc(row[c])}</td>
+                          ))}
+                          <td className="px-3 py-2">
+                            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2"
+                              onClick={() => setExpandedRows(p => { const n = new Set(p); n.has(i) ? n.delete(i) : n.add(i); return n; })}>
+                              {expandedRows.has(i) ? 'Hide' : 'View'}
+                            </Button>
+                          </td>
+                        </tr>
+                        {expandedRows.has(i) && (
+                          <tr className="border-b border-border">
+                            <td colSpan={columns.length + 2} className="px-3 py-2">
+                              <pre className="bg-muted border border-border rounded-lg p-3 text-[11px] font-mono text-emerald-700 dark:text-green-400 overflow-x-auto max-h-60">
+                                {JSON.stringify(row, null, 2)}
+                              </pre>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : !executing && (
+        <Card className="bg-muted/30 border-border">
+          <CardContent className="py-12 text-center">
+            <GitBranch className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
+            <p className="text-muted-foreground text-sm">Run a pipeline to see aggregated results</p>
+          </CardContent>
+        </Card>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── Tab 7: Import ────────────────────────────────────────────────────────────
+function ImportTab({ collections, onRefresh }: { collections: CollectionInfo[]; onRefresh: () => void }) {
+  const [collection, setCollection] = useState('');
+  const [jsonText, setJsonText] = useState('');
+  const [upsert, setUpsert] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [jsonError, setJsonError] = useState('');
+  const [result, setResult] = useState<{ insertedCount: number; skippedCount: number; errors: string[] } | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target?.result as string;
+      setJsonText(text);
+      setJsonError('');
+      setResult(null);
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleImport() {
+    if (!collection) { toast.error('Please select a collection'); return; }
+    if (!jsonText.trim()) { toast.error('Please provide JSON data'); return; }
+    let parsed: unknown;
+    try { parsed = JSON.parse(jsonText); } catch { setJsonError('Invalid JSON — paste a JSON array [ {...}, {...} ]'); return; }
+    if (!Array.isArray(parsed)) { setJsonError('JSON must be an array of objects'); return; }
+    if (parsed.length === 0) { setJsonError('Array is empty'); return; }
+    setJsonError('');
+    setImporting(true);
+    setResult(null);
+    try {
+      const res = await apiClient.post(`/database/import/${collection}`, { documents: parsed, upsert });
+      setResult(res.data?.data ?? null);
+      toast.success(res.data?.message || 'Import complete');
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Import failed');
+    } finally { setImporting(false); }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      {/* Warning */}
+      <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+        <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-800 dark:text-amber-200">
+          Import up to <strong>1,000 documents</strong> at a time. By default, new IDs are assigned and existing ones are ignored. Enable <strong>Upsert</strong> to update existing docs by their _id.
+        </p>
+      </div>
+
+      <Card className="bg-muted/30 border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileUp className="h-4 w-4 text-primary" />
+            Import JSON Documents
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Target Collection</Label>
+              <Select value={collection} onValueChange={setCollection} className="bg-muted/30 border-border">
+                <SelectItem value="">-- Select collection --</SelectItem>
+                {collections.map(c => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}
+              </Select>
+            </div>
+            <div className="flex items-end gap-3">
+              <div>
+                <Label className="text-xs block mb-1.5">Upload JSON File</Label>
+                <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
+                <Button variant="outline" size="sm" className="gap-2 border-border" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="h-3.5 w-3.5" /> Choose File
+                </Button>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none pb-1">
+                <div
+                  onClick={() => setUpsert(u => !u)}
+                  className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${upsert ? 'bg-primary' : 'bg-muted border border-border'}`}
+                >
+                  <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${upsert ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </div>
+                <span className="text-xs text-muted-foreground">Upsert mode</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">JSON Data (array of objects)</Label>
+            <textarea
+              value={jsonText}
+              onChange={e => { setJsonText(e.target.value); setJsonError(''); setResult(null); }}
+              rows={14}
+              spellCheck={false}
+              placeholder={'[\n  { "name": "Alice", "email": "alice@example.com" },\n  { "name": "Bob",   "email": "bob@example.com"   }\n]'}
+              className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-y leading-relaxed placeholder:text-muted-foreground/40"
+            />
+            {jsonError && <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" />{jsonError}</p>}
+          </div>
+
+          {jsonText.trim() && !jsonError && (() => {
+            try {
+              const parsed = JSON.parse(jsonText);
+              if (Array.isArray(parsed)) {
+                return <p className="text-xs text-muted-foreground">{parsed.length} document{parsed.length !== 1 ? 's' : ''} ready to import</p>;
+              }
+            } catch { return null; }
+            return null;
+          })()}
+
+          <div className="flex justify-end">
+            <Button onClick={handleImport} disabled={importing || !collection || !jsonText.trim()} className="gap-2">
+              {importing ? <><RefreshCw className="h-4 w-4 animate-spin" />Importing…</> : <><FileUp className="h-4 w-4" />Import</>}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {result && (
+        <Card className={`border-border ${result.insertedCount > 0 ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              {result.insertedCount > 0
+                ? <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                : <XCircle className="h-5 w-5 text-red-500 shrink-0" />
+              }
+              <div>
+                <p className="font-semibold text-sm">
+                  {result.insertedCount > 0 ? 'Import complete' : 'Import failed'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {result.insertedCount} inserted · {result.skippedCount} skipped
+                </p>
+              </div>
+            </div>
+            {result.errors.length > 0 && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                <p className="text-xs font-semibold text-red-500 mb-1">Errors (first 10)</p>
+                {result.errors.map((e, i) => (
+                  <p key={i} className="text-xs text-muted-foreground font-mono">{e}</p>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </motion.div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function DatabaseManager() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -1853,11 +2503,13 @@ export default function DatabaseManager() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-muted/40 border border-border h-auto p-1 gap-0.5 flex-wrap">
           {[
-            { value: 'overview',    Icon: Database, label: 'Overview'    },
-            { value: 'collections', Icon: Layers,   label: 'Collections' },
-            { value: 'insights',    Icon: Activity, label: 'Insights'    },
-            { value: 'query',       Icon: Play,     label: 'Query'       },
-            { value: 'export',      Icon: Download, label: 'Export'      },
+            { value: 'overview',    Icon: Database,  label: 'Overview'    },
+            { value: 'collections', Icon: Layers,    label: 'Collections' },
+            { value: 'insights',    Icon: Activity,  label: 'Insights'    },
+            { value: 'query',       Icon: Play,      label: 'Query'       },
+            { value: 'aggregate',   Icon: GitBranch, label: 'Aggregate'   },
+            { value: 'import',      Icon: FileUp,    label: 'Import'      },
+            { value: 'export',      Icon: Download,  label: 'Export'      },
           ].map(({ value, Icon, label }) => (
             <TabsTrigger
               key={value}
@@ -1883,6 +2535,14 @@ export default function DatabaseManager() {
 
         <TabsContent value="query">
           <QueryTab collections={collections} />
+        </TabsContent>
+
+        <TabsContent value="aggregate">
+          <AggregateTab collections={collections} />
+        </TabsContent>
+
+        <TabsContent value="import">
+          <ImportTab collections={collections} onRefresh={fetchCollections} />
         </TabsContent>
 
         <TabsContent value="export">

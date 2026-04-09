@@ -16,6 +16,11 @@ import {
   bulkUpdateDocuments,
   bulkCreateCollections,
   bulkDropCollections,
+  runAggregate,
+  createIndex,
+  dropIndex,
+  inferSchema,
+  importCollection,
 } from "../../controllers/usersControllers/database.controller.js";
 
 const router = express.Router();
@@ -39,6 +44,11 @@ router.put("/collections/:name/documents/:id", updateDocument);
 router.delete("/collections/:name/documents/:id", deleteDocument);
 router.get("/insights", getInsights);
 router.post("/query", executeQuery);
+router.post("/aggregate", runAggregate);
 router.get("/export/:name", exportCollection);
+router.post("/import/:name", importCollection);
+router.get("/collections/:name/schema", inferSchema);
+router.post("/collections/:name/indexes", createIndex);
+router.delete("/collections/:name/indexes/:indexName", dropIndex);
 
 export default router;
