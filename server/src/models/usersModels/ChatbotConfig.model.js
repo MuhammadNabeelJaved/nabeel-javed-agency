@@ -24,8 +24,8 @@ const chatbotConfigSchema = new mongoose.Schema({
   /** Which AI provider + model is currently active. */
   activeProvider: {
     type:    String,
-    enum:    ['claude', 'openai', 'gemini', 'custom'],
-    default: 'claude',
+    enum:    ['anthropic', 'claude', 'openai', 'gemini', 'custom'],
+    default: 'anthropic',
   },
   activeModel: { type: String, default: 'claude-opus-4-6', trim: true },
 
