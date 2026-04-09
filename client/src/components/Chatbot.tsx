@@ -35,12 +35,9 @@ interface Message {
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 
-/**
- * Renders a subset of markdown commonly produced by Claude:
- * headings (##/###), bold (**), italic (*/_), inline code (backtick),
- * bullet lists (- / *), numbered lists (1.), horizontal rules (---), line breaks.
- * Safe — no dangerouslySetInnerHTML; builds React elements directly.
- */
+// Renders a subset of markdown produced by Claude:
+// headings (##/###), bold, italic, inline code, bullet lists, numbered lists, hr, line breaks.
+// Safe — no dangerouslySetInnerHTML; builds React elements directly.
 function renderMarkdown(raw: string, streaming = false): React.ReactNode {
   const lines = raw.split('\n');
   const nodes: React.ReactNode[] = [];
