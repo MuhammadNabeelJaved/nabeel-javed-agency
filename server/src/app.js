@@ -126,6 +126,7 @@ import notificationRoutes from "./routes/userRoutes/notification.route.js";
 import databaseRoutes from "./routes/userRoutes/database.route.js";
 import cookieConsentRoutes from "./routes/userRoutes/cookieConsent.route.js";
 import supportTicketRoutes from "./routes/userRoutes/supportTicket.route.js";
+import chatbotRoutes from "./routes/userRoutes/chatbot.route.js";
 
 // ─── Dev-only Utilities ──────────────────────────────────────────────────────
 // These endpoints are BLOCKED in production. They are only registered when
@@ -161,6 +162,7 @@ app.use("/api/v1/notifications", notificationRoutes); // Notification list, mark
 app.use("/api/v1/database", databaseRoutes);           // Admin database manager
 app.use("/api/v1/consent", cookieConsentRoutes);       // GDPR cookie consent audit log
 app.use("/api/v1/support-tickets", supportTicketRoutes); // User support tickets
+app.use("/api/v1/chatbot",         chatbotRoutes);         // AI chatbot (public chat + admin management)
 
 // ─── Error Handling ─────────────────────────────────────────────────────────
 

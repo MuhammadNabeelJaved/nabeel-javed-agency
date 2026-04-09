@@ -13,6 +13,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.86.1",
     "@socket.io/redis-adapter": "^8.3.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.1",

@@ -664,6 +664,203 @@ export const bulkCreateCollections = asyncHandler(async (req, res) => {
   return successResponse(res, `${created.length} collection(s) created`, { created, errors });
 });
 
+// ---------------------------------------------------------------------------
+// 11. POST /aggregate — read-only aggregation pipeline
+// ---------------------------------------------------------------------------
+export const runAggregate = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  let { collection, pipeline } = req.body;
+
+  if (!collection || !isValidCollectionName(collection)) {
+    throw new AppError("Invalid or missing collection name", 400);
+  }
+  if (!Array.isArray(pipeline) || pipeline.length === 0) {
+    throw new AppError("'pipeline' must be a non-empty array of stage objects", 400);
+  }
+  if (pipeline.length > 20) throw new AppError("Maximum 20 pipeline stages allowed", 400);
+
+  // Block write stages
+  const WRITE_STAGES = ["$out", "$merge"];
+  for (const stage of pipeline) {
+    const keys = Object.keys(stage);
+    if (keys.some((k) => WRITE_STAGES.includes(k))) {
+      throw new AppError(`Write stage '${keys[0]}' is not permitted`, 400);
+    }
+  }
+
+  // Safeguard: append $limit 100 if none present
+  const hasLimit = pipeline.some((s) => "$limit" in s);
+  if (!hasLimit) pipeline = [...pipeline, { $limit: 100 }];
+
+  const db = mongoose.connection.db;
+
+  // Verify collection exists
+  const all = await db.listCollections().toArray();
+  if (!all.some((c) => c.name === collection)) {
+    throw new AppError(`Collection '${collection}' not found`, 404);
+  }
+
+  const start = Date.now();
+  const results = await db.collection(collection).aggregate(pipeline).toArray();
+  const executionTimeMs = Date.now() - start;
+
+  return successResponse(res, "Aggregation executed", {
+    collection,
+    count: results.length,
+    executionTimeMs,
+    results,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 12. POST /collections/:name/indexes — create an index
+// ---------------------------------------------------------------------------
+export const createIndex = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  const { name } = req.params;
+  if (!isValidCollectionName(name)) throw new AppError("Invalid collection name", 400);
+
+  const { keys, options = {} } = req.body;
+  if (!keys || typeof keys !== "object" || Array.isArray(keys)) {
+    throw new AppError("'keys' must be a JSON object, e.g. { \"fieldName\": 1 }", 400);
+  }
+
+  // Strip unsafe option keys
+  const { background, ...safeOptions } = options;
+
+  const db = mongoose.connection.db;
+  const indexName = await db.collection(name).createIndex(keys, safeOptions);
+
+  return successResponse(res, `Index '${indexName}' created successfully`, { indexName });
+});
+
+// ---------------------------------------------------------------------------
+// 13. DELETE /collections/:name/indexes/:indexName — drop an index
+// ---------------------------------------------------------------------------
+export const dropIndex = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  const { name, indexName } = req.params;
+  if (!isValidCollectionName(name)) throw new AppError("Invalid collection name", 400);
+  if (indexName === "_id_") throw new AppError("Cannot drop the default _id index", 400);
+
+  const db = mongoose.connection.db;
+  await db.collection(name).dropIndex(indexName);
+
+  return successResponse(res, `Index '${indexName}' dropped successfully`, { indexName });
+});
+
+// ---------------------------------------------------------------------------
+// 14. GET /collections/:name/schema — infer schema from up to 100 sample docs
+// ---------------------------------------------------------------------------
+export const inferSchema = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  const { name } = req.params;
+  if (!isValidCollectionName(name)) throw new AppError("Invalid collection name", 400);
+
+  const db = mongoose.connection.db;
+  const sample = await db.collection(name).find({}).limit(100).toArray();
+
+  if (sample.length === 0) {
+    return successResponse(res, "Schema inferred", { fields: [], sampleSize: 0 });
+  }
+
+  // Accumulate field → type info
+  const fieldMap = {};
+  for (const doc of sample) {
+    for (const [key, val] of Object.entries(doc)) {
+      if (!fieldMap[key]) {
+        fieldMap[key] = { name: key, types: {}, presentIn: 0, nullCount: 0 };
+      }
+      fieldMap[key].presentIn++;
+      if (val === null || val === undefined) {
+        fieldMap[key].nullCount++;
+      } else {
+        const type =
+          Array.isArray(val)           ? "array"
+          : val instanceof Date        ? "date"
+          : val?._bsontype === "ObjectId" ? "ObjectId"
+          : typeof val === "object"    ? "object"
+          : typeof val;
+        fieldMap[key].types[type] = (fieldMap[key].types[type] || 0) + 1;
+      }
+    }
+  }
+
+  const fields = Object.values(fieldMap)
+    .map((f) => ({
+      name: f.name,
+      types: f.types,
+      presence: Math.round((f.presentIn / sample.length) * 100),
+      nullCount: f.nullCount,
+      dominantType:
+        Object.entries(f.types).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "null",
+    }))
+    .sort((a, b) => b.presence - a.presence);
+
+  return successResponse(res, "Schema inferred", { fields, sampleSize: sample.length });
+});
+
+// ---------------------------------------------------------------------------
+// 15. POST /import/:name — import JSON array into collection (max 1000 docs)
+// ---------------------------------------------------------------------------
+export const importCollection = asyncHandler(async (req, res) => {
+  requireAdmin(req);
+
+  const { name } = req.params;
+  if (!isValidCollectionName(name)) throw new AppError("Invalid collection name", 400);
+
+  const { documents, upsert = false } = req.body;
+  if (!Array.isArray(documents) || documents.length === 0) {
+    throw new AppError("'documents' must be a non-empty array", 400);
+  }
+  if (documents.length > 1000) {
+    throw new AppError("Maximum 1,000 documents per import", 400);
+  }
+
+  const db = mongoose.connection.db;
+
+  let insertedCount = 0;
+  let skippedCount  = 0;
+  const errors      = [];
+
+  if (upsert) {
+    const { ObjectId } = mongoose.Types;
+    for (const doc of documents) {
+      try {
+        const filter = doc._id ? { _id: new ObjectId(String(doc._id)) } : { _id: new ObjectId() };
+        const { _id, ...fields } = doc;
+        await db.collection(name).updateOne(filter, { $set: fields }, { upsert: true });
+        insertedCount++;
+      } catch (err) {
+        skippedCount++;
+        errors.push(err.message);
+      }
+    }
+  } else {
+    try {
+      // Strip _id to let MongoDB assign fresh IDs
+      const clean = documents.map(({ _id, ...rest }) => rest);
+      const result = await db.collection(name).insertMany(clean, { ordered: false });
+      insertedCount = result.insertedCount;
+    } catch (err) {
+      // Partial success possible with ordered:false
+      insertedCount = err.result?.insertedCount ?? 0;
+      skippedCount  = documents.length - insertedCount;
+      if (insertedCount === 0) throw new AppError(err.message, 400);
+    }
+  }
+
+  return successResponse(res, `Import complete — ${insertedCount} inserted, ${skippedCount} skipped`, {
+    insertedCount,
+    skippedCount,
+    errors: errors.slice(0, 10),
+  });
+});
+
 export const exportCollection = asyncHandler(async (req, res) => {
   requireAdmin(req);
 
