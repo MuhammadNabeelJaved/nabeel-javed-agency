@@ -80,11 +80,17 @@ async function getOrCreateConfig() {
   return cfg;
 }
 
-/** Find the active API key entry for the given provider, decrypt and return the key string. */
-function resolveApiKey(cfg, provider) {
-  const entry = cfg.apiKeys.find(k => k.provider === provider && k.isActive);
-  if (!entry) return null;
-  return decryptKey(entry.encryptedKey);
+/**
+ * Return the decrypted active API key.
+ * Searches by isActive flag only — provider matching is intentionally omitted
+ * because the UI stores provider as 'anthropic' while activeProvider defaults
+ * to 'claude', causing a mismatch.  Falls back to ANTHROPIC_API_KEY env var.
+ */
+function resolveApiKey(cfg) {
+  const entry = cfg.apiKeys.find(k => k.isActive);
+  if (entry) return decryptKey(entry.encryptedKey);
+  // Fallback: use env var so the chatbot works without a DB-stored key
+  return process.env.ANTHROPIC_API_KEY || null;
 }
 
 // ─── Knowledge retrieval ──────────────────────────────────────────────────────
@@ -170,7 +176,7 @@ export const chat = asyncHandler(async (req, res) => {
   }
 
   // Resolve the active API key
-  const apiKey = resolveApiKey(cfg, cfg.activeProvider);
+  const apiKey = resolveApiKey(cfg);
   if (!apiKey) {
     throw new AppError('No active API key configured for the chatbot', 503);
   }
@@ -445,9 +451,11 @@ export const addApiKey = asyncHandler(async (req, res) => {
 
   const cfg = await getOrCreateConfig();
 
-  // If setActive, deactivate all other keys
+  // If setActive, deactivate all other keys and sync activeProvider
   if (setActive) {
     cfg.apiKeys.forEach(k => { k.isActive = false; });
+    // Keep activeProvider in sync so display reflects the active key's service
+    cfg.activeProvider = provider;
   }
 
   cfg.apiKeys.push({ provider, encryptedKey, label: label || '', isActive: !!setActive });
