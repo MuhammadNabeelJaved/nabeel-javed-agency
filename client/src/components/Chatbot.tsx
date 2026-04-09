@@ -11,10 +11,11 @@
  * - Disabled gracefully when admin has turned off the chatbot
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageCircle, X, Send, Bot, Loader2,
   Paperclip, FileText, Sparkles, Minimize2, Maximize2,
-  Trash2, Mic, AlertCircle,
+  Trash2, Mic, AlertCircle, ExternalLink, ArrowRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
@@ -33,19 +34,25 @@ interface Message {
   error?: boolean;
 }
 
-// ─── Markdown renderer ────────────────────────────────────────────────────────
+// ─── Markdown + CTA renderer ──────────────────────────────────────────────────
 
-// Renders a subset of markdown produced by Claude:
-// headings (##/###), bold, italic, inline code, bullet lists, numbered lists, hr, line breaks.
+// CTA marker pattern: [CTA:/path|Button Label]
+const CTA_RE = /\[CTA:([^\]|]+)\|([^\]]+)\]/g;
+
+// Renders a subset of markdown produced by Claude including [CTA:/path|Label] buttons.
 // Safe — no dangerouslySetInnerHTML; builds React elements directly.
-function renderMarkdown(raw: string, streaming = false): React.ReactNode {
+function renderMarkdown(
+  raw: string,
+  streaming = false,
+  onNavigate?: (path: string) => void,
+): React.ReactNode {
   const lines = raw.split('\n');
   const nodes: React.ReactNode[] = [];
+  const ctaButtons: Array<{ path: string; label: string }> = [];
 
-  // Inline: bold, italic, inline-code, links
+  // Inline: bold, italic, inline-code
   const inline = (text: string, key: string): React.ReactNode => {
     const parts: React.ReactNode[] = [];
-    // regex covers: **bold**, *italic*, `code`
     const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g;
     let last = 0;
     let m: RegExpExecArray | null;
@@ -69,6 +76,16 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
     const line = lines[i];
     const trimmed = line.trim();
 
+    // CTA marker line — collect buttons, don't render text
+    if (/^\[CTA:/.test(trimmed)) {
+      let m2: RegExpExecArray | null;
+      CTA_RE.lastIndex = 0;
+      while ((m2 = CTA_RE.exec(trimmed)) !== null) {
+        ctaButtons.push({ path: m2[1].trim(), label: m2[2].trim() });
+      }
+      i++; continue;
+    }
+
     // Horizontal rule
     if (/^[-*_]{3,}$/.test(trimmed)) {
       nodes.push(<hr key={i} className="border-border/40 my-2" />);
@@ -88,7 +105,7 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
       i++; continue;
     }
 
-    // Collect bullet list block (- or * or •)
+    // Bullet list block
     if (/^[-*•]\s/.test(trimmed)) {
       const items: React.ReactNode[] = [];
       while (i < lines.length && /^[-*•]\s/.test(lines[i].trim())) {
@@ -105,7 +122,7 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
       continue;
     }
 
-    // Collect numbered list block (1. 2. …)
+    // Numbered list block
     if (/^\d+\.\s/.test(trimmed)) {
       const items: React.ReactNode[] = [];
       let num = 1;
@@ -123,16 +140,14 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
       continue;
     }
 
-    // Empty line → visual spacer (skip consecutive blanks)
+    // Empty line → spacer
     if (trimmed === '') {
       if (nodes.length > 0) nodes.push(<div key={`br-${i}`} className="h-2" />);
       i++; continue;
     }
 
-    // Normal paragraph line
-    nodes.push(
-      <p key={i} className="leading-relaxed">{inline(trimmed, `p${i}`)}</p>
-    );
+    // Normal paragraph
+    nodes.push(<p key={i} className="leading-relaxed">{inline(trimmed, `p${i}`)}</p>);
     i++;
   }
 
@@ -141,6 +156,27 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
       {nodes}
       {streaming && (
         <span className="inline-block w-2 h-4 bg-primary/60 ml-0.5 animate-pulse rounded-sm align-middle" />
+      )}
+
+      {/* CTA navigation buttons */}
+      {!streaming && ctaButtons.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-2">
+          {ctaButtons.map((cta, idx) => (
+            <button
+              key={idx}
+              onClick={() => onNavigate?.(cta.path)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold',
+                'bg-primary/10 text-primary border border-primary/20',
+                'hover:bg-primary hover:text-primary-foreground hover:border-primary',
+                'transition-all duration-200 group',
+              )}
+            >
+              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              {cta.label}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -161,6 +197,7 @@ function getOrCreateSessionId(): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function Chatbot() {
+  const navigate = useNavigate();
   const [isOpen,     setIsOpen]     = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [input,      setInput]      = useState('');
@@ -411,7 +448,10 @@ export function Chatbot() {
                         {msg.role === 'user' ? (
                           <p className="text-sm leading-relaxed">{msg.content}</p>
                         ) : (
-                          renderMarkdown(msg.content, msg.isStreaming)
+                          renderMarkdown(msg.content, msg.isStreaming, (path) => {
+                            setIsOpen(false);
+                            navigate(path);
+                          })
                         )}
                       </div>
                       <div className={cn(
