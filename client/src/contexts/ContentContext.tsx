@@ -402,7 +402,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const socket = socketIO('/public', {
       path: '/socket.io',
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     });

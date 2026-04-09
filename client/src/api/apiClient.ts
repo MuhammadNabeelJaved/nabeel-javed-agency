@@ -51,7 +51,7 @@ apiClient.interceptors.response.use(
         processQueue(refreshError as AxiosError);
         // Clear stored user and redirect to login
         localStorage.removeItem('auth_user');
-        window.location.hash = '#/login';
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
