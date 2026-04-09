@@ -46,6 +46,7 @@ import {
   updateKnowledge,
   deleteKnowledge,
   uploadKnowledgeFile,
+  crawlUrl,
 } from '../../controllers/usersControllers/chatbot.controller.js';
 
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
@@ -97,11 +98,12 @@ router.post('/config/keys',                   ...adminOnly, mutationLimiter, add
 router.delete('/config/keys/:keyId',          ...adminOnly, removeApiKey);
 router.patch ('/config/keys/:keyId/activate', ...adminOnly, activateApiKey);
 
-// Knowledge base
-router.get   ('/knowledge',         ...adminOnly, getKnowledge);
-router.post  ('/knowledge',         ...adminOnly, mutationLimiter, createKnowledge);
-router.put   ('/knowledge/:id',     ...adminOnly, mutationLimiter, updateKnowledge);
-router.delete('/knowledge/:id',     ...adminOnly, deleteKnowledge);
-router.post  ('/knowledge/upload',  ...adminOnly, mutationLimiter, kbUpload.single('file'), uploadKnowledgeFile);
+// Knowledge base — specific routes MUST come before /:id to avoid ambiguity
+router.get   ('/knowledge',          ...adminOnly, getKnowledge);
+router.post  ('/knowledge',          ...adminOnly, mutationLimiter, createKnowledge);
+router.post  ('/knowledge/upload',   ...adminOnly, mutationLimiter, kbUpload.single('file'), uploadKnowledgeFile);
+router.post  ('/knowledge/crawl',    ...adminOnly, mutationLimiter, crawlUrl);
+router.put   ('/knowledge/:id',      ...adminOnly, mutationLimiter, updateKnowledge);
+router.delete('/knowledge/:id',      ...adminOnly, deleteKnowledge);
 
 export default router;

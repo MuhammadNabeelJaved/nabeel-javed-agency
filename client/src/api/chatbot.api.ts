@@ -49,9 +49,10 @@ export interface KnowledgeEntry {
   _id: string;
   title: string;
   content: string;
-  type: 'text' | 'faq' | 'file' | 'auto';
+  type: 'text' | 'faq' | 'file' | 'url' | 'auto';
   fileUrl?: string;
   fileName?: string;
+  sourceUrl?: string;
   tags: string[];
   isActive: boolean;
   wordCount: number;
@@ -266,5 +267,15 @@ export async function uploadKnowledgeFile(formData: FormData): Promise<Knowledge
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Upload failed');
+  return data.data;
+}
+
+export async function crawlUrl(payload: {
+  url: string; title?: string; tags?: string[];
+}): Promise<KnowledgeEntry> {
+  const data = await apiFetch<{ data: KnowledgeEntry }>(`${BASE}/knowledge/crawl`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
   return data.data;
 }

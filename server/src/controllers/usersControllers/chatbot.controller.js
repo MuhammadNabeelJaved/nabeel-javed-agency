@@ -596,3 +596,124 @@ export const uploadKnowledgeFile = asyncHandler(async (req, res) => {
 
   successResponse(res, 'File uploaded and knowledge entry created', entry, 201);
 });
+
+// ─── HTML text helpers ────────────────────────────────────────────────────────
+
+function extractTitleFromHtml(html) {
+  const m = html.match(/<title[^>]*>([^<]{1,200})<\/title>/i);
+  return m ? m[1].trim().replace(/\s+/g, ' ') : null;
+}
+
+/**
+ * Strip HTML tags and convert a fetched page into readable plain text.
+ * Designed to work without any external dependencies.
+ */
+function htmlToText(html) {
+  return html
+    // Drop entire <head> block (meta tags, scripts in head, etc.)
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
+    // Drop scripts and styles completely
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    // Drop SVG and noscript blocks
+    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+    // Add line-breaks for block-level / structural elements
+    .replace(/<\/?(p|div|h[1-6]|li|dt|dd|tr|blockquote|pre|section|article|main|header|footer|nav|aside)[^>]*>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    // Drop all remaining tags
+    .replace(/<[^>]+>/g, '')
+    // Decode common HTML entities
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&mdash;/gi, '—')
+    .replace(/&ndash;/gi, '–')
+    .replace(/&#\d+;/g, '')
+    // Collapse excess whitespace
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// ─── Admin: Crawl website page ────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/chatbot/knowledge/crawl
+ * Fetch a public web page, extract its text, and save it as a knowledge entry.
+ */
+export const crawlUrl = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const { url, title, tags } = req.body;
+  if (!url || typeof url !== 'string') throw new AppError('url is required', 400);
+
+  // Validate URL
+  let parsed;
+  try {
+    parsed = new URL(url.trim());
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('bad protocol');
+    }
+  } catch {
+    throw new AppError('Invalid URL — must start with http:// or https://', 400);
+  }
+
+  // Fetch with a 20-second timeout
+  let html;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    const response = await fetch(parsed.href, {
+      signal:  controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; NovaCrawler/1.0)',
+        'Accept':     'text/html,application/xhtml+xml,*/*;q=0.8',
+      },
+    });
+    clearTimeout(timer);
+
+    const ct = response.headers.get('content-type') || '';
+    if (!response.ok) {
+      throw new AppError(`Page returned HTTP ${response.status}`, 400);
+    }
+    if (!ct.includes('text/html') && !ct.includes('text/plain')) {
+      throw new AppError('URL does not point to an HTML or text page', 400);
+    }
+    html = await response.text();
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    if (err.name === 'AbortError') throw new AppError('Page took too long to load (>20 s)', 504);
+    throw new AppError(`Could not fetch page: ${err.message}`, 400);
+  }
+
+  // Extract and truncate text (stay within MongoDB + token budget)
+  const raw  = htmlToText(html);
+  if (raw.length < 30) {
+    throw new AppError('Could not extract meaningful text from this page', 400);
+  }
+  const MAX_CHARS = 10000;
+  const content   = raw.length > MAX_CHARS
+    ? raw.slice(0, MAX_CHARS) + '\n\n[Content truncated — page too long]'
+    : raw;
+
+  const pageTitle = (title && title.trim())
+    || extractTitleFromHtml(html)
+    || (parsed.hostname + parsed.pathname);
+
+  const entry = await ChatbotKnowledge.create({
+    title:     pageTitle.slice(0, 200),
+    content,
+    type:      'url',
+    sourceUrl: parsed.href,
+    fileUrl:   parsed.href,   // reuse so existing UI "view" links work
+    tags:      Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(Boolean) : []),
+    isActive:  true,
+    createdBy: req.user._id,
+  });
+
+  successResponse(res, 'Page crawled and added to knowledge base', entry, 201);
+});

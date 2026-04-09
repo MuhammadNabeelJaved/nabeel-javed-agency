@@ -10,7 +10,7 @@ import {
   Check, X, Eye, EyeOff, AlertCircle, FileText,
   Key, ChevronDown, ChevronUp, Tag, ToggleLeft, ToggleRight,
   Sparkles, Users, TrendingUp, Calendar, Shield, Info,
-  CheckCircle, Circle, Download,
+  CheckCircle, Circle, Download, Globe, Link,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -26,7 +26,7 @@ import {
   getStats, getSessions, getSession, deleteSession, resolveSession,
   getConfig, updateConfig, addApiKey, removeApiKey, activateApiKey,
   getKnowledge, createKnowledge, updateKnowledge, deleteKnowledge,
-  uploadKnowledgeFile,
+  uploadKnowledgeFile, crawlUrl,
 } from '../../api/chatbot.api';
 import type {
   ChatbotStats, ChatbotSession, ChatbotConfigFull,
@@ -213,7 +213,8 @@ function KnowledgeTab() {
   const [page,    setPage]      = useState(1);
   const [total,   setTotal]     = useState(0);
   const [pages,   setPages]     = useState(1);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm,    setShowForm]    = useState(false);
+  const [showUrlForm, setShowUrlForm] = useState(false);
   const [editing,  setEditing]  = useState<KnowledgeEntry | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -221,6 +222,8 @@ function KnowledgeTab() {
   const [form, setForm] = useState({
     title: '', content: '', type: 'text' as 'text' | 'faq', tags: '',
   });
+
+  const [urlForm, setUrlForm] = useState({ url: '', title: '', tags: '' });
 
   const load = useCallback(async (p = 1) => {
     setLoading(true);
@@ -320,11 +323,32 @@ function KnowledgeTab() {
     }
   };
 
+  const handleCrawlUrl = async () => {
+    if (!urlForm.url.trim()) { toast.error('URL is required'); return; }
+    setSaving(true);
+    try {
+      const entry = await crawlUrl({
+        url:   urlForm.url.trim(),
+        title: urlForm.title.trim() || undefined,
+        tags:  urlForm.tags ? urlForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+      });
+      toast.success(`Page crawled: "${entry.title}"`);
+      setShowUrlForm(false);
+      setUrlForm({ url: '', title: '', tags: '' });
+      load(page);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to crawl page');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const typeColor = (t: string) => {
     const m: Record<string, string> = {
       text: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
       faq:  'bg-violet-500/10 text-violet-400 border-violet-500/20',
       file: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+      url:  'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
       auto: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     };
     return m[t] || 'bg-muted text-muted-foreground';
@@ -337,11 +361,14 @@ function KnowledgeTab() {
           <h2 className="text-xl font-semibold">Knowledge Base</h2>
           <p className="text-sm text-muted-foreground">{total} entries — used as context for the AI</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md,.doc,.docx,.csv,.json" onChange={handleFileUpload} />
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Upload File
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowUrlForm(true)} disabled={saving} className="gap-2">
+            <Globe className="h-4 w-4" /> Add Page URL
           </Button>
           <Button size="sm" onClick={openCreate} className="gap-2">
             <Plus className="h-4 w-4" /> Add Entry
@@ -378,7 +405,11 @@ function KnowledgeTab() {
                       <span className="text-xs text-muted-foreground ml-auto">{e.wordCount} words</span>
                     </div>
                     <p className="font-medium text-sm truncate">{e.title}</p>
-                    {e.fileUrl ? (
+                    {e.type === 'url' ? (
+                      <a href={e.sourceUrl || e.fileUrl} target="_blank" rel="noreferrer" className="text-xs text-cyan-400 hover:underline flex items-center gap-1 mt-1 truncate">
+                        <Globe className="h-3 w-3 shrink-0" /> {e.sourceUrl || e.fileUrl}
+                      </a>
+                    ) : e.type === 'file' ? (
                       <a href={e.fileUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
                         <Download className="h-3 w-3" /> {e.fileName || 'View file'}
                       </a>
@@ -397,7 +428,7 @@ function KnowledgeTab() {
                         : <ToggleLeft className="h-4 w-4 text-muted-foreground" />
                       }
                     </button>
-                    {!e.fileUrl && (
+                    {e.type !== 'file' && e.type !== 'url' && (
                       <button
                         onClick={() => openEdit(e)}
                         className="p-1.5 rounded-lg hover:bg-muted transition-colors"
@@ -474,6 +505,59 @@ function KnowledgeTab() {
             <Button onClick={handleSave} disabled={saving} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               {editing ? 'Save Changes' : 'Create Entry'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Page URL dialog */}
+      <Dialog open={showUrlForm} onOpenChange={setShowUrlForm}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-cyan-400" /> Add Website Page
+            </DialogTitle>
+            <DialogDescription>
+              The page will be fetched and its text extracted automatically. The chatbot will use this content to answer questions about your website.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Page URL *</Label>
+              <Input
+                value={urlForm.url}
+                onChange={e => setUrlForm(f => ({ ...f, url: e.target.value }))}
+                placeholder="https://yourwebsite.com/services"
+                type="url"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Custom Title (optional)</Label>
+              <Input
+                value={urlForm.title}
+                onChange={e => setUrlForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="Leave blank to use the page's &lt;title&gt;"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tags (comma-separated, optional)</Label>
+              <Input
+                value={urlForm.tags}
+                onChange={e => setUrlForm(f => ({ ...f, tags: e.target.value }))}
+                placeholder="services, pricing, about"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
+              <span className="font-medium text-foreground">Tip:</span> Add each important page separately — Services, About, Pricing, Contact, etc. The chatbot will find the most relevant page for each question.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowUrlForm(false); setUrlForm({ url: '', title: '', tags: '' }); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleCrawlUrl} disabled={saving} className="gap-2">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+              Fetch & Add
             </Button>
           </DialogFooter>
         </DialogContent>

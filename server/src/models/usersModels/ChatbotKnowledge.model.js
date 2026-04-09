@@ -17,17 +17,21 @@ const chatbotKnowledgeSchema = new mongoose.Schema({
    *  'text' — plain text / markdown snippet added by admin
    *  'faq'  — a question-answer pair
    *  'file' — content extracted from / linked to an uploaded file
+   *  'url'  — content crawled from a live website page
    *  'auto' — auto-generated from CMS data (future)
    */
   type: {
     type:    String,
-    enum:    ['text', 'faq', 'file', 'auto'],
+    enum:    ['text', 'faq', 'file', 'url', 'auto'],
     default: 'text',
   },
 
-  /** Cloudinary URL of the source file (only set for type === 'file'). */
+  /** Cloudinary URL of the source file (type === 'file') or source page URL (type === 'url'). */
   fileUrl:  { type: String, default: '' },
   fileName: { type: String, default: '' },
+
+  /** Original page URL — only set for type === 'url'. */
+  sourceUrl: { type: String, default: '' },
 
   /** Tags for manual categorisation (used in the admin UI filter). */
   tags: { type: [String], default: [] },
