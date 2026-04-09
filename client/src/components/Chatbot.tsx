@@ -33,6 +33,122 @@ interface Message {
   error?: boolean;
 }
 
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+
+/**
+ * Renders a subset of markdown commonly produced by Claude:
+ * headings (##/###), bold (**), italic (*/_), inline code (`),
+ * bullet lists (- / *), numbered lists (1.), horizontal rules (---), line breaks.
+ * Safe — no dangerouslySetInnerHTML; builds React elements directly.
+ */
+function renderMarkdown(raw: string, streaming = false): React.ReactNode {
+  const lines = raw.split('\n');
+  const nodes: React.ReactNode[] = [];
+
+  // Inline: bold, italic, inline-code, links
+  const inline = (text: string, key: string): React.ReactNode => {
+    const parts: React.ReactNode[] = [];
+    // regex covers: **bold**, *italic*, `code`
+    const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    let idx = 0;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) parts.push(text.slice(last, m.index));
+      if (m[2] !== undefined) parts.push(<strong key={`${key}-b${idx}`}>{m[2]}</strong>);
+      else if (m[3] !== undefined) parts.push(<em key={`${key}-i${idx}`}>{m[3]}</em>);
+      else if (m[4] !== undefined) parts.push(
+        <code key={`${key}-c${idx}`} className="bg-muted/60 px-1 py-0.5 rounded text-[11px] font-mono">{m[4]}</code>
+      );
+      last = m.index + m[0].length;
+      idx++;
+    }
+    if (last < text.length) parts.push(text.slice(last));
+    return parts.length === 1 ? parts[0] : <React.Fragment key={key}>{parts}</React.Fragment>;
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Horizontal rule
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      nodes.push(<hr key={i} className="border-border/40 my-2" />);
+      i++; continue;
+    }
+
+    // Heading ## / ###
+    const hMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (hMatch) {
+      const level = hMatch[1].length;
+      const cls = level === 1
+        ? 'text-base font-bold mt-2 mb-0.5'
+        : level === 2
+          ? 'text-sm font-bold mt-2 mb-0.5'
+          : 'text-sm font-semibold mt-1 mb-0.5';
+      nodes.push(<p key={i} className={cls}>{inline(hMatch[2], `h${i}`)}</p>);
+      i++; continue;
+    }
+
+    // Collect bullet list block (- or * or •)
+    if (/^[-*•]\s/.test(trimmed)) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && /^[-*•]\s/.test(lines[i].trim())) {
+        const text = lines[i].trim().replace(/^[-*•]\s+/, '');
+        items.push(
+          <li key={i} className="flex gap-2 items-start">
+            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/70 shrink-0" />
+            <span>{inline(text, `li${i}`)}</span>
+          </li>
+        );
+        i++;
+      }
+      nodes.push(<ul key={`ul-${i}`} className="space-y-1 my-1 pl-1">{items}</ul>);
+      continue;
+    }
+
+    // Collect numbered list block (1. 2. …)
+    if (/^\d+\.\s/.test(trimmed)) {
+      const items: React.ReactNode[] = [];
+      let num = 1;
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        const text = lines[i].trim().replace(/^\d+\.\s+/, '');
+        items.push(
+          <li key={i} className="flex gap-2 items-start">
+            <span className="shrink-0 font-semibold text-primary/80 min-w-[1.2rem]">{num}.</span>
+            <span>{inline(text, `nl${i}`)}</span>
+          </li>
+        );
+        i++; num++;
+      }
+      nodes.push(<ol key={`ol-${i}`} className="space-y-1 my-1 pl-1">{items}</ol>);
+      continue;
+    }
+
+    // Empty line → visual spacer (skip consecutive blanks)
+    if (trimmed === '') {
+      if (nodes.length > 0) nodes.push(<div key={`br-${i}`} className="h-2" />);
+      i++; continue;
+    }
+
+    // Normal paragraph line
+    nodes.push(
+      <p key={i} className="leading-relaxed">{inline(trimmed, `p${i}`)}</p>
+    );
+    i++;
+  }
+
+  return (
+    <div className="space-y-0.5 text-sm">
+      {nodes}
+      {streaming && (
+        <span className="inline-block w-2 h-4 bg-primary/60 ml-0.5 animate-pulse rounded-sm align-middle" />
+      )}
+    </div>
+  );
+}
+
 // ─── Session ID ───────────────────────────────────────────────────────────────
 
 function getOrCreateSessionId(): string {
@@ -288,19 +404,18 @@ export function Chatbot() {
                     <div className="space-y-1">
                       {/* Bubble */}
                       <div className={cn(
-                        'rounded-2xl px-5 py-3 text-sm shadow-sm backdrop-blur-sm border',
+                        'rounded-2xl px-5 py-3 shadow-sm backdrop-blur-sm border',
                         msg.role === 'user'
                           ? 'bg-primary/90 text-primary-foreground rounded-tr-none border-primary/20'
                           : msg.error
                             ? 'bg-red-500/10 text-red-400 rounded-tl-none border-red-500/20'
                             : 'bg-card/50 text-foreground rounded-tl-none border-border/50'
                       )}>
-                        <p className="leading-relaxed whitespace-pre-wrap">
-                          {msg.content}
-                          {msg.isStreaming && (
-                            <span className="inline-block w-2 h-4 bg-primary/60 ml-0.5 animate-pulse rounded-sm align-middle" />
-                          )}
-                        </p>
+                        {msg.role === 'user' ? (
+                          <p className="text-sm leading-relaxed">{msg.content}</p>
+                        ) : (
+                          renderMarkdown(msg.content, msg.isStreaming)
+                        )}
                       </div>
                       <div className={cn(
                         'text-[10px] text-muted-foreground opacity-50 px-1',
