@@ -226,12 +226,37 @@ export const chat = asyncHandler(async (req, res) => {
   const knowledge = await getRelevantKnowledge(message);
   const knowledgeContext = buildKnowledgeContext(knowledge);
 
-  // Build system prompt — base + tone + business context + knowledge
+  // Build system prompt — base + tone + business context + knowledge + page links
   const toneInstruction = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
   const systemPrompt =
     cfg.systemPrompt +
     `\n\n## Tone & Communication Style\n${toneInstruction}` +
     (cfg.businessContext ? `\n\n## About the Business\n${cfg.businessContext}` : '') +
+    `\n\n## Navigation Links — Page References
+When your answer mentions or is directly relevant to any of the following website pages or topics, append one or more CTA (call-to-action) markers using EXACTLY this syntax on its own line at the end of the relevant paragraph:
+
+[CTA:/path|Button Label]
+
+Available pages (use only these exact paths):
+- Home page: [CTA:/|Go to Homepage]
+- Services overview: [CTA:/services|View Our Services]
+- Individual service detail (use the service slug): [CTA:/services/web-development|Web Development]
+- Portfolio / projects: [CTA:/portfolio|View Our Portfolio]
+- Careers / jobs: [CTA:/careers|See Open Positions]
+- Contact us: [CTA:/contact|Get in Touch]
+- Our team: [CTA:/our-team|Meet Our Team]
+- Privacy Policy: [CTA:/privacy|Read Privacy Policy]
+- Terms of Service: [CTA:/terms|Read Terms of Service]
+- Cookie settings: [CTA:/cookies|Cookie Preferences]
+- Login: [CTA:/login|Login to Dashboard]
+- Sign up: [CTA:/signup|Create an Account]
+
+Rules:
+1. Only add CTA markers when genuinely relevant — do NOT add them to every message.
+2. Place the CTA marker on its own line after the sentence that references the page.
+3. You may include up to 3 CTA markers per response.
+4. Do not invent paths — use only the paths listed above.
+5. The button label should be short (2–4 words) and action-oriented.` +
     knowledgeContext;
 
   // Trim history to the last 10 turns to keep context manageable
