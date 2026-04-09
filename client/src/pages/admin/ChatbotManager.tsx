@@ -568,8 +568,11 @@ function KnowledgeTab() {
                 placeholder="services, pricing, about"
               />
             </div>
-            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-              <span className="font-medium text-foreground">Tip:</span> Add each important page separately — Services, About, Pricing, Contact, etc. The chatbot will find the most relevant page for each question.
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 space-y-1">
+              <span className="font-medium text-foreground block">Tips:</span>
+              <span className="block">• Use publicly accessible URLs (e.g. <code className="bg-muted px-1 rounded">https://yoursite.com/services</code>).</span>
+              <span className="block">• <strong className="text-foreground">Avoid localhost</strong> — the server cannot render your React SPA; crawl the deployed site instead.</span>
+              <span className="block">• Add each page separately — Services, About, Pricing, Contact, Portfolio, etc.</span>
             </p>
           </div>
           <DialogFooter>
