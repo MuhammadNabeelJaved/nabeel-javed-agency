@@ -30,6 +30,8 @@ import multer from 'multer';
 import path from 'path';
 import {
   chat,
+  userChat,
+  teamChat,
   getPublicConfig,
   getStats,
   getSessions,
@@ -80,6 +82,10 @@ const kbUpload = multer({
 // ── Public routes ─────────────────────────────────────────────────────────────
 router.get('/config/public', getPublicConfig);
 router.post('/chat',         mutationLimiter, chat);
+
+// ── Authenticated dashboard chatbots ──────────────────────────────────────────
+router.post('/user-chat', userAuthenticated, mutationLimiter, userChat);
+router.post('/team-chat', userAuthenticated, authorizeRoles('admin', 'team'), mutationLimiter, teamChat);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
 const adminOnly = [userAuthenticated, authorizeRoles('admin')];

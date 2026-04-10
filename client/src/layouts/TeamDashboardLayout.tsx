@@ -14,6 +14,7 @@ import { NotificationBell } from '../components/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { ProfileDropdown, type ProfileMenuItem } from '../components/ProfileDropdown';
+import { DashboardChatbot } from '../components/DashboardChatbot';
 
 export function TeamDashboardLayout() {
   const { theme, setTheme } = useTheme();
@@ -184,6 +185,8 @@ export function TeamDashboardLayout() {
           </PageStatusGate>
         </main>
       </div>
+
+      <DashboardChatbot mode="team" />
     </div>
   );
 }

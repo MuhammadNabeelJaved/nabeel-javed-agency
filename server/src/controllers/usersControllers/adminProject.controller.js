@@ -17,6 +17,7 @@ import asyncHandler from "../../middlewares/asyncHandler.js"
 import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import adminProject from "../../models/usersModels/AdminProject.model.js";
+import { autoSyncSection } from "../../utils/chatbotAutoSync.js";
 import mongoose from "mongoose";
 import { escapeRegex } from "../../middlewares/sanitize.js";
 
@@ -81,6 +82,7 @@ export const createProject = asyncHandler(async (req, res, next) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+        autoSyncSection('projects').catch(() => {});
         return successResponse(res, 'Project created successfully', newProject, 201);
     } catch (error) {
         console.error(error);
@@ -207,6 +209,7 @@ export const updateProject = asyncHandler(async (req, res, next) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+        autoSyncSection('projects').catch(() => {});
         successResponse(res, 'Project updated successfully', project);
     } catch (error) {
         console.error(error);
@@ -235,6 +238,7 @@ export const deleteProject = asyncHandler(async (req, res, next) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+        autoSyncSection('projects').catch(() => {});
         successResponse(res, 'Project deleted successfully', null);
     } catch (error) {
         console.error(error);
@@ -293,6 +297,7 @@ export const updateProjectStatus = asyncHandler(async (req, res, next) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+        autoSyncSection('projects').catch(() => {});
         successResponse(res, 'Project status updated successfully', project);
     } catch (error) {
         console.error(error);

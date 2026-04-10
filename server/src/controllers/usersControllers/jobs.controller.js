@@ -22,6 +22,7 @@ import asyncHandler from "../../middlewares/asyncHandler.js";
 import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import JobPosting from "../../models/usersModels/Jobs.model.js";
+import { autoSyncSection } from "../../utils/chatbotAutoSync.js";
 import mongoose from "mongoose";
 
 
@@ -77,6 +78,7 @@ export const createJob = asyncHandler(async (req, res) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
+        autoSyncSection('jobs').catch(() => {});
         successResponse(res, "Job created successfully", job, 201);
     } catch (error) {
         console.error("Error in createJob:", error);
@@ -214,6 +216,7 @@ export const updateJob = asyncHandler(async (req, res) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
+        autoSyncSection('jobs').catch(() => {});
         successResponse(res, "Job updated successfully", job);
     } catch (error) {
         console.error("Error in updateJob:", error);
@@ -242,6 +245,7 @@ export const deleteJob = asyncHandler(async (req, res) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
+        autoSyncSection('jobs').catch(() => {});
         successResponse(res, "Job deleted successfully", null);
     } catch (error) {
         console.error("Error in deleteJob:", error);
@@ -279,6 +283,7 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "jobs" });
+        autoSyncSection('jobs').catch(() => {});
         successResponse(res, "Job status updated successfully", job);
     } catch (error) {
         console.error("Error in updateJobStatus:", error);

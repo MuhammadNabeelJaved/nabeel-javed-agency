@@ -1,25 +1,25 @@
 /**
- * User AI Assistant — full-page chat powered by Nova AI.
+ * Team AI Assistant — full-page chat powered by Nova AI.
  *
- * Uses the authenticated /api/v1/chatbot/user-chat endpoint so the AI has
- * access to the user's real projects, applied jobs, profile, and billing data.
+ * Uses the authenticated /api/v1/chatbot/team-chat endpoint so the AI has
+ * access to the team member's assigned client projects, portfolio projects,
+ * and team profile data.
  *
  * Layout:
  *   [Chat area]  |  [drag divider]  |  [Info sidebar]
  *
- * The divider can be dragged left/right to resize.  The sidebar can also be
- * collapsed with a button.  The panel height fills the viewport.
+ * The divider can be dragged left/right to resize.  The sidebar is collapsible.
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Bot, Send, Loader2, Sparkles, Trash2, Copy,
   ChevronRight, ChevronLeft, AlertCircle, ArrowRight,
-  FolderKanban, Briefcase, CreditCard, User, RefreshCw,
+  FolderKanban, CheckSquare, Users, Briefcase, RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
-import { streamUserChat, getConfig } from '../../api/chatbot.api';
+import { streamTeamChat, getConfig } from '../../api/chatbot.api';
 import type { ChatMessage } from '../../api/chatbot.api';
 import { toast } from 'sonner';
 
@@ -33,7 +33,7 @@ interface Message {
   error?: boolean;
 }
 
-const SESSION_KEY = 'user-ai-page-session';
+const SESSION_KEY   = 'team-ai-page-session';
 const CHARS_PER_TICK = 4;
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
       const items: React.ReactNode[] = [];
       while (i < lines.length && /^[-*•]\s/.test(lines[i].trim())) {
         const text = lines[i].trim().replace(/^[-*•]\s+/, '');
-        items.push(<li key={i} className="flex gap-2 items-start"><span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/70 shrink-0" /><span>{inline(text, `li${i}`)}</span></li>);
+        items.push(<li key={i} className="flex gap-2 items-start"><span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" /><span>{inline(text, `li${i}`)}</span></li>);
         i++;
       }
       nodes.push(<ul key={`ul-${i}`} className="space-y-1.5 my-2 pl-1">{items}</ul>);
@@ -76,7 +76,7 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
       const items: React.ReactNode[] = []; let num = 1;
       while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
         const text = lines[i].trim().replace(/^\d+\.\s+/, '');
-        items.push(<li key={i} className="flex gap-2 items-start"><span className="shrink-0 font-semibold text-primary/80 min-w-[1.2rem]">{num}.</span><span>{inline(text, `nl${i}`)}</span></li>);
+        items.push(<li key={i} className="flex gap-2 items-start"><span className="shrink-0 font-semibold text-emerald-600 min-w-[1.2rem]">{num}.</span><span>{inline(text, `nl${i}`)}</span></li>);
         i++; num++;
       }
       nodes.push(<ol key={`ol-${i}`} className="space-y-1.5 my-2 pl-1">{items}</ol>);
@@ -90,35 +90,35 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
   return (
     <div className="text-sm space-y-0.5">
       {nodes}
-      {streaming && <span className="inline-block w-2 h-4 bg-primary/60 ml-0.5 animate-pulse rounded-sm align-middle" />}
+      {streaming && <span className="inline-block w-2 h-4 bg-emerald-500/60 ml-0.5 animate-pulse rounded-sm align-middle" />}
     </div>
   );
 }
 
-// ─── Default prompts (overridden by server config if available) ───────────────
-const DEFAULT_USER_PROMPTS = [
-  "What's the status of my projects?",
-  "Show my applied jobs",
-  "What's my outstanding balance?",
-  "How do I submit a new project?",
+// ─── Defaults ─────────────────────────────────────────────────────────────────
+const DEFAULT_TEAM_PROMPTS = [
+  'Which projects am I assigned to?',
+  'What tasks are due this week?',
+  'Show me client project details',
+  'Help me write a project update',
 ];
 
 const CAPABILITIES = [
-  { icon: FolderKanban, label: 'My Projects',    desc: 'Status, progress, deadlines, payments' },
-  { icon: Briefcase,    label: 'Applied Jobs',   desc: 'Applications, status, admin notes'     },
-  { icon: CreditCard,   label: 'Billing',        desc: 'Outstanding amounts, payment history'  },
-  { icon: User,         label: 'Account Info',   desc: 'Profile, role, settings'               },
+  { icon: FolderKanban, label: 'Assigned Client Projects', desc: 'Status, client, budget, deadlines, team'  },
+  { icon: Briefcase,    label: 'Portfolio Projects',       desc: 'AdminProject entries for reference'        },
+  { icon: CheckSquare,  label: 'Task Context',             desc: 'Work planning, priorities, scheduling'     },
+  { icon: Users,        label: 'Team Profile',             desc: 'Your role, position, department, skills'   },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function UserAIChat() {
-  const [messages,       setMessages]       = useState<Message[]>([]);
-  const [input,          setInput]          = useState('');
-  const [isSending,      setIsSending]      = useState(false);
-  const [sidebarOpen,    setSidebarOpen]    = useState(true);
-  const [sidebarWidth,   setSidebarWidth]   = useState(280);
-  const [quickPrompts,   setQuickPrompts]   = useState<string[]>(DEFAULT_USER_PROMPTS);
-  const [copied,         setCopied]         = useState<string | null>(null);
+export default function TeamAIChat() {
+  const [messages,     setMessages]     = useState<Message[]>([]);
+  const [input,        setInput]        = useState('');
+  const [isSending,    setIsSending]    = useState(false);
+  const [sidebarOpen,  setSidebarOpen]  = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [quickPrompts, setQuickPrompts] = useState<string[]>(DEFAULT_TEAM_PROMPTS);
+  const [copied,       setCopied]       = useState<string | null>(null);
 
   const sessionIdRef   = useRef<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -129,20 +129,19 @@ export default function UserAIChat() {
   const dividerStartX  = useRef<number>(0);
   const dividerStartW  = useRef<number>(280);
 
-  // Typewriter
   const twBufferRef = useRef<Map<string, { buffer: string; done: boolean; displayed: number }>>(new Map());
   const twTimerRef  = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
-  // Session
+  // Session init
   useEffect(() => {
     const s = localStorage.getItem(SESSION_KEY);
     sessionIdRef.current = s || (() => { const id = crypto.randomUUID(); localStorage.setItem(SESSION_KEY, id); return id; })();
   }, []);
 
-  // Load quick prompts from server config
+  // Load team quick prompts from server
   useEffect(() => {
     getConfig().then(c => {
-      if (c.userChatQuickPrompts?.length) setQuickPrompts(c.userChatQuickPrompts);
+      if (c.teamChatQuickPrompts?.length) setQuickPrompts(c.teamChatQuickPrompts);
     }).catch(() => {});
   }, []);
 
@@ -158,7 +157,7 @@ export default function UserAIChat() {
   // ── Resize divider ─────────────────────────────────────────────────────────
   const onDividerMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    dividerRef.current  = true;
+    dividerRef.current    = true;
     dividerStartX.current = e.clientX;
     dividerStartW.current = sidebarWidth;
   };
@@ -186,8 +185,7 @@ export default function UserAIChat() {
       if (state.displayed >= state.buffer.length) {
         if (state.done) {
           clearInterval(timer);
-          twTimerRef.current.delete(msgId);
-          twBufferRef.current.delete(msgId);
+          twTimerRef.current.delete(msgId); twBufferRef.current.delete(msgId);
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isStreaming: false } : m));
         }
         return;
@@ -221,7 +219,7 @@ export default function UserAIChat() {
     abortRef.current = ac;
 
     try {
-      await streamUserChat({
+      await streamTeamChat({
         message: msg, sessionId: sessionIdRef.current, history, signal: ac.signal,
         onDelta: chunk => { const s = twBufferRef.current.get(asstMsgId); if (s) s.buffer += chunk; },
         onDone:  ()    => { const s = twBufferRef.current.get(asstMsgId); if (s) s.done = true; },
@@ -266,17 +264,17 @@ export default function UserAIChat() {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/40 bg-background/60 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
               <h2 className="font-bold text-sm flex items-center gap-2">
-                Nova — Your AI Assistant
-                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">PERSONAL</span>
+                Nova — Your Work Assistant
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold border border-emerald-500/20">TEAM</span>
               </h2>
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                Online · Access to your projects, jobs & account
+                Online · Access to your assigned projects & team data
               </p>
             </div>
           </div>
@@ -294,13 +292,13 @@ export default function UserAIChat() {
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 scroll-smooth">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center gap-4 py-12">
-              <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-2xl shadow-blue-500/20">
+              <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-2xl shadow-emerald-500/20">
                 <Sparkles className="h-10 w-10 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">Hi! I'm Nova, your personal assistant.</h3>
+                <h3 className="text-xl font-bold">Hi! I'm Nova, your work assistant.</h3>
                 <p className="text-muted-foreground text-sm mt-1 max-w-sm">
-                  I have access to your projects, applied jobs, billing, and account data. Ask me anything!
+                  I have access to your assigned projects, team data, and work context. Ask me anything!
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md mt-2">
@@ -308,9 +306,9 @@ export default function UserAIChat() {
                   <button
                     key={q}
                     onClick={() => handleSend(q)}
-                    className="text-left text-sm px-4 py-3 rounded-xl bg-muted/40 hover:bg-muted border border-border/40 hover:border-primary/30 text-muted-foreground hover:text-foreground transition-all group"
+                    className="text-left text-sm px-4 py-3 rounded-xl bg-muted/40 hover:bg-muted border border-border/40 hover:border-emerald-500/30 text-muted-foreground hover:text-foreground transition-all group"
                   >
-                    <ArrowRight className="h-3.5 w-3.5 inline mr-1.5 text-primary/60 group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight className="h-3.5 w-3.5 inline mr-1.5 text-emerald-500/60 group-hover:translate-x-0.5 transition-transform" />
                     {q}
                   </button>
                 ))}
@@ -326,7 +324,7 @@ export default function UserAIChat() {
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}
             >
               {msg.role === 'assistant' && (
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shrink-0 mr-3 mt-0.5 shadow-md">
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 mr-3 mt-0.5 shadow-md">
                   <Bot className="h-4 w-4 text-white" />
                 </div>
               )}
@@ -334,7 +332,7 @@ export default function UserAIChat() {
                 <div className={cn(
                   'rounded-2xl px-4 py-3 shadow-sm',
                   msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-tr-none'
+                    ? 'bg-emerald-600 text-white rounded-tr-none'
                     : 'bg-card border border-border/50 rounded-tl-none',
                   msg.error && 'border-red-500/30 bg-red-500/5',
                 )}>
@@ -365,12 +363,12 @@ export default function UserAIChat() {
 
           {isSending && messages.at(-1)?.role !== 'assistant' && (
             <div className="flex justify-start items-center gap-3">
-              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shrink-0 shadow-md">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-md">
                 <Bot className="h-4 w-4 text-white" />
               </div>
               <div className="bg-card border border-border/50 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
                 <div className="flex gap-1.5">
-                  {[0,1,2].map(i => <div key={i} className="h-2 w-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+                  {[0,1,2].map(i => <div key={i} className="h-2 w-2 bg-emerald-500/60 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
                 </div>
               </div>
             </div>
@@ -386,16 +384,16 @@ export default function UserAIChat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder="Ask me anything about your projects, jobs, or account…"
+              placeholder="Ask me about your projects, tasks, clients, or deadlines…"
               rows={1}
-              className="flex-1 resize-none text-sm px-4 py-3 rounded-2xl bg-muted/40 border border-border/50 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground text-foreground max-h-40 leading-relaxed transition-colors"
+              className="flex-1 resize-none text-sm px-4 py-3 rounded-2xl bg-muted/40 border border-border/50 focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 placeholder:text-muted-foreground text-foreground max-h-40 leading-relaxed transition-colors"
               style={{ minHeight: '48px' }}
               onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 160)}px`; }}
             />
             <Button
               onClick={() => handleSend()}
               disabled={!input.trim() || isSending}
-              className="h-12 w-12 p-0 rounded-2xl shrink-0 bg-gradient-to-br from-blue-500 to-violet-600 hover:opacity-90 shadow-lg shadow-blue-500/25"
+              className="h-12 w-12 p-0 rounded-2xl shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600 hover:opacity-90 shadow-lg shadow-emerald-500/25"
             >
               {isSending ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Send className="h-5 w-5 text-white" />}
             </Button>
@@ -411,10 +409,10 @@ export default function UserAIChat() {
         {sidebarOpen && (
           <div
             onMouseDown={onDividerMouseDown}
-            className="hidden md:flex w-1.5 cursor-col-resize items-center justify-center group shrink-0 bg-transparent hover:bg-primary/20 transition-colors"
+            className="hidden md:flex w-1.5 cursor-col-resize items-center justify-center group shrink-0 bg-transparent hover:bg-emerald-500/20 transition-colors"
             title="Drag to resize"
           >
-            <div className="w-0.5 h-12 rounded-full bg-border/50 group-hover:bg-primary/40 transition-colors" />
+            <div className="w-0.5 h-12 rounded-full bg-border/50 group-hover:bg-emerald-500/40 transition-colors" />
           </div>
         )}
       </AnimatePresence>
@@ -436,7 +434,7 @@ export default function UserAIChat() {
               {/* Suggested Prompts */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="h-4 w-4 text-primary" />
+                  <Sparkles className="h-4 w-4 text-emerald-500" />
                   <h3 className="text-sm font-semibold">Suggested Prompts</h3>
                 </div>
                 <div className="space-y-1.5">
@@ -445,9 +443,9 @@ export default function UserAIChat() {
                       key={p}
                       onClick={() => handleSend(p)}
                       disabled={isSending}
-                      className="w-full text-left text-xs px-3 py-2.5 rounded-xl bg-muted/40 hover:bg-muted border border-border/30 hover:border-primary/30 text-muted-foreground hover:text-foreground transition-all group disabled:opacity-50"
+                      className="w-full text-left text-xs px-3 py-2.5 rounded-xl bg-muted/40 hover:bg-muted border border-border/30 hover:border-emerald-500/30 text-muted-foreground hover:text-foreground transition-all group disabled:opacity-50"
                     >
-                      <ArrowRight className="h-3 w-3 inline mr-1.5 text-primary/50 group-hover:translate-x-0.5 transition-transform" />
+                      <ArrowRight className="h-3 w-3 inline mr-1.5 text-emerald-500/50 group-hover:translate-x-0.5 transition-transform" />
                       {p}
                     </button>
                   ))}
@@ -457,13 +455,13 @@ export default function UserAIChat() {
               {/* What I can access */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <RefreshCw className="h-4 w-4 text-primary" />
+                  <RefreshCw className="h-4 w-4 text-emerald-500" />
                   <h3 className="text-sm font-semibold">What I Can Access</h3>
                 </div>
                 <div className="space-y-2">
                   {CAPABILITIES.map(({ icon: Icon, label, desc }) => (
                     <div key={label} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-muted/30 border border-border/20">
-                      <Icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <Icon className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                       <div>
                         <p className="text-xs font-medium">{label}</p>
                         <p className="text-[11px] text-muted-foreground">{desc}</p>
@@ -474,11 +472,11 @@ export default function UserAIChat() {
               </div>
 
               {/* Tips */}
-              <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 text-xs text-muted-foreground space-y-1">
+              <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">Tips</p>
-                <p>• Be specific — e.g., "Show my pending projects"</p>
-                <p>• Ask for comparisons — "Which job application is newest?"</p>
-                <p>• Request summaries — "Summarise my billing status"</p>
+                <p>• Ask about specific clients — "Show me the Acme Corp project"</p>
+                <p>• Plan your week — "What are my upcoming deadlines?"</p>
+                <p>• Get summaries — "Summarise all my in-progress projects"</p>
               </div>
             </div>
           </motion.div>
