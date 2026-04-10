@@ -209,15 +209,60 @@ export function Chatbot() {
   const [config,        setConfig]        = useState<PublicChatbotConfig | null>(null);
   const [configErr,     setConfigErr]     = useState(false);
   const [hasHistory,    setHasHistory]    = useState(false);
+  // Resizable panel
+  const [panelW,        setPanelW]        = useState(384);
+  const [panelH,        setPanelH]        = useState(600);
 
-  const scrollRef       = useRef<HTMLDivElement>(null);
-  const abortRef        = useRef<AbortController | null>(null);
-  const sessionId       = useRef(getOrCreateSessionId());
+  const scrollRef        = useRef<HTMLDivElement>(null);
+  const abortRef         = useRef<AbortController | null>(null);
+  const sessionId        = useRef(getOrCreateSessionId());
   const historyLoadedRef = useRef(false);
+  // Resize refs (no state — avoids re-renders during drag)
+  const resizingEdge  = useRef<'left' | 'top' | 'topleft' | null>(null);
+  const resizeStartX  = useRef(0);
+  const resizeStartY  = useRef(0);
+  const resizeStartW  = useRef(384);
+  const resizeStartH  = useRef(600);
 
   // Typewriter: keyed by message id → { buffer, done, displayed }
   const twBufferRef  = useRef<Map<string, { buffer: string; done: boolean; displayed: number }>>(new Map());
   const twTimerRef   = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+
+  // ── Resize mouse handlers ────────────────────────────────────────────────
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const edge = resizingEdge.current;
+      if (!edge) return;
+      if (edge === 'left' || edge === 'topleft') {
+        const dx = resizeStartX.current - e.clientX;
+        setPanelW(Math.max(320, Math.min(800, resizeStartW.current + dx)));
+      }
+      if (edge === 'top' || edge === 'topleft') {
+        const dy = resizeStartY.current - e.clientY;
+        setPanelH(Math.max(400, Math.min(window.innerHeight - 120, resizeStartH.current + dy)));
+      }
+    };
+    const onUp = () => {
+      resizingEdge.current = null;
+      document.body.style.userSelect = '';
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup',   onUp);
+    };
+  }, []);
+
+  const startResize = (edge: 'left' | 'top' | 'topleft', e: React.MouseEvent) => {
+    e.preventDefault();
+    resizingEdge.current = edge;
+    resizeStartX.current = e.clientX;
+    resizeStartY.current = e.clientY;
+    resizeStartW.current = panelW;
+    resizeStartH.current = panelH;
+    document.body.style.userSelect = 'none';
+  };
 
   // ── Load public config + history ──────────────────────────────────────────
   useEffect(() => {
@@ -413,24 +458,46 @@ export function Chatbot() {
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.9, rotateX: 10 }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              scale: 1,
-              rotateX: 0,
-              width:  isExpanded ? '800px' : '384px',
-              height: isExpanded ? '80vh'  : '600px',
-            }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
             exit={{ opacity: 0, y: 50, scale: 0.9, rotateX: 10 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={cn(
-              'fixed bottom-24 right-6 max-w-[calc(100vw-3rem)] max-h-[calc(100vh-8rem)]',
+              'fixed bottom-24 right-6',
               'bg-background/80 backdrop-blur-xl border border-primary/20 rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden',
               'ring-1 ring-white/10 dark:ring-white/5',
               isExpanded && 'right-1/2 translate-x-1/2 bottom-10',
             )}
-            style={{ transformOrigin: 'bottom right' }}
+            style={{
+              width:  isExpanded ? Math.min(panelW, window.innerWidth - 48) : panelW,
+              height: isExpanded ? '80vh' : panelH,
+              maxWidth:  'calc(100vw - 3rem)',
+              maxHeight: 'calc(100vh - 8rem)',
+              transformOrigin: 'bottom right',
+            }}
           >
+            {/* ── Resize handles (hidden when expanded/centered) ─── */}
+            {!isExpanded && (
+              <>
+                {/* Top-left corner */}
+                <div
+                  onMouseDown={e => startResize('topleft', e)}
+                  className="absolute top-0 left-0 w-5 h-5 z-20 cursor-nw-resize rounded-tl-3xl"
+                  title="Drag to resize"
+                />
+                {/* Left edge */}
+                <div
+                  onMouseDown={e => startResize('left', e)}
+                  className="absolute left-0 top-5 bottom-0 w-2 z-20 cursor-w-resize hover:bg-primary/10 transition-colors rounded-bl-3xl"
+                  title="Drag to resize width"
+                />
+                {/* Top edge */}
+                <div
+                  onMouseDown={e => startResize('top', e)}
+                  className="absolute top-0 left-5 right-0 h-2 z-20 cursor-n-resize hover:bg-primary/10 transition-colors rounded-tr-3xl"
+                  title="Drag to resize height"
+                />
+              </>
+            )}
             {/* Ambient gradient bar */}
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-purple-500 to-blue-500" />
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
@@ -468,7 +535,15 @@ export function Chatbot() {
                 <Button
                   variant="ghost" size="icon"
                   className="h-8 w-8 hover:bg-white/10 rounded-full"
-                  onClick={() => setIsExpanded(e => !e)}
+                  title={isExpanded ? 'Collapse' : 'Expand'}
+                  onClick={() => {
+                    if (isExpanded) {
+                      // Restore to current manual size
+                      setIsExpanded(false);
+                    } else {
+                      setIsExpanded(true);
+                    }
+                  }}
                 >
                   {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </Button>
