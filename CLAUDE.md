@@ -370,8 +370,11 @@ Every CRUD operation instantly reflects across all dashboards without a page rel
 ## Nova AI Chatbot System
 
 ### Architecture
-- **Widget**: `client/src/components/Chatbot.tsx` — public-facing chat UI; loads config on mount, streams responses via SSE, hides itself if `isEnabled: false`
-- **Admin page**: `client/src/pages/admin/ChatbotManager.tsx` — 4 tabs: Overview, Knowledge Base, Configuration, Conversation Logs; route `/admin/chatbot-manager`
+- **Public widget**: `client/src/components/Chatbot.tsx` — public-facing chat UI; resizable via drag handles; loads config + history on mount; streams via SSE; hides if `isEnabled: false`
+- **Dashboard widget**: `client/src/components/DashboardChatbot.tsx` — floating widget for user/team dashboards; `mode="user"|"team"` prop; resizable; restores history on mount
+- **User AI page**: `client/src/pages/user/UserAIChat.tsx` — full-page chat at `/user-dashboard/ai-assistant`; two-column layout with resizable info sidebar
+- **Team AI page**: `client/src/pages/team/TeamAIChat.tsx` — full-page chat at `/team/ai-assistant`; same layout with emerald theme
+- **Admin page**: `client/src/pages/admin/ChatbotManager.tsx` — 7 tabs: Overview, Knowledge Base, Configuration, Conversation Logs, User Bot, Team Bot, Cost & Usage; route `/admin/chatbot-manager`
 - **API client**: `client/src/api/chatbot.api.ts` — typed wrappers for all endpoints
 - **Controller**: `server/src/controllers/usersControllers/chatbot.controller.js`
 - **Routes**: `server/src/routes/userRoutes/chatbot.route.js` → mounted at `/api/v1/chatbot`
@@ -379,9 +382,10 @@ Every CRUD operation instantly reflects across all dashboards without a page rel
 ### MongoDB Models
 | Model | File | Purpose |
 |---|---|---|
-| `ChatbotConfig` | `models/usersModels/ChatbotConfig.model.js` | **Singleton** (`singleton:'main'`) — one document; stores API keys (encrypted), system prompt, model settings |
+| `ChatbotConfig` | `models/usersModels/ChatbotConfig.model.js` | **Singleton** (`singleton:'main'`) — one document; stores API keys (encrypted), system prompt, model settings, user/team quick prompts |
 | `ChatbotKnowledge` | `models/usersModels/ChatbotKnowledge.model.js` | Knowledge base entries with full-text index on `title+content+tags` |
 | `ChatbotSession` | `models/usersModels/ChatbotSession.model.js` | Conversation history — one doc per `sessionId` UUID |
+| `ChatbotUsage` | `models/usersModels/ChatbotUsage.model.js` | Per-request token usage + cost tracking; TTL 1 year; `calcCost(model, inputTok, outputTok)` exported |
 
 ### Knowledge Entry Types
 | Type | How added | Notes |
@@ -481,6 +485,40 @@ Six tone presets configurable via ChatbotManager → Configuration tab:
 2. Add it to the `KnowledgeEntry` TypeScript interface in `chatbot.api.ts`
 3. Add a colour entry in `typeColor()` in `ChatbotManager.tsx`
 4. Add display logic in the entry card (icon, link, etc.)
+
+### Dashboard Chatbots (User Bot + Team Bot)
+- **Endpoints**: `POST /api/v1/chatbot/user-chat` (any auth) and `POST /api/v1/chatbot/team-chat` (admin/team)
+- **Shared helper**: `_streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg, endpoint })` — handles SSE streaming, token tracking, session persistence
+- **User context** injected automatically: projects (status, progress, payment), applied jobs (status, admin notes), profile (name, email, role), KB entries
+- **Team context** injected automatically: assigned client projects (full detail), portfolio projects, team profile (position, department, skills), KB entries
+- **Quick prompts**: `userChatQuickPrompts` / `teamChatQuickPrompts` stored in `ChatbotConfig`; editable in ChatbotManager → User Bot / Team Bot tabs; loaded by page components on mount via `getConfig()`
+- **Session isolation**: each surface has its own `localStorage` key: `nova_session_id` (public), `dashboard-user-chat-session` (user widget), `dashboard-team-chat-session` (team widget), `user-ai-page-session` (user page), `team-ai-page-session` (team page)
+
+### Chat History Persistence
+- `GET /api/v1/chatbot/history/:sessionId` — public route; returns last 100 messages; UUID acts as the access key
+- `getChatHistory(sessionId)` in `chatbot.api.ts` — silent fallback (returns `[]` on error)
+- All four chatbot surfaces call `getChatHistory()` on mount and restore prior messages
+- "Previous conversation" divider (`─── Previous conversation ───`) rendered above restored messages
+- Clear button always generates a new UUID, cutting off history
+
+### Resizable Chatbot Widgets
+All chatbot panels support drag-to-resize via three handle zones:
+- **Left edge** — drag left/right to change width
+- **Top edge** — drag up/down to change height  
+- **Top-left corner** — drag diagonally to resize both axes simultaneously
+- Implementation: mouse event refs (`resizingEdge`, `resizeStartX/Y`, `resizeStartW/H`) — no state during drag to avoid re-renders; `document.body.style.userSelect = 'none'` while dragging
+- Constraints: public widget 320–800px wide, 400px–(vh-120) tall; dashboard widget 300–700px wide, 360–750px tall
+- Expand button (public widget) centres the panel at full width / 80vh; resize handles hidden while expanded
+
+### Cost & Usage Tracking
+- `ChatbotUsage` model records every successful AI call: `model`, `endpoint` (public/user/team), `inputTokens`, `outputTokens`, `cost` (USD)
+- `calcCost(model, inputTokens, outputTokens)` — pricing map matches official Anthropic rates (Opus/Sonnet/Haiku 3.x–4.x); 8 decimal place precision
+- `_trackUsage()` called non-blocking after `stream.finalMessage()` in all three stream paths
+- `GET /api/v1/chatbot/usage/stats` returns: summary (today/week/month/all-time), by model, by endpoint, daily 30-day breakdown
+- **ChatbotManager → Cost & Usage tab**: summary cards, token totals, 30-day bar chart, endpoint breakdown with progress bars, model table, Anthropic pricing reference
+
+### Auto-Sync (chatbotAutoSync.js)
+`server/src/utils/chatbotAutoSync.js` — call `syncChatbotSection(io, section)` after CRUD on Services, Jobs, AdminProject to keep the KB up to date. Currently triggered in respective controllers.
 
 ### Environment variables required
 | Variable | Purpose |
