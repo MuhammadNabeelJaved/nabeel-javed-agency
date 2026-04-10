@@ -33,6 +33,7 @@ import { successResponse } from '../../utils/apiResponse.js';
 import ChatbotConfig    from '../../models/usersModels/ChatbotConfig.model.js';
 import ChatbotKnowledge from '../../models/usersModels/ChatbotKnowledge.model.js';
 import ChatbotSession   from '../../models/usersModels/ChatbotSession.model.js';
+import ChatbotUsage, { calcCost } from '../../models/usersModels/ChatbotUsage.model.js';
 import { uploadFile }      from '../../middlewares/Cloudinary.js';
 // Models used for DB queries
 import PageStatus           from '../../models/usersModels/PageStatus.model.js';
@@ -214,6 +215,13 @@ async function _persistSession(sessionId, req, userMsg, botMsg) {
   session.messages.push({ role: 'user',      content: userMsg });
   session.messages.push({ role: 'assistant', content: botMsg  });
   await session.save();
+}
+
+// ─── Usage tracking helper (non-blocking) ────────────────────────────────────
+function _trackUsage({ model, inputTokens = 0, outputTokens = 0, endpoint = 'public', sessionId = null }) {
+  const cost = calcCost(model, inputTokens, outputTokens);
+  ChatbotUsage.create({ model, endpoint, inputTokens, outputTokens, cost, sessionId })
+    .catch(e => console.error('[Chatbot] Usage track error:', e.message));
 }
 
 // ─── Encryption helpers ───────────────────────────────────────────────────────
@@ -564,6 +572,18 @@ Rules: max 3 CTAs per response · only when genuinely relevant · use ONLY the p
 
     sendEvent({ type: 'done' });
 
+    // Track token usage (non-blocking)
+    try {
+      const finalMsg = await stream.finalMessage();
+      _trackUsage({
+        model,
+        inputTokens:  finalMsg.usage?.input_tokens  || 0,
+        outputTokens: finalMsg.usage?.output_tokens || 0,
+        endpoint: 'public',
+        sessionId,
+      });
+    } catch (_) { /* non-critical */ }
+
     // Cache the response for future identical queries (skip very short or very long)
     if (fullResponse.length >= 20 && fullResponse.length <= 3000) {
       _cacheSet(cacheKey, fullResponse);
@@ -584,7 +604,7 @@ Rules: max 3 CTAs per response · only when genuinely relevant · use ONLY the p
 
 // ─── Shared SSE streaming helper for dashboard chatbots ──────────────────────
 
-async function _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg }) {
+async function _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg, endpoint = 'user' }) {
   const rawIp = req.ip || '0.0.0.0';
   const ipKey = rawIp.replace(/\.\d+$/, '.0').replace(/:[^:]+$/, ':0');
   if (_isRateLimited(ipKey)) throw new AppError('Too many messages. Please wait a moment.', 429);
@@ -629,6 +649,19 @@ async function _streamDashboardChat({ req, res, sessionId, userMsg, history, sys
       }
     }
     sendEvent({ type: 'done' });
+
+    // Track token usage (non-blocking)
+    try {
+      const finalMsg = await stream.finalMessage();
+      _trackUsage({
+        model,
+        inputTokens:  finalMsg.usage?.input_tokens  || 0,
+        outputTokens: finalMsg.usage?.output_tokens || 0,
+        endpoint,
+        sessionId,
+      });
+    } catch (_) { /* non-critical */ }
+
   } catch (err) {
     console.error('[Chatbot] Anthropic error:', err.message);
     sendEvent({ type: 'error', message: 'AI service error. Please try again.' });
@@ -714,7 +747,7 @@ export const userChat = asyncHandler(async (req, res) => {
     `\n\nKeep answers concise (2–4 sentences) unless the user asks for more detail.` +
     personalContext;
 
-  await _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg });
+  await _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg, endpoint: 'user' });
 });
 
 // ─── Authenticated: POST /team-chat ──────────────────────────────────────────
@@ -787,7 +820,7 @@ export const teamChat = asyncHandler(async (req, res) => {
     `\n\nKeep answers concise (2–4 sentences) unless more detail is requested.` +
     teamContext;
 
-  await _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg });
+  await _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg, endpoint: 'team' });
 });
 
 // ─── Admin: Stats ─────────────────────────────────────────────────────────────
@@ -831,6 +864,98 @@ export const getStats = asyncHandler(async (req, res) => {
     resolvedSessions,
     recentActivity,
     dailyActivity: dailyAgg,
+  });
+});
+
+// ─── Admin: Usage & Cost Stats ────────────────────────────────────────────────
+
+export const getUsageStats = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const now   = new Date();
+  const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
+  const startOfWeek  = new Date(now); startOfWeek.setDate(now.getDate() - 6); startOfWeek.setHours(0,0,0,0);
+  const startOfMonth = new Date(now); startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0);
+  const start30d     = new Date(now); start30d.setDate(now.getDate() - 29); start30d.setHours(0,0,0,0);
+
+  const [allTime, today, week, month, byModel, byEndpoint, daily] = await Promise.all([
+    // All-time totals
+    ChatbotUsage.aggregate([
+      { $group: {
+        _id: null,
+        totalCost:         { $sum: '$cost' },
+        totalInputTokens:  { $sum: '$inputTokens' },
+        totalOutputTokens: { $sum: '$outputTokens' },
+        totalRequests:     { $sum: 1 },
+      }},
+    ]),
+
+    // Today
+    ChatbotUsage.aggregate([
+      { $match: { timestamp: { $gte: startOfToday } } },
+      { $group: { _id: null, cost: { $sum: '$cost' }, requests: { $sum: 1 } } },
+    ]),
+
+    // This week (last 7 days)
+    ChatbotUsage.aggregate([
+      { $match: { timestamp: { $gte: startOfWeek } } },
+      { $group: { _id: null, cost: { $sum: '$cost' }, requests: { $sum: 1 } } },
+    ]),
+
+    // This month
+    ChatbotUsage.aggregate([
+      { $match: { timestamp: { $gte: startOfMonth } } },
+      { $group: { _id: null, cost: { $sum: '$cost' }, requests: { $sum: 1 } } },
+    ]),
+
+    // Breakdown by model (all time)
+    ChatbotUsage.aggregate([
+      { $group: {
+        _id:          '$model',
+        totalCost:    { $sum: '$cost' },
+        requests:     { $sum: 1 },
+        inputTokens:  { $sum: '$inputTokens' },
+        outputTokens: { $sum: '$outputTokens' },
+      }},
+      { $sort: { totalCost: -1 } },
+    ]),
+
+    // Breakdown by endpoint (all time)
+    ChatbotUsage.aggregate([
+      { $group: {
+        _id:       '$endpoint',
+        totalCost: { $sum: '$cost' },
+        requests:  { $sum: 1 },
+        inputTokens:  { $sum: '$inputTokens' },
+        outputTokens: { $sum: '$outputTokens' },
+      }},
+      { $sort: { totalCost: -1 } },
+    ]),
+
+    // Daily cost last 30 days
+    ChatbotUsage.aggregate([
+      { $match: { timestamp: { $gte: start30d } } },
+      { $group: {
+        _id:      { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+        cost:     { $sum: '$cost' },
+        requests: { $sum: 1 },
+        inputTokens:  { $sum: '$inputTokens' },
+        outputTokens: { $sum: '$outputTokens' },
+      }},
+      { $sort: { _id: 1 } },
+    ]),
+  ]);
+
+  successResponse(res, 'Usage stats retrieved', {
+    summary: {
+      allTime:    { cost: allTime[0]?.totalCost || 0, inputTokens: allTime[0]?.totalInputTokens || 0, outputTokens: allTime[0]?.totalOutputTokens || 0, requests: allTime[0]?.totalRequests || 0 },
+      today:      { cost: today[0]?.cost   || 0, requests: today[0]?.requests   || 0 },
+      thisWeek:   { cost: week[0]?.cost    || 0, requests: week[0]?.requests    || 0 },
+      thisMonth:  { cost: month[0]?.cost   || 0, requests: month[0]?.requests   || 0 },
+    },
+    byModel:   byModel.map(r => ({ model: r._id, totalCost: r.totalCost, requests: r.requests, inputTokens: r.inputTokens, outputTokens: r.outputTokens })),
+    byEndpoint: byEndpoint.map(r => ({ endpoint: r._id, totalCost: r.totalCost, requests: r.requests, inputTokens: r.inputTokens, outputTokens: r.outputTokens })),
+    daily:     daily.map(r => ({ date: r._id, cost: r.cost, requests: r.requests, inputTokens: r.inputTokens, outputTokens: r.outputTokens })),
   });
 });
 
