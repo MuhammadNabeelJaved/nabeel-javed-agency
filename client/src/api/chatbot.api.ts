@@ -99,6 +99,23 @@ export interface ChatbotStats {
   dailyActivity: { _id: string; count: number }[];
 }
 
+export interface UsagePeriod { cost: number; requests: number; }
+export interface UsageModelRow   { model: string;    totalCost: number; requests: number; inputTokens: number; outputTokens: number; }
+export interface UsageEndpointRow { endpoint: string; totalCost: number; requests: number; inputTokens: number; outputTokens: number; }
+export interface UsageDailyRow   { date: string;     cost: number;      requests: number; inputTokens: number; outputTokens: number; }
+
+export interface ChatbotUsageStats {
+  summary: {
+    allTime:   UsagePeriod & { inputTokens: number; outputTokens: number };
+    today:     UsagePeriod;
+    thisWeek:  UsagePeriod;
+    thisMonth: UsagePeriod;
+  };
+  byModel:    UsageModelRow[];
+  byEndpoint: UsageEndpointRow[];
+  daily:      UsageDailyRow[];
+}
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -232,6 +249,11 @@ export async function streamTeamChat(opts: {
 
 export async function getStats(): Promise<ChatbotStats> {
   const data = await apiFetch<{ data: ChatbotStats }>(`${BASE}/stats`);
+  return data.data;
+}
+
+export async function getUsageStats(): Promise<ChatbotUsageStats> {
+  const data = await apiFetch<{ data: ChatbotUsageStats }>(`${BASE}/usage/stats`);
   return data.data;
 }
 

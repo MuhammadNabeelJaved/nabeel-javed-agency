@@ -50,6 +50,7 @@ import {
   uploadKnowledgeFile,
   crawlUrl,
   syncFromDatabase,
+  getUsageStats,
 } from '../../controllers/usersControllers/chatbot.controller.js';
 
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
@@ -91,6 +92,7 @@ router.post('/team-chat', userAuthenticated, authorizeRoles('admin', 'team'), mu
 const adminOnly = [userAuthenticated, authorizeRoles('admin')];
 
 router.get('/stats',                          ...adminOnly, getStats);
+router.get('/usage/stats',                    ...adminOnly, getUsageStats);
 
 // Sessions
 router.get   ('/sessions',                   ...adminOnly, getSessions);

@@ -10,7 +10,8 @@ import {
   Check, X, Eye, EyeOff, AlertCircle, FileText,
   Key, ChevronDown, ChevronUp, Tag, ToggleLeft, ToggleRight,
   Sparkles, Users, TrendingUp, Calendar, Shield, Info,
-  CheckCircle, Circle, Download, Globe, Link,
+  CheckCircle, Circle, Download, Globe, Link, DollarSign,
+  Zap, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -26,15 +27,16 @@ import {
   getStats, getSessions, getSession, deleteSession, resolveSession,
   getConfig, updateConfig, addApiKey, removeApiKey, activateApiKey,
   getKnowledge, createKnowledge, updateKnowledge, deleteKnowledge,
-  uploadKnowledgeFile, crawlUrl, syncFromDatabase,
+  uploadKnowledgeFile, crawlUrl, syncFromDatabase, getUsageStats,
 } from '../../api/chatbot.api';
 import type {
   ChatbotStats, ChatbotSession, ChatbotConfigFull,
   KnowledgeEntry, ApiKeyMeta, ChatbotTone, SyncResult, AnthropicModel,
+  ChatbotUsageStats,
 } from '../../api/chatbot.api';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type Tab = 'overview' | 'knowledge' | 'config' | 'logs' | 'user-bot' | 'team-bot';
+type Tab = 'overview' | 'knowledge' | 'config' | 'logs' | 'user-bot' | 'team-bot' | 'cost';
 
 const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
   { id: 'overview',  label: 'Overview',          Icon: BarChart3     },
@@ -43,6 +45,7 @@ const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
   { id: 'logs',      label: 'Conversation Logs',  Icon: MessageSquare },
   { id: 'user-bot',  label: 'User Bot',           Icon: Users         },
   { id: 'team-bot',  label: 'Team Bot',           Icon: Shield        },
+  { id: 'cost',      label: 'Cost & Usage',       Icon: DollarSign    },
 ];
 
 // ─── Toggle ────────────────────────────────────────────────────────────────────
@@ -1590,6 +1593,311 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
   );
 }
 
+// ─── Cost & Usage Tab ──────────────────────────────────────────────────────────
+
+// Full pricing reference (USD per million tokens) mirroring the Anthropic docs
+const PRICING_REF = [
+  { model: 'Claude Opus 4.6 / 4.5',    input: '$5.00',  output: '$25.00', tier: 'Opus'   },
+  { model: 'Claude Sonnet 4.6 / 4.5',  input: '$3.00',  output: '$15.00', tier: 'Sonnet' },
+  { model: 'Claude Haiku 4.5',         input: '$1.00',  output: '$5.00',  tier: 'Haiku'  },
+  { model: 'Claude Haiku 3.5',         input: '$0.80',  output: '$4.00',  tier: 'Haiku'  },
+  { model: 'Claude Haiku 3',           input: '$0.25',  output: '$1.25',  tier: 'Haiku'  },
+];
+
+const TIER_COLOR: Record<string, string> = {
+  Opus:   'bg-purple-500/15 text-purple-400 border-purple-500/20',
+  Sonnet: 'bg-blue-500/15   text-blue-400   border-blue-500/20',
+  Haiku:  'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+};
+
+const ENDPOINT_CONFIG: Record<string, { label: string; color: string; Icon: React.ElementType }> = {
+  public: { label: 'Public Chatbot', color: 'text-violet-400', Icon: Globe   },
+  user:   { label: 'User Bot',       color: 'text-blue-400',   Icon: Users   },
+  team:   { label: 'Team Bot',       color: 'text-emerald-400',Icon: Shield  },
+};
+
+function fmt$(n: number) {
+  if (n === 0) return '$0.00';
+  if (n < 0.001) return `$${n.toFixed(6)}`;
+  if (n < 1)     return `$${n.toFixed(4)}`;
+  return `$${n.toFixed(2)}`;
+}
+function fmtTok(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+function MiniBarChart({ data }: { data: { date: string; cost: number }[] }) {
+  if (!data.length) return <p className="text-xs text-muted-foreground text-center py-4">No data yet</p>;
+  const max = Math.max(...data.map(d => d.cost), 0.000001);
+
+  // Fill missing days in last 30 with zero
+  const filled: { date: string; cost: number }[] = [];
+  const today = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const found = data.find(x => x.date === key);
+    filled.push({ date: key, cost: found?.cost || 0 });
+  }
+
+  return (
+    <div className="flex items-end gap-px h-24 w-full">
+      {filled.map(({ date, cost }) => {
+        const h = Math.max(2, Math.round((cost / max) * 88));
+        const label = date.slice(5); // MM-DD
+        return (
+          <div key={date} className="group relative flex-1 flex flex-col items-center justify-end h-full">
+            <div
+              className="w-full rounded-sm bg-primary/60 hover:bg-primary transition-colors"
+              style={{ height: `${h}px` }}
+            />
+            {/* Tooltip on hover */}
+            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-10 hidden group-hover:block whitespace-nowrap bg-popover border border-border rounded px-2 py-1 text-xs shadow-lg pointer-events-none">
+              <span className="font-medium">{label}</span>
+              <br />
+              <span className="text-muted-foreground">{fmt$(cost)}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CostTab() {
+  const [stats, setStats]   = useState<ChatbotUsageStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setStats(await getUsageStats()); }
+    catch { toast.error('Failed to load usage stats'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+  if (!stats) return null;
+
+  const { summary, byModel, byEndpoint, daily } = stats;
+
+  const summaryCards = [
+    { label: 'Today',      value: summary.today.cost,     requests: summary.today.requests,     color: 'text-sky-400',    bg: 'from-sky-500/10    to-sky-600/5'    },
+    { label: 'This Week',  value: summary.thisWeek.cost,  requests: summary.thisWeek.requests,  color: 'text-violet-400', bg: 'from-violet-500/10 to-violet-600/5' },
+    { label: 'This Month', value: summary.thisMonth.cost, requests: summary.thisMonth.requests, color: 'text-amber-400',  bg: 'from-amber-500/10  to-amber-600/5'  },
+    { label: 'All Time',   value: summary.allTime.cost,   requests: summary.allTime.requests,   color: 'text-primary',    bg: 'from-primary/10    to-primary/5'    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600">
+            <DollarSign className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Cost & Usage</h2>
+            <p className="text-sm text-muted-foreground">Real API spend based on Anthropic's published token pricing</p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={load} className="gap-2">
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {summaryCards.map(({ label, value, requests, color, bg }) => (
+          <Card key={label} className={`bg-gradient-to-br ${bg} border-border/50`}>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground mb-1">{label}</p>
+              <p className={`text-2xl font-bold font-mono ${color}`}>{fmt$(value)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{requests.toLocaleString()} requests</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Token totals */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" /> All-Time Token Usage
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            {[
+              { label: 'Input Tokens',  value: summary.allTime.inputTokens,  icon: ArrowDown, color: 'text-blue-400'   },
+              { label: 'Output Tokens', value: summary.allTime.outputTokens, icon: ArrowUp,   color: 'text-violet-400' },
+              { label: 'Total Tokens',  value: summary.allTime.inputTokens + summary.allTime.outputTokens, icon: Zap, color: 'text-primary' },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="p-3 rounded-xl bg-muted/30 border border-border/30">
+                <Icon className={`h-4 w-4 mx-auto mb-1 ${color}`} />
+                <p className={`text-xl font-bold font-mono ${color}`}>{fmtTok(value)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Daily cost chart */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" /> Daily Cost — Last 30 Days
+          </CardTitle>
+          <CardDescription>Each bar = one day's API spend. Hover for exact amount.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MiniBarChart data={daily} />
+          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+            <span>30 days ago</span><span>Today</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* By endpoint */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" /> Cost by Endpoint
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {byEndpoint.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No usage recorded yet</p>
+          ) : (
+            <div className="space-y-3">
+              {byEndpoint.map(row => {
+                const cfg = ENDPOINT_CONFIG[row.endpoint] || { label: row.endpoint, color: 'text-foreground', Icon: Bot };
+                const pct = summary.allTime.cost > 0 ? (row.totalCost / summary.allTime.cost) * 100 : 0;
+                return (
+                  <div key={row.endpoint} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <cfg.Icon className={`h-4 w-4 ${cfg.color}`} />
+                        <span className="font-medium">{cfg.label}</span>
+                        <span className="text-xs text-muted-foreground">{row.requests.toLocaleString()} req</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">{fmtTok(row.inputTokens + row.outputTokens)} tok</span>
+                        <span className={`font-mono font-semibold ${cfg.color}`}>{fmt$(row.totalCost)}</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                      <div className="h-full rounded-full bg-primary/60" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* By model */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" /> Cost by Model
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {byModel.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No usage recorded yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/40 text-xs text-muted-foreground">
+                    <th className="text-left pb-2 font-medium">Model</th>
+                    <th className="text-right pb-2 font-medium">Requests</th>
+                    <th className="text-right pb-2 font-medium">Input</th>
+                    <th className="text-right pb-2 font-medium">Output</th>
+                    <th className="text-right pb-2 font-medium">Total Cost</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {byModel.map(row => (
+                    <tr key={row.model} className="hover:bg-muted/10 transition-colors">
+                      <td className="py-2.5 font-mono text-xs">{row.model}</td>
+                      <td className="py-2.5 text-right text-muted-foreground">{row.requests.toLocaleString()}</td>
+                      <td className="py-2.5 text-right text-muted-foreground">{fmtTok(row.inputTokens)}</td>
+                      <td className="py-2.5 text-right text-muted-foreground">{fmtTok(row.outputTokens)}</td>
+                      <td className="py-2.5 text-right font-mono font-semibold text-primary">{fmt$(row.totalCost)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pricing reference */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Info className="h-4 w-4 text-primary" /> Anthropic Pricing Reference
+          </CardTitle>
+          <CardDescription>
+            Official rates used to calculate costs above (USD per million tokens).{' '}
+            <a
+              href="https://platform.claude.com/docs/en/about-claude/pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1"
+            >
+              View on Anthropic <Link className="h-3 w-3" />
+            </a>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40 text-xs text-muted-foreground">
+                  <th className="text-left pb-2 font-medium">Model</th>
+                  <th className="text-right pb-2 font-medium">Tier</th>
+                  <th className="text-right pb-2 font-medium">Input / MTok</th>
+                  <th className="text-right pb-2 font-medium">Output / MTok</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/20">
+                {PRICING_REF.map(row => (
+                  <tr key={row.model} className="hover:bg-muted/10 transition-colors">
+                    <td className="py-2.5 font-medium text-xs">{row.model}</td>
+                    <td className="py-2.5 text-right">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border ${TIER_COLOR[row.tier]}`}>
+                        {row.tier}
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-right font-mono text-xs text-muted-foreground">{row.input}</td>
+                    <td className="py-2.5 text-right font-mono text-xs text-muted-foreground">{row.output}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3 border-t border-border/30 pt-3">
+            Prompt caching writes cost 1.25× (5 min) or 2× (1 hr); cache reads cost 0.1× base input price.
+            Batch API gives 50% off both input and output tokens.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ChatbotManager() {
   const location = useLocation();
@@ -1641,6 +1949,7 @@ export default function ChatbotManager() {
       {tab === 'logs'      && <LogsTab />}
       {tab === 'user-bot'  && <DashboardBotTab mode="user" />}
       {tab === 'team-bot'  && <DashboardBotTab mode="team" />}
+      {tab === 'cost'      && <CostTab />}
     </div>
   );
 }
