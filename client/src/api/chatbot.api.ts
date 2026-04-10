@@ -41,6 +41,12 @@ export interface ChatbotConfigFull {
   botName: string;
   welcomeMessage: string;
   isEnabled: boolean;
+  isUserChatEnabled: boolean;
+  isTeamChatEnabled: boolean;
+  userChatSystemPrompt: string;
+  teamChatSystemPrompt: string;
+  userChatQuickPrompts: string[];
+  teamChatQuickPrompts: string[];
   tone: ChatbotTone;
   maxTokens: number;
   temperature: number;
@@ -114,22 +120,22 @@ export async function getPublicConfig(): Promise<PublicChatbotConfig> {
   return data.data;
 }
 
-/**
- * Stream a chat message.  Calls `onDelta` for each text chunk and `onDone`
- * when the stream ends.  Returns the full response string on completion.
- */
-export async function streamChat(opts: {
-  message: string;
-  sessionId: string;
-  history: ChatMessage[];
-  onDelta: (text: string) => void;
-  onDone: () => void;
-  onError: (msg: string) => void;
-  signal?: AbortSignal;
-}): Promise<string> {
+/** Internal SSE streaming helper shared across all chat endpoints. */
+async function _streamFromEndpoint(
+  url: string,
+  opts: {
+    message: string;
+    sessionId: string;
+    history: ChatMessage[];
+    onDelta: (text: string) => void;
+    onDone: () => void;
+    onError: (msg: string) => void;
+    signal?: AbortSignal;
+  },
+): Promise<string> {
   const { message, sessionId, history, onDelta, onDone, onError, signal } = opts;
 
-  const response = await fetch(`${BASE}/chat`, {
+  const response = await fetch(url, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -178,6 +184,48 @@ export async function streamChat(opts: {
   }
 
   return full;
+}
+
+/**
+ * Stream a public chat message.  Calls `onDelta` for each text chunk and `onDone`
+ * when the stream ends.  Returns the full response string on completion.
+ */
+export async function streamChat(opts: {
+  message: string;
+  sessionId: string;
+  history: ChatMessage[];
+  onDelta: (text: string) => void;
+  onDone: () => void;
+  onError: (msg: string) => void;
+  signal?: AbortSignal;
+}): Promise<string> {
+  return _streamFromEndpoint(`${BASE}/chat`, opts);
+}
+
+/** Stream a user-dashboard chat message (requires auth). */
+export async function streamUserChat(opts: {
+  message: string;
+  sessionId: string;
+  history: ChatMessage[];
+  onDelta: (text: string) => void;
+  onDone: () => void;
+  onError: (msg: string) => void;
+  signal?: AbortSignal;
+}): Promise<string> {
+  return _streamFromEndpoint(`${BASE}/user-chat`, opts);
+}
+
+/** Stream a team-dashboard chat message (requires auth + team role). */
+export async function streamTeamChat(opts: {
+  message: string;
+  sessionId: string;
+  history: ChatMessage[];
+  onDelta: (text: string) => void;
+  onDone: () => void;
+  onError: (msg: string) => void;
+  signal?: AbortSignal;
+}): Promise<string> {
+  return _streamFromEndpoint(`${BASE}/team-chat`, opts);
 }
 
 // ─── Admin — Stats & Sessions ─────────────────────────────────────────────────

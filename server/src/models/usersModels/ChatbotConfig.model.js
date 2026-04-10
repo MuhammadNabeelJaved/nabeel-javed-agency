@@ -57,8 +57,37 @@ const chatbotConfigSchema = new mongoose.Schema({
     default: "Hi! I'm Nova, your AI assistant. Ask me anything about our services, projects, or team!",
   },
 
-  /** Whether the chatbot widget is active on the public site. */
-  isEnabled: { type: Boolean, default: true },
+  /** Whether the public chatbot widget is active on the public site. */
+  isEnabled:        { type: Boolean, default: true },
+  /** Whether the AI assistant is shown inside the user dashboard. */
+  isUserChatEnabled: { type: Boolean, default: true },
+  /** Whether the AI assistant is shown inside the team dashboard. */
+  isTeamChatEnabled: { type: Boolean, default: true },
+
+  /** Custom system prompt for the user-dashboard chatbot. */
+  userChatSystemPrompt: {
+    type: String,
+    default:
+      'You are a personal AI assistant for a client user of this agency. ' +
+      'You have full access to this user\'s project data, applied jobs, and account info. ' +
+      'Answer questions about their specific projects (status, deadlines, payments, progress), ' +
+      'applied job applications, and account settings. ' +
+      'Be helpful, specific, and refer to their actual data. ' +
+      'Do not discuss other users\' data. ' +
+      'For general business questions, you can also help, but prioritize their personal context.',
+  },
+
+  /** Custom system prompt for the team-dashboard chatbot. */
+  teamChatSystemPrompt: {
+    type: String,
+    default:
+      'You are an internal AI assistant for a team member of this agency. ' +
+      'You have access to this team member\'s assigned client projects, tasks, and team data. ' +
+      'Help them with project management questions, task planning, client project details, ' +
+      'deadlines, technical decisions, and anything work-related. ' +
+      'You can reference specific projects and tasks assigned to them. ' +
+      'Be concise, professional, and practical.',
+  },
 
   /**
    * Conversational tone / personality style injected into the system prompt.
@@ -77,6 +106,28 @@ const chatbotConfigSchema = new mongoose.Schema({
   /** Simple rate-limiting hints (enforced at the controller level). */
   maxMessagesPerHour: { type: Number, default: 30 },
   maxMessagesPerDay:  { type: Number, default: 100 },
+
+  /** Suggested quick-prompt buttons shown in the user dashboard chatbot. */
+  userChatQuickPrompts: {
+    type:    [String],
+    default: [
+      "What's the status of my projects?",
+      "Show my applied jobs",
+      "What's my outstanding balance?",
+      "How do I submit a new project?",
+    ],
+  },
+
+  /** Suggested quick-prompt buttons shown in the team dashboard chatbot. */
+  teamChatQuickPrompts: {
+    type:    [String],
+    default: [
+      "Which projects am I assigned to?",
+      "What tasks are due this week?",
+      "Show me client project details",
+      "Help me write a project update",
+    ],
+  },
 }, {
   timestamps: true,
 });

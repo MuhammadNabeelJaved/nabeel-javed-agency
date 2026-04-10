@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, BarChart2, Settings, LogOut, Bell,
-  ChevronRight, Calendar, MessageSquare, Files, HelpCircle, X,
+  ChevronRight, Calendar, MessageSquare, Files, HelpCircle, X, Sparkles,
   PanelLeftClose, PanelLeftOpen, GripVertical, Star,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -29,6 +29,7 @@ const DEFAULT_LINKS = [
   { name: 'Dashboard',     path: '/team',                icon: LayoutDashboard },
   { name: 'Projects',      path: '/team/projects',       icon: FolderKanban },
   { name: 'My Tasks',      path: '/team/tasks',          icon: CheckSquare },
+  { name: 'AI Assistant',  path: '/team/ai-assistant',   icon: Sparkles },
   { name: 'Calendar',      path: '/team/calendar',       icon: Calendar },
   { name: 'Chat',          path: '/team/chat',           icon: MessageSquare },
   { name: 'Resources',     path: '/team/resources',      icon: Files },

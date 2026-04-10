@@ -34,13 +34,15 @@ import type {
 } from '../../api/chatbot.api';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type Tab = 'overview' | 'knowledge' | 'config' | 'logs';
+type Tab = 'overview' | 'knowledge' | 'config' | 'logs' | 'user-bot' | 'team-bot';
 
 const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
   { id: 'overview',  label: 'Overview',          Icon: BarChart3     },
   { id: 'knowledge', label: 'Knowledge Base',     Icon: BookOpen      },
   { id: 'config',    label: 'Configuration',      Icon: Settings2     },
   { id: 'logs',      label: 'Conversation Logs',  Icon: MessageSquare },
+  { id: 'user-bot',  label: 'User Bot',           Icon: Users         },
+  { id: 'team-bot',  label: 'Team Bot',           Icon: Shield        },
 ];
 
 // ─── Toggle ────────────────────────────────────────────────────────────────────
@@ -1298,6 +1300,296 @@ function LogsTab() {
   );
 }
 
+// ─── Shared Dashboard Bot Config Tab ──────────────────────────────────────────
+function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
+  const isUser = mode === 'user';
+  const label  = isUser ? 'User Bot' : 'Team Bot';
+  const enabledField    = isUser ? 'isUserChatEnabled'    : 'isTeamChatEnabled'    as const;
+  const promptField     = isUser ? 'userChatSystemPrompt' : 'teamChatSystemPrompt' as const;
+  const promptsField    = isUser ? 'userChatQuickPrompts' : 'teamChatQuickPrompts' as const;
+  const icon            = isUser ? Users : Shield;
+  const gradientFrom    = isUser ? 'from-blue-500'    : 'from-emerald-500';
+  const gradientTo      = isUser ? 'to-violet-600'    : 'to-teal-600';
+  const accentColor     = isUser ? 'text-blue-500'    : 'text-emerald-500';
+  const defaultPrompt   = isUser
+    ? "You are a personal AI assistant for a client user of this agency. You have full access to this user's project data, applied jobs, and account info. Answer questions about their specific projects, applied job applications, and account settings. Be helpful and specific."
+    : "You are an internal AI assistant for a team member of this agency. You have access to this team member's assigned client projects and portfolio projects. Help them with project management, deadlines, and client details. Be concise and practical.";
+  const defaultPrompts  = isUser
+    ? ["What's the status of my projects?", "Show my applied jobs", "What's my outstanding balance?", "How do I submit a new project?"]
+    : ["Which projects am I assigned to?", "What tasks are due this week?", "Show me client project details", "Help me write a project update"];
+
+  const [cfg,           setCfg]           = useState<ChatbotConfigFull | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [saving,        setSaving]        = useState(false);
+  const [enabled,       setEnabled]       = useState(true);
+  const [prompt,        setPrompt]        = useState('');
+  const [quickPrompts,  setQuickPrompts]  = useState<string[]>(defaultPrompts);
+  const [newPromptText, setNewPromptText] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const c = await getConfig();
+      setCfg(c);
+      setEnabled((c as any)[enabledField] ?? true);
+      setPrompt((c as any)[promptField] ?? '');
+      const ps = (c as any)[promptsField];
+      if (Array.isArray(ps) && ps.length) setQuickPrompts(ps);
+    } catch {
+      toast.error('Failed to load configuration');
+    } finally {
+      setLoading(false);
+    }
+  }, [enabledField, promptField, promptsField]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateConfig({ [enabledField]: enabled, [promptField]: prompt, [promptsField]: quickPrompts } as any);
+      toast.success(`${label} configuration saved`);
+    } catch {
+      toast.error('Failed to save configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+
+  const IconComp = icon;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-xl bg-gradient-to-br ${gradientFrom} ${gradientTo}`}>
+            <IconComp className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">{label} Settings</h2>
+            <p className="text-sm text-muted-foreground">
+              {isUser
+                ? 'Controls the AI assistant shown in the client dashboard'
+                : 'Controls the AI assistant shown in the team member dashboard'}
+            </p>
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving} className="gap-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          Save Changes
+        </Button>
+      </div>
+
+      {/* Enable / Disable */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bot className="h-4 w-4 text-primary" /> Availability
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">{label} Enabled</p>
+              <p className="text-xs text-muted-foreground">
+                {isUser
+                  ? 'Show the AI assistant widget in the user (client) dashboard'
+                  : 'Show the AI assistant widget in the team member dashboard'}
+              </p>
+            </div>
+            <Toggle checked={enabled} onChange={() => setEnabled(e => !e)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Capabilities info */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Info className="h-4 w-4 text-primary" /> What {label} Can Access
+          </CardTitle>
+          <CardDescription>Context is built fresh on every request — always up to date.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(isUser ? [
+              { label: 'Client Projects',     desc: 'Status, progress, deadlines, payments, attachments'     },
+              { label: 'Job Applications',    desc: 'Applied jobs, application status, admin notes'           },
+              { label: 'Account Profile',     desc: 'Name, email, role, account creation date'                },
+              { label: 'Business Knowledge',  desc: 'Services, portfolio, and KB entries from the admin panel' },
+            ] : [
+              { label: 'Assigned Client Projects', desc: 'Full details: status, client, budget, team, deadlines' },
+              { label: 'Portfolio Projects',        desc: 'AdminProject entries the team member can reference'   },
+              { label: 'Team Member Profile',       desc: 'Name, position, department, skills'                   },
+              { label: 'Business Knowledge',        desc: 'Services, KB entries, and company info'               },
+            ]).map(item => (
+              <div key={item.label} className="flex items-start gap-2.5 p-3 rounded-xl bg-muted/30 border border-border/30">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* System prompt */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" /> System Prompt
+          </CardTitle>
+          <CardDescription>
+            Injected at the start of every {label} conversation. The user's personal context is appended automatically.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            value={prompt}
+            onChange={e => setPrompt(e.target.value)}
+            rows={7}
+            className="font-mono text-xs"
+            placeholder={defaultPrompt}
+          />
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              The user's live data (projects, jobs, etc.) is appended after this prompt automatically.
+            </p>
+            <button
+              type="button"
+              onClick={() => setPrompt(defaultPrompt)}
+              className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0 ml-3"
+            >
+              <RefreshCw className="h-3 w-3" /> Reset to default
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Prompts editor */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" /> Quick Prompt Buttons
+          </CardTitle>
+          <CardDescription>
+            Suggestion chips shown to {isUser ? 'clients' : 'team members'} on the empty chat screen. Up to 8 prompts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Current prompts list */}
+          <div className="space-y-2">
+            {quickPrompts.map((p, i) => (
+              <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border/30">
+                <span className={`text-xs font-mono shrink-0 w-5 text-center ${accentColor} opacity-60`}>{i + 1}</span>
+                <p className="text-sm flex-1 truncate">{p}</p>
+                <button
+                  type="button"
+                  onClick={() => setQuickPrompts(prev => prev.filter((_, idx) => idx !== i))}
+                  className="shrink-0 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  title="Remove prompt"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {quickPrompts.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4 border border-dashed border-border/40 rounded-lg">
+                No quick prompts configured. Add some below.
+              </p>
+            )}
+          </div>
+
+          {/* Add new prompt */}
+          {quickPrompts.length < 8 && (
+            <div className="flex gap-2">
+              <Input
+                value={newPromptText}
+                onChange={e => setNewPromptText(e.target.value)}
+                placeholder={`e.g. ${defaultPrompts[0]}`}
+                className="text-sm"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newPromptText.trim()) {
+                    setQuickPrompts(prev => [...prev, newPromptText.trim()]);
+                    setNewPromptText('');
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!newPromptText.trim()}
+                onClick={() => {
+                  if (newPromptText.trim()) {
+                    setQuickPrompts(prev => [...prev, newPromptText.trim()]);
+                    setNewPromptText('');
+                  }
+                }}
+                className="shrink-0 gap-1"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add
+              </Button>
+            </div>
+          )}
+          {quickPrompts.length >= 8 && (
+            <p className="text-xs text-muted-foreground">Maximum of 8 quick prompts reached.</p>
+          )}
+
+          {/* Reset to defaults */}
+          <div className="flex items-center justify-between pt-1 border-t border-border/30">
+            <p className="text-xs text-muted-foreground">{quickPrompts.length} / 8 prompts</p>
+            <button
+              type="button"
+              onClick={() => setQuickPrompts(defaultPrompts)}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              <RefreshCw className="h-3 w-3" /> Reset to defaults
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Current config summary */}
+      {cfg && (
+        <Card className="bg-card/50 border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-primary" /> Shared Model Settings
+            </CardTitle>
+            <CardDescription>
+              {label} uses the same model + parameters as the public chatbot. Change them in the Configuration tab.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              {[
+                { label: 'Primary Model',  value: cfg.activeModel  },
+                { label: 'Simple Model',   value: cfg.simpleModel  },
+                { label: 'Max Tokens',     value: String(cfg.maxTokens) },
+                { label: 'Temperature',    value: String(cfg.temperature) },
+              ].map(item => (
+                <div key={item.label} className="p-3 rounded-xl bg-muted/30 border border-border/30">
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                  <p className="font-mono text-xs font-medium mt-0.5 truncate">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ChatbotManager() {
   const location = useLocation();
@@ -1347,6 +1639,8 @@ export default function ChatbotManager() {
       {tab === 'knowledge' && <KnowledgeTab />}
       {tab === 'config'    && <ConfigTab />}
       {tab === 'logs'      && <LogsTab />}
+      {tab === 'user-bot'  && <DashboardBotTab mode="user" />}
+      {tab === 'team-bot'  && <DashboardBotTab mode="team" />}
     </div>
   );
 }

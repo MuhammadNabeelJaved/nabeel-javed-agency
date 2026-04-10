@@ -3,6 +3,7 @@ import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import validator from "validator";
 import Service from "../../models/usersModels/Services.model.js";
+import { autoSyncSection } from "../../utils/chatbotAutoSync.js";
 
 // =========================
 // CREATE SERVICE
@@ -60,6 +61,7 @@ export const createService = asyncHandler(async (req, res) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "services" });
+        autoSyncSection('services').catch(() => {});
         successResponse(res, "Service created successfully", service, 201);
     } catch (error) {
         console.error("Error creating service:", error);
@@ -158,6 +160,7 @@ export const deleteService = asyncHandler(async (req, res) => {
 
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "services" });
+        autoSyncSection('services').catch(() => {});
         successResponse(res, "Service deleted successfully", null);
     } catch (error) {
         console.error("Error in deleteService:", error);
@@ -191,6 +194,7 @@ export const updateService = asyncHandler(async (req, res) => {
         }
         const io = req.app.get("io");
         if (io) io.of("/public").emit("cms:updated", { section: "services" });
+        autoSyncSection('services').catch(() => {});
         successResponse(res, "Service updated successfully", updatedService);
     } catch (error) {
         console.error("Error in updateService:", error);

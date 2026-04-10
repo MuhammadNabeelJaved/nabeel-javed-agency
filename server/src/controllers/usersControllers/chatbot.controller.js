@@ -33,15 +33,18 @@ import { successResponse } from '../../utils/apiResponse.js';
 import ChatbotConfig    from '../../models/usersModels/ChatbotConfig.model.js';
 import ChatbotKnowledge from '../../models/usersModels/ChatbotKnowledge.model.js';
 import ChatbotSession   from '../../models/usersModels/ChatbotSession.model.js';
-import { uploadFile }   from '../../middlewares/Cloudinary.js';
-// Models used for database auto-sync
-import PageStatus    from '../../models/usersModels/PageStatus.model.js';
-import Services      from '../../models/usersModels/Services.model.js';
-import AdminProject  from '../../models/usersModels/AdminProject.model.js';
-import CMS           from '../../models/usersModels/CMS.model.js';
-import Jobs          from '../../models/usersModels/Jobs.model.js';
-import Reviews       from '../../models/usersModels/Reviews.model.js';
-import User          from '../../models/usersModels/User.model.js';
+import { uploadFile }      from '../../middlewares/Cloudinary.js';
+// Models used for DB queries
+import PageStatus           from '../../models/usersModels/PageStatus.model.js';
+import Services             from '../../models/usersModels/Services.model.js';
+import AdminProject         from '../../models/usersModels/AdminProject.model.js';
+import CMS                  from '../../models/usersModels/CMS.model.js';
+import Jobs                 from '../../models/usersModels/Jobs.model.js';
+import Reviews              from '../../models/usersModels/Reviews.model.js';
+import User                 from '../../models/usersModels/User.model.js';
+// Models for per-user and per-team context
+import Project              from '../../models/usersModels/Project.model.js';
+import JobApplication       from '../../models/usersModels/JobApplication.model.js';
 
 // ─── Tone instructions ────────────────────────────────────────────────────────
 
@@ -579,6 +582,214 @@ Rules: max 3 CTAs per response · only when genuinely relevant · use ONLY the p
     .catch(e => console.error('[Chatbot] Session save error:', e.message));
 });
 
+// ─── Shared SSE streaming helper for dashboard chatbots ──────────────────────
+
+async function _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg }) {
+  const rawIp = req.ip || '0.0.0.0';
+  const ipKey = rawIp.replace(/\.\d+$/, '.0').replace(/:[^:]+$/, ':0');
+  if (_isRateLimited(ipKey)) throw new AppError('Too many messages. Please wait a moment.', 429);
+
+  const apiKey = resolveApiKey(cfg);
+  if (!apiKey) throw new AppError('No active API key configured', 503);
+
+  res.setHeader('Content-Type',      'text/event-stream');
+  res.setHeader('Cache-Control',     'no-cache');
+  res.setHeader('Connection',        'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (res.flush) res.flush();
+  };
+
+  // Dashboard chats skip greeting/off-topic/cache layers — context is always personal & specific
+  const trimmedHistory = history.slice(-5).map(m => ({
+    role:    m.role === 'assistant' ? 'assistant' : 'user',
+    content: String(m.content || ''),
+  }));
+
+  const model = _selectModel(userMsg, history, cfg);
+  let fullResponse = '';
+
+  try {
+    const client = new Anthropic({ apiKey });
+    const stream = await client.messages.stream({
+      model,
+      max_tokens: cfg.maxTokens || 1024,
+      system:     systemPrompt,
+      messages:   [...trimmedHistory, { role: 'user', content: userMsg }],
+    });
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+        const text = event.delta.text || '';
+        fullResponse += text;
+        sendEvent({ type: 'delta', text });
+      }
+    }
+    sendEvent({ type: 'done' });
+  } catch (err) {
+    console.error('[Chatbot] Anthropic error:', err.message);
+    sendEvent({ type: 'error', message: 'AI service error. Please try again.' });
+    res.end();
+    return;
+  }
+
+  res.end();
+  _persistSession(sessionId, req, userMsg, fullResponse)
+    .catch(e => console.error('[Chatbot] Session save error:', e.message));
+}
+
+// ─── Authenticated: POST /user-chat ──────────────────────────────────────────
+/**
+ * User-dashboard chatbot: has access to the user's own projects, applied jobs,
+ * and profile. Context is built fresh per-request — always up to date.
+ */
+export const userChat = asyncHandler(async (req, res) => {
+  if (!req.user) throw new AppError('Authentication required', 401);
+
+  const { message, sessionId, history = [] } = req.body;
+  if (!message?.trim() || !sessionId) throw new AppError('message and sessionId required', 400);
+
+  const cfg = await getOrCreateConfig();
+  if (!cfg.isUserChatEnabled) throw new AppError('User assistant is currently disabled', 503);
+
+  const userId = req.user._id;
+  const userMsg = message.trim();
+
+  // ── Fetch user's live data in parallel ────────────────────────────────────
+  const [userProjects, userApplications, userProfile] = await Promise.all([
+    Project.find({ requestedBy: userId, isArchived: { $ne: true } })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean(),
+    JobApplication.find({ email: req.user.email })
+      .populate('job', 'jobTitle department')
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean(),
+    User.findById(userId).select('name email role createdAt teamProfile').lean(),
+  ]);
+
+  // ── Build personal context block ──────────────────────────────────────────
+  const projectsText = userProjects.length
+    ? userProjects.map(p => {
+        const paid    = p.paidAmount || 0;
+        const total   = p.totalCost  || 0;
+        const due     = total - paid;
+        const dlText  = p.deadline ? new Date(p.deadline).toLocaleDateString() : 'No deadline';
+        return (
+          `• [${p.status.toUpperCase()}] ${p.projectName} (${p.projectType || 'General'})\n` +
+          `  Progress: ${p.progress || 0}% · Deadline: ${dlText}\n` +
+          `  Budget: $${total} · Paid: $${paid} · Due: $${due}\n` +
+          (p.projectDetails ? `  Details: ${p.projectDetails.slice(0, 200)}\n` : '')
+        );
+      }).join('\n')
+    : 'No projects yet.';
+
+  const appsText = userApplications.length
+    ? userApplications.map(a => {
+        const job = a.job;
+        return (
+          `• ${job?.jobTitle || 'Unknown Role'} (${job?.department || ''}) — Status: ${a.status}\n` +
+          (a.adminNotes ? `  Admin Notes: ${a.adminNotes}\n` : '')
+        );
+      }).join('\n')
+    : 'No job applications yet.';
+
+  const personalContext =
+    `\n\n## This User's Personal Data\n` +
+    `User: ${userProfile?.name || req.user.name} (${userProfile?.email || req.user.email})\n` +
+    `Member since: ${userProfile?.createdAt ? new Date(userProfile.createdAt).toLocaleDateString() : 'N/A'}\n\n` +
+    `### Active Projects (${userProjects.length}):\n${projectsText}\n\n` +
+    `### Job Applications (${userApplications.length}):\n${appsText}\n\n` +
+    `IMPORTANT: Only answer based on this user's own data shown above. ` +
+    `Be specific and reference actual project names, statuses, and amounts when relevant.`;
+
+  const toneInstruction = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
+  const systemPrompt =
+    (cfg.userChatSystemPrompt || '') +
+    `\n\n## Tone\n${toneInstruction}` +
+    `\n\nKeep answers concise (2–4 sentences) unless the user asks for more detail.` +
+    personalContext;
+
+  await _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg });
+});
+
+// ─── Authenticated: POST /team-chat ──────────────────────────────────────────
+/**
+ * Team-dashboard chatbot: has access to the team member's assigned client
+ * projects and portfolio projects. Context built fresh per-request.
+ */
+export const teamChat = asyncHandler(async (req, res) => {
+  if (!req.user) throw new AppError('Authentication required', 401);
+  if (!['admin', 'team'].includes(req.user.role)) throw new AppError('Team access required', 403);
+
+  const { message, sessionId, history = [] } = req.body;
+  if (!message?.trim() || !sessionId) throw new AppError('message and sessionId required', 400);
+
+  const cfg = await getOrCreateConfig();
+  if (!cfg.isTeamChatEnabled) throw new AppError('Team assistant is currently disabled', 503);
+
+  const userId  = req.user._id;
+  const userMsg = message.trim();
+
+  // ── Fetch team member's live data in parallel ─────────────────────────────
+  const [clientProjects, portfolioProjects] = await Promise.all([
+    Project.find({ assignedTeam: userId, isArchived: { $ne: true } })
+      .populate('requestedBy', 'name email')
+      .sort({ updatedAt: -1 })
+      .limit(15)
+      .lean(),
+    AdminProject.find({ 'teamMembers.memberId': userId, isArchived: false })
+      .sort({ createdAt: -1 })
+      .limit(15)
+      .lean(),
+  ]);
+
+  // ── Build team context block ──────────────────────────────────────────────
+  const clientProjText = clientProjects.length
+    ? clientProjects.map(p => {
+        const client = p.requestedBy;
+        const dlText = p.deadline ? new Date(p.deadline).toLocaleDateString() : 'No deadline';
+        return (
+          `• [${p.status.toUpperCase()}] ${p.projectName} (${p.projectType || 'General'})\n` +
+          `  Client: ${client?.name || 'N/A'} · Progress: ${p.progress || 0}% · Deadline: ${dlText}\n` +
+          (p.projectDetails ? `  Brief: ${p.projectDetails.slice(0, 150)}\n` : '')
+        );
+      }).join('\n')
+    : 'No client projects assigned.';
+
+  const portfolioText = portfolioProjects.length
+    ? portfolioProjects.map(p => {
+        const myRole = p.teamMembers.find(m => m.memberId?.toString() === userId.toString());
+        return (
+          `• [${p.status}] ${p.projectTitle} (${p.category})\n` +
+          `  Role: ${myRole?.role || 'Team Member'} · Completion: ${p.completionPercentage || 0}%\n` +
+          (p.techStack?.length ? `  Tech: ${p.techStack.join(', ')}\n` : '')
+        );
+      }).join('\n')
+    : 'No portfolio projects assigned.';
+
+  const teamContext =
+    `\n\n## This Team Member's Work Context\n` +
+    `Team Member: ${req.user.name} (${req.user.email}) — Role: ${req.user.role}\n\n` +
+    `### Assigned Client Projects (${clientProjects.length}):\n${clientProjText}\n\n` +
+    `### Portfolio Projects Involved In (${portfolioProjects.length}):\n${portfolioText}\n\n` +
+    `IMPORTANT: Reference actual project names and data when answering. ` +
+    `Help with project management, technical decisions, deadline tracking, and client communication.`;
+
+  const toneInstruction = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
+  const systemPrompt =
+    (cfg.teamChatSystemPrompt || '') +
+    `\n\n## Tone\n${toneInstruction}` +
+    `\n\nKeep answers concise (2–4 sentences) unless more detail is requested.` +
+    teamContext;
+
+  await _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg });
+});
+
 // ─── Admin: Stats ─────────────────────────────────────────────────────────────
 
 export const getStats = asyncHandler(async (req, res) => {
@@ -705,21 +916,27 @@ export const getConfig = asyncHandler(async (req, res) => {
   }));
 
   successResponse(res, 'Config retrieved', {
-    activeProvider:     cfg.activeProvider,
-    activeModel:        cfg.activeModel,
-    simpleModel:        cfg.simpleModel,
-    availableModels:    ANTHROPIC_MODELS,
-    systemPrompt:       cfg.systemPrompt,
-    businessContext:    cfg.businessContext,
-    botName:            cfg.botName,
-    welcomeMessage:     cfg.welcomeMessage,
-    isEnabled:          cfg.isEnabled,
-    tone:               cfg.tone || 'professional',
-    maxTokens:          cfg.maxTokens,
-    temperature:        cfg.temperature,
-    maxMessagesPerHour: cfg.maxMessagesPerHour,
-    maxMessagesPerDay:  cfg.maxMessagesPerDay,
-    apiKeys:            safeKeys,
+    activeProvider:       cfg.activeProvider,
+    activeModel:          cfg.activeModel,
+    simpleModel:          cfg.simpleModel,
+    availableModels:      ANTHROPIC_MODELS,
+    systemPrompt:         cfg.systemPrompt,
+    businessContext:       cfg.businessContext,
+    botName:               cfg.botName,
+    welcomeMessage:        cfg.welcomeMessage,
+    isEnabled:             cfg.isEnabled,
+    isUserChatEnabled:     cfg.isUserChatEnabled,
+    isTeamChatEnabled:     cfg.isTeamChatEnabled,
+    userChatSystemPrompt:   cfg.userChatSystemPrompt,
+    teamChatSystemPrompt:   cfg.teamChatSystemPrompt,
+    userChatQuickPrompts:   cfg.userChatQuickPrompts  || [],
+    teamChatQuickPrompts:   cfg.teamChatQuickPrompts  || [],
+    tone:                   cfg.tone || 'professional',
+    maxTokens:             cfg.maxTokens,
+    temperature:           cfg.temperature,
+    maxMessagesPerHour:    cfg.maxMessagesPerHour,
+    maxMessagesPerDay:     cfg.maxMessagesPerDay,
+    apiKeys:               safeKeys,
   });
 });
 
@@ -728,7 +945,9 @@ export const updateConfig = asyncHandler(async (req, res) => {
 
   const allowed = [
     'activeProvider', 'activeModel', 'simpleModel', 'systemPrompt', 'businessContext',
-    'botName', 'welcomeMessage', 'isEnabled', 'tone',
+    'botName', 'welcomeMessage', 'isEnabled', 'isUserChatEnabled', 'isTeamChatEnabled',
+    'userChatSystemPrompt', 'teamChatSystemPrompt',
+    'userChatQuickPrompts', 'teamChatQuickPrompts', 'tone',
     'maxTokens', 'temperature', 'maxMessagesPerHour', 'maxMessagesPerDay',
   ];
 
