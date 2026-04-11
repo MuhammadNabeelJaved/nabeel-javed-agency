@@ -11,7 +11,7 @@ import {
   Key, ChevronDown, ChevronUp, Tag, ToggleLeft, ToggleRight,
   Sparkles, Users, TrendingUp, Calendar, Shield, Info,
   CheckCircle, Circle, Download, Globe, Link, DollarSign,
-  Zap, ArrowUp, ArrowDown,
+  Zap, ArrowUp, ArrowDown, Lightbulb, FlaskConical, MessageCircle, Send,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -28,12 +28,181 @@ import {
   getConfig, updateConfig, addApiKey, removeApiKey, activateApiKey,
   getKnowledge, createKnowledge, updateKnowledge, deleteKnowledge,
   uploadKnowledgeFile, crawlUrl, syncFromDatabase, getUsageStats,
+  getVectorStatus, clearVectorDB, crawlWebsite, embedAllKnowledge,
 } from '../../api/chatbot.api';
 import type {
   ChatbotStats, ChatbotSession, ChatbotConfigFull,
   KnowledgeEntry, ApiKeyMeta, ChatbotTone, SyncResult, AnthropicModel,
-  ChatbotUsageStats,
+  ChatbotUsageStats, VectorStatus, WebsiteCrawlResult, EmbedAllResult,
 } from '../../api/chatbot.api';
+
+// ─── RAG Status Card (shown in Overview tab) ────────────────────────────────
+function RagStatusCard() {
+  const [status, setStatus]   = useState<VectorStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [embedding, setEmbedding] = useState(false);
+  const [clearing,  setClearing]  = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setStatus(await getVectorStatus()); } catch { /* ignore */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleEmbedAll = async (force = false) => {
+    setEmbedding(true);
+    try {
+      const res: EmbedAllResult = await embedAllKnowledge(force);
+      toast.success(`Embedding complete — ${res.done} embedded, ${res.failed} failed`);
+      load();
+    } catch (err: any) {
+      toast.error(err.message || 'Embedding failed');
+    } finally {
+      setEmbedding(false);
+    }
+  };
+
+  const handleClear = async () => {
+    if (!confirm('This will delete all vector embeddings from Supabase and mark all KB entries as pending. Continue?')) return;
+    setClearing(true);
+    try {
+      await clearVectorDB();
+      toast.success('Vector store cleared — run Embed All to re-index');
+      load();
+    } catch (err: any) {
+      toast.error(err.message || 'Clear failed');
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  if (loading) return (
+    <Card className="bg-card/50 border-border/50">
+      <CardContent className="p-5 flex items-center gap-3">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        <span className="text-sm text-muted-foreground">Checking RAG system…</span>
+      </CardContent>
+    </Card>
+  );
+
+  const { embeddingEnabled, vectorDBEnabled, vectorStats, pendingEmbeddings, totalKBEntries, embeddedEntries } = status || {};
+  const ragActive = embeddingEnabled && vectorDBEnabled;
+
+  return (
+    <Card className="bg-card/50 border-border/50">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-violet-400" />
+          RAG &amp; Semantic Search
+        </CardTitle>
+        <CardDescription>Vector embeddings and semantic knowledge retrieval status</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Service status pills */}
+        <div className="flex flex-wrap gap-3">
+          <div className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border ${embeddingEnabled ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-muted text-muted-foreground border-border/40'}`}>
+            {embeddingEnabled ? <CheckCircle className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+            OpenAI Embeddings {embeddingEnabled ? 'Active' : 'Not configured'}
+          </div>
+          <div className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border ${vectorDBEnabled ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-muted text-muted-foreground border-border/40'}`}>
+            {vectorDBEnabled ? <CheckCircle className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+            Supabase Vector DB {vectorDBEnabled ? 'Active' : 'Not configured'}
+          </div>
+          <div className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border ${ragActive ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+            {ragActive ? <Zap className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+            {ragActive ? 'Semantic RAG Active' : 'Using keyword fallback'}
+          </div>
+        </div>
+
+        {/* Chunk stats */}
+        {vectorDBEnabled && vectorStats && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center p-3 rounded-lg bg-muted/30">
+              <p className="text-xl font-bold">{vectorStats.total.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Vector Chunks</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/30">
+              <p className="text-xl font-bold">{(embeddedEntries ?? 0).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Entries Embedded</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/30">
+              <p className={`text-xl font-bold ${(pendingEmbeddings ?? 0) > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                {(pendingEmbeddings ?? 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Pending Embed</p>
+            </div>
+          </div>
+        )}
+
+        {/* Chunk type breakdown */}
+        {vectorStats && vectorStats.total > 0 && (
+          <div className="space-y-1.5">
+            {Object.entries(vectorStats.byType).map(([type, count]) => (
+              <div key={type} className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-16 shrink-0">{type}</span>
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary/70 rounded-full" style={{ width: `${Math.round((count / vectorStats.total) * 100)}%` }} />
+                </div>
+                <span className="text-xs text-muted-foreground w-8 text-right">{count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Setup instructions if not configured */}
+        {!ragActive && (
+          <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 text-xs text-amber-300 space-y-1">
+            <p className="font-medium">To enable semantic search:</p>
+            <p>1. Add <code className="bg-black/30 px-1 rounded">OPENAI_API_KEY</code> to server/.env</p>
+            <p>2. Create a Supabase project and run <code className="bg-black/30 px-1 rounded">server/supabase-schema.sql</code></p>
+            <p>3. Add <code className="bg-black/30 px-1 rounded">SUPABASE_URL</code> and <code className="bg-black/30 px-1 rounded">SUPABASE_SERVICE_KEY</code> to server/.env</p>
+            <p>4. Restart the server, then click "Embed All" below</p>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={load} className="gap-1.5 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
+          {ragActive && (
+            <>
+              <Button
+                variant="outline" size="sm"
+                onClick={() => handleEmbedAll(false)}
+                disabled={embedding || (pendingEmbeddings ?? 0) === 0}
+                className="gap-1.5 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+              >
+                {embedding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                Embed Pending ({pendingEmbeddings ?? 0})
+              </Button>
+              <Button
+                variant="outline" size="sm"
+                onClick={() => handleEmbedAll(true)}
+                disabled={embedding}
+                className="gap-1.5 text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+              >
+                {embedding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                Re-embed All
+              </Button>
+              <Button
+                variant="outline" size="sm"
+                onClick={handleClear}
+                disabled={clearing}
+                className="gap-1.5 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10"
+              >
+                {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                Clear Vector Store
+              </Button>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type Tab = 'overview' | 'knowledge' | 'config' | 'logs' | 'user-bot' | 'team-bot' | 'cost';
@@ -176,6 +345,9 @@ function OverviewTab() {
         </Card>
       )}
 
+      {/* RAG / Semantic Search status */}
+      <RagStatusCard />
+
       {/* Recent activity */}
       {stats.recentActivity.length > 0 && (
         <Card className="bg-card/50 border-border/50">
@@ -225,6 +397,13 @@ function KnowledgeTab() {
   const [editing,  setEditing]  = useState<KnowledgeEntry | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Website crawler state ──────────────────────────────────────────────────
+  const [showCrawlModal,  setShowCrawlModal]  = useState(false);
+  const [crawling,        setCrawling]        = useState(false);
+  const [crawlBaseUrl,    setCrawlBaseUrl]    = useState('');
+  const [crawlExtraPaths, setCrawlExtraPaths] = useState('');
+  const [crawlResult,     setCrawlResult]     = useState<WebsiteCrawlResult | null>(null);
 
   const [form, setForm] = useState({
     title: '', content: '', type: 'text' as 'text' | 'faq', tags: '',
@@ -365,6 +544,26 @@ function KnowledgeTab() {
     }
   };
 
+  const handleCrawlWebsite = async () => {
+    if (!crawlBaseUrl.trim()) { toast.error('Base URL is required'); return; }
+    setCrawling(true);
+    setCrawlResult(null);
+    try {
+      const extra = crawlExtraPaths
+        .split('\n')
+        .map(p => p.trim())
+        .filter(p => p.startsWith('/'));
+      const result = await crawlWebsite({ baseUrl: crawlBaseUrl.trim(), extraPaths: extra });
+      setCrawlResult(result);
+      toast.success(`Crawl complete — ${result.success.length} pages indexed`);
+      load(1);
+    } catch (err: any) {
+      toast.error(err.message || 'Crawl failed');
+    } finally {
+      setCrawling(false);
+    }
+  };
+
   const typeColor = (t: string) => {
     const m: Record<string, string> = {
       text: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -391,6 +590,9 @@ function KnowledgeTab() {
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowUrlForm(true)} disabled={saving || syncing} className="gap-2">
             <Globe className="h-4 w-4" /> Add Page URL
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { setShowCrawlModal(true); setCrawlResult(null); }} disabled={saving || crawling} className="gap-2 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10">
+            <Sparkles className="h-4 w-4" /> Crawl Website
           </Button>
           <Button variant="outline" size="sm" onClick={handleSyncFromDatabase} disabled={saving || syncing} className="gap-2 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10">
             {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -428,6 +630,17 @@ function KnowledgeTab() {
                       {e.tags.slice(0, 3).map(t => (
                         <span key={t} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{t}</span>
                       ))}
+                      {/* Embedding status badge */}
+                      {e.embeddingStatus === 'done' && (
+                        <span className="text-xs bg-violet-500/10 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Sparkles className="h-2.5 w-2.5" /> embedded
+                        </span>
+                      )}
+                      {e.embeddingStatus === 'failed' && (
+                        <span className="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <AlertCircle className="h-2.5 w-2.5" /> embed failed
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground ml-auto">{e.wordCount} words</span>
                     </div>
                     <p className="font-medium text-sm truncate">{e.title}</p>
@@ -602,6 +815,74 @@ function KnowledgeTab() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Crawl Website Dialog */}
+      <Dialog open={showCrawlModal} onOpenChange={v => { setShowCrawlModal(v); if (!v) setCrawlResult(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-cyan-400" /> Crawl Entire Website
+            </DialogTitle>
+            <DialogDescription>
+              Automatically crawl all active public pages, extract their content, and store it in the knowledge base with semantic embeddings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Website Base URL</Label>
+              <Input
+                placeholder="https://yoursite.com"
+                value={crawlBaseUrl}
+                onChange={e => setCrawlBaseUrl(e.target.value)}
+                className="mt-1.5"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                The deployed site URL — not localhost. Active public pages will be discovered automatically.
+              </p>
+            </div>
+            <div>
+              <Label>Extra Paths (optional, one per line)</Label>
+              <Textarea
+                placeholder="/pricing&#10;/blog&#10;/case-studies"
+                value={crawlExtraPaths}
+                onChange={e => setCrawlExtraPaths(e.target.value)}
+                rows={3}
+                className="mt-1.5 text-sm font-mono"
+              />
+            </div>
+
+            {/* Results */}
+            {crawlResult && (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                <p className="text-sm font-medium">
+                  Results: {crawlResult.success.length} indexed · {crawlResult.failed.length} failed · {crawlResult.totalChunks} chunks
+                </p>
+                {crawlResult.success.map(r => (
+                  <div key={r.url} className="flex items-center gap-2 text-xs text-green-400">
+                    <Check className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{r.path} — {r.title} {r.chunksStored ? `(${r.chunksStored} chunks)` : ''}</span>
+                  </div>
+                ))}
+                {crawlResult.failed.map(r => (
+                  <div key={r.url} className="flex items-center gap-2 text-xs text-red-400">
+                    <X className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{r.path} — {r.error}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCrawlModal(false); setCrawlResult(null); }} disabled={crawling}>
+              {crawlResult ? 'Close' : 'Cancel'}
+            </Button>
+            <Button onClick={handleCrawlWebsite} disabled={crawling || !crawlBaseUrl.trim()} className="gap-2 bg-cyan-600 hover:bg-cyan-700">
+              {crawling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {crawling ? 'Crawling…' : 'Start Crawl'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1310,6 +1591,8 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
   const enabledField    = isUser ? 'isUserChatEnabled'    : 'isTeamChatEnabled'    as const;
   const promptField     = isUser ? 'userChatSystemPrompt' : 'teamChatSystemPrompt' as const;
   const promptsField    = isUser ? 'userChatQuickPrompts' : 'teamChatQuickPrompts' as const;
+  const welcomeField    = isUser ? 'userChatWelcomeMessage' : 'teamChatWelcomeMessage' as const;
+  const hintsField      = isUser ? 'userChatContextHints' : 'teamChatContextHints' as const;
   const icon            = isUser ? Users : Shield;
   const gradientFrom    = isUser ? 'from-blue-500'    : 'from-emerald-500';
   const gradientTo      = isUser ? 'to-violet-600'    : 'to-teal-600';
@@ -1320,14 +1603,26 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
   const defaultPrompts  = isUser
     ? ["What's the status of my projects?", "Show my applied jobs", "What's my outstanding balance?", "How do I submit a new project?"]
     : ["Which projects am I assigned to?", "What tasks are due this week?", "Show me client project details", "Help me write a project update"];
+  const defaultWelcome  = isUser
+    ? "Hi! I'm your personal assistant. I can help you track your projects, check job applications, and answer questions about our services. What would you like to know?"
+    : "Hi! I'm your team assistant. I have access to your assigned projects, portfolio work, and company info. How can I help you today?";
 
   const [cfg,           setCfg]           = useState<ChatbotConfigFull | null>(null);
   const [loading,       setLoading]       = useState(true);
   const [saving,        setSaving]        = useState(false);
   const [enabled,       setEnabled]       = useState(true);
   const [prompt,        setPrompt]        = useState('');
+  const [welcomeMsg,    setWelcomeMsg]    = useState('');
+  const [contextHints,  setContextHints]  = useState('');
   const [quickPrompts,  setQuickPrompts]  = useState<string[]>(defaultPrompts);
   const [newPromptText, setNewPromptText] = useState('');
+
+  // Live test panel state
+  const [testInput,    setTestInput]    = useState('');
+  const [testOutput,   setTestOutput]   = useState('');
+  const [testRunning,  setTestRunning]  = useState(false);
+  const [testError,    setTestError]    = useState('');
+  const testAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1336,6 +1631,8 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
       setCfg(c);
       setEnabled((c as any)[enabledField] ?? true);
       setPrompt((c as any)[promptField] ?? '');
+      setWelcomeMsg((c as any)[welcomeField] ?? '');
+      setContextHints((c as any)[hintsField] ?? '');
       const ps = (c as any)[promptsField];
       if (Array.isArray(ps) && ps.length) setQuickPrompts(ps);
     } catch {
@@ -1343,19 +1640,77 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
     } finally {
       setLoading(false);
     }
-  }, [enabledField, promptField, promptsField]);
+  }, [enabledField, promptField, promptsField, welcomeField, hintsField]);
 
   useEffect(() => { load(); }, [load]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateConfig({ [enabledField]: enabled, [promptField]: prompt, [promptsField]: quickPrompts } as any);
+      await updateConfig({
+        [enabledField]: enabled,
+        [promptField]:  prompt,
+        [promptsField]: quickPrompts,
+        [welcomeField]: welcomeMsg,
+        [hintsField]:   contextHints,
+      } as any);
       toast.success(`${label} configuration saved`);
     } catch {
       toast.error('Failed to save configuration');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestSend = async () => {
+    const msg = testInput.trim();
+    if (!msg || testRunning) return;
+    setTestRunning(true);
+    setTestOutput('');
+    setTestError('');
+    testAbortRef.current = new AbortController();
+
+    const endpoint = isUser ? '/api/v1/chatbot/user-chat' : '/api/v1/chatbot/team-chat';
+    const sessionId = `admin-test-${Date.now()}`;
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, sessionId, history: [] }),
+        signal: testAbortRef.current.signal,
+      });
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => ({ message: 'Test failed' }));
+        setTestError(err.message || 'Test failed');
+        setTestRunning(false);
+        return;
+      }
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const ev = JSON.parse(line.slice(6).trim());
+            if (ev.type === 'delta') { full += ev.text; setTestOutput(full); }
+            else if (ev.type === 'error') { setTestError(ev.message); }
+          } catch { /* ignore */ }
+        }
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') setTestError(e?.message || 'Test failed');
+    } finally {
+      setTestRunning(false);
+      setTestInput('');
     }
   };
 
@@ -1477,6 +1832,60 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
         </CardContent>
       </Card>
 
+      {/* Welcome message */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageCircle className="h-4 w-4 text-primary" /> Welcome Message
+          </CardTitle>
+          <CardDescription>
+            First message shown to {isUser ? 'clients' : 'team members'} when they open the chat.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            value={welcomeMsg}
+            onChange={e => setWelcomeMsg(e.target.value)}
+            rows={3}
+            placeholder={defaultWelcome}
+            className="text-sm"
+          />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setWelcomeMsg(defaultWelcome)}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              <RefreshCw className="h-3 w-3" /> Reset to default
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Context hints */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lightbulb className="h-4 w-4 text-primary" /> Context Hints
+          </CardTitle>
+          <CardDescription>
+            Extra guidelines or facts injected into every {label} conversation — e.g. current promotions,
+            support policies, or internal procedures. Leave blank if not needed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={contextHints}
+            onChange={e => setContextHints(e.target.value)}
+            rows={4}
+            placeholder={isUser
+              ? 'e.g. "We currently offer a 10% discount for returning clients. Support tickets can be submitted via the Support page."'
+              : 'e.g. "All client calls must be logged in the CRM within 24 hours. Sprint planning happens every Monday at 10am."'}
+            className="text-sm font-mono"
+          />
+        </CardContent>
+      </Card>
+
       {/* Quick Prompts editor */}
       <Card className="bg-card/50 border-border/50">
         <CardHeader className="pb-3">
@@ -1589,6 +1998,77 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Live Test Panel */}
+      <Card className="bg-card/50 border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FlaskConical className="h-4 w-4 text-primary" /> Live Test Panel
+          </CardTitle>
+          <CardDescription>
+            Send a test message directly to the {label} (using your admin account as the user).
+            Useful for verifying system prompt changes before saving.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Output area */}
+          <div className="min-h-[80px] max-h-[240px] overflow-y-auto p-3 rounded-xl bg-muted/20 border border-border/30 text-sm">
+            {testRunning && !testOutput && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Waiting for response…
+              </div>
+            )}
+            {testError && (
+              <div className="flex items-start gap-2 text-destructive">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span className="text-xs">{testError}</span>
+              </div>
+            )}
+            {testOutput && (
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">{testOutput}</p>
+            )}
+            {!testRunning && !testOutput && !testError && (
+              <p className="text-xs text-muted-foreground/50">Response will appear here…</p>
+            )}
+          </div>
+
+          {/* Input row */}
+          <div className="flex gap-2">
+            <Input
+              value={testInput}
+              onChange={e => setTestInput(e.target.value)}
+              placeholder={`Test a message for ${label}…`}
+              className="text-sm"
+              disabled={testRunning}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTestSend(); } }}
+            />
+            {testRunning ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1"
+                onClick={() => { testAbortRef.current?.abort(); setTestRunning(false); }}
+              >
+                <X className="h-3.5 w-3.5" /> Stop
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                className="shrink-0 gap-1"
+                disabled={!testInput.trim()}
+                onClick={handleTestSend}
+              >
+                <Send className="h-3.5 w-3.5" /> Send
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground/60">
+            Note: This test uses your current saved configuration. Save your changes first to see the effect.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

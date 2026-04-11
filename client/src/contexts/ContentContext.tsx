@@ -147,6 +147,11 @@ export interface ContentContextType {
   // Multi-bar announcements (new source of truth)
   announcementBars: AnnouncementBarGroup[];
   setAnnouncementBars: React.Dispatch<React.SetStateAction<AnnouncementBarGroup[]>>;
+  /** Active bars with visibility='dashboard' or 'both' — fetched only for authenticated users */
+  dashboardAnnouncementBars: AnnouncementBarGroup[];
+  setDashboardAnnouncementBars: React.Dispatch<React.SetStateAction<AnnouncementBarGroup[]>>;
+  /** Trigger a re-fetch of dashboard bars (call this from dashboard layouts on mount) */
+  fetchDashboardBars: () => void;
   // Global site theme (admin-controlled, overrides all visitor preferences)
   globalTheme: 'dark' | 'light' | null;
   updateGlobalTheme: (theme: 'dark' | 'light' | null) => Promise<void>;
@@ -307,6 +312,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [pageStatuses, setPageStatuses] = useState<PageStatusItem[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [announcementBars, setAnnouncementBars] = useState<AnnouncementBarGroup[]>([]);
+  const [dashboardAnnouncementBars, setDashboardAnnouncementBars] = useState<AnnouncementBarGroup[]>([]);
   const [tickerDuration, setTickerDuration] = useState(30);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
@@ -369,6 +375,12 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
+  const fetchDashboardBars = useCallback(() => {
+    announcementBarsApi.getActiveDashboard()
+      .then(res => setDashboardAnnouncementBars((res.data as any).data ?? []))
+      .catch(() => {});
+  }, []);
+
   const fetchAnnouncements = useCallback(() => {
     announcementsApi.getActive()
       .then(res => setAnnouncements((res.data as any).data ?? []))
@@ -413,7 +425,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         case 'navLinks':       fetchNavLinks();       break;
         case 'footerSections': fetchFooterSections(); break;
         case 'pageStatus':     fetchPageStatuses();   break;
-        case 'announcements':  fetchAnnouncements();  break;
+        case 'announcements':  fetchAnnouncements(); fetchDashboardBars(); break;
         case 'globalTheme':
         case 'cms':            fetchCMS();            break;
       }
@@ -424,7 +436,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     return () => {
       socket.disconnect();
     };
-  }, [fetchCMS, fetchNavLinks, fetchFooterSections, fetchPageStatuses, fetchAnnouncements]);
+  }, [fetchCMS, fetchNavLinks, fetchFooterSections, fetchPageStatuses, fetchAnnouncements, fetchDashboardBars]);
 
   const updateLogoUrl = async (url: string) => {
     setLogoUrl(url);
@@ -507,6 +519,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       announcements, setAnnouncements,
       hasActiveAnnouncements: announcements.length > 0,
       announcementBars, setAnnouncementBars,
+      dashboardAnnouncementBars, setDashboardAnnouncementBars,
+      fetchDashboardBars,
       tickerDuration, setTickerDuration,
       scrollEnabled, setScrollEnabled,
       textAlign, setTextAlign,

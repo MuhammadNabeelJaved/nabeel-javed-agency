@@ -525,6 +525,52 @@ All chatbot panels support drag-to-resize via three handle zones:
 |---|---|
 | `ANTHROPIC_API_KEY` | Fallback API key (used if no active DB key exists) |
 | `ENCRYPTION_KEY` | 64-char hex string — encrypts/decrypts stored API keys |
+| `OPENAI_API_KEY` | For text-embedding-3-small (RAG semantic search) — optional; falls back to keyword search |
+| `SUPABASE_URL` | Supabase project URL (for pgvector) — optional |
+| `SUPABASE_SERVICE_KEY` | Supabase service-role key — optional |
+
+### RAG System (Semantic Search)
+
+The chatbot uses a 3-layer knowledge retrieval pipeline:
+1. **Semantic search** (Supabase pgvector + OpenAI embeddings) — if both configured
+2. **MongoDB full-text search** — always available
+3. **Recency fallback** — last resort
+
+**Services (server/src/services/):**
+| Service | File | Purpose |
+|---|---|---|
+| `embeddingService` | `embeddingService.js` | OpenAI text-embedding-3-small via fetch (no extra package) |
+| `vectorService` | `vectorService.js` | Supabase pgvector CRUD + semantic search |
+| `ragService` | `ragService.js` | 3-layer retrieval pipeline + `embedAndSyncEntry()` helper |
+| `crawlerService` | `crawlerService.js` | Web crawler — regex HTML parser, no cheerio needed |
+
+**Schema:** `server/supabase-schema.sql` — run once in Supabase SQL Editor to create the `knowledge_chunks` table and `match_knowledge()` RPC function.
+
+**Embedding lifecycle:**
+- On `createKnowledge` / `updateKnowledge` / `crawlUrl` — embed non-blocking after save, update `embeddingStatus`
+- On `deleteKnowledge` — delete Supabase chunks immediately (non-blocking)
+- On `syncFromDatabase` — embed each synced entry non-blocking
+- Manual: `POST /api/v1/chatbot/knowledge/embed-all` — batch embed all pending entries
+- Manual: `POST /api/v1/chatbot/crawl/website` — crawl entire site + auto-embed
+
+**Role-based knowledge access:**
+- `ChatbotKnowledge.roleAccess` field: `'public'|'user'|'team'|'admin'` (default: `'public'`)
+- Public chat → retrieves only `public` entries
+- User dashboard chat → retrieves `public` + `user` entries
+- Team dashboard chat → retrieves `public` + `team` entries
+
+**Admin UI (ChatbotManager):**
+- **Overview tab** → `RagStatusCard` — shows embedding/vector DB status, chunk counts, Embed All / Clear buttons
+- **Knowledge tab** → "Crawl Website" button → dialog with base URL + extra paths → shows per-page results
+- Knowledge entry cards show `embedded` / `embed failed` badge from `embeddingStatus` field
+
+**New admin endpoints:**
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/v1/chatbot/vector/stats` | Vector DB status + chunk counts |
+| DELETE | `/api/v1/chatbot/vector/clear` | Wipe vector store + reset embeddingStatus |
+| POST | `/api/v1/chatbot/crawl/website` | Crawl all active public pages |
+| POST | `/api/v1/chatbot/knowledge/embed-all` | Batch embed all pending KB entries |
 
 ---
 

@@ -6,10 +6,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { UserSidebar } from '../components/UserSidebar';
 import { PageStatusGate } from '../components/PageStatusGate';
+import { AnnouncementBar } from '../components/AnnouncementBar';
 import { Menu, MessageSquare, Sun, Moon, User as UserIcon, Bell, Briefcase, LayoutDashboard, HeadphonesIcon, Home, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardSearch } from '../components/DashboardSearch';
 import { useTheme } from '../contexts/ThemeContext';
+import { useContent } from '../contexts/ContentContext';
 import { NotificationBell } from '../components/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
@@ -19,6 +21,12 @@ import { DashboardChatbot } from '../components/DashboardChatbot';
 export function UserDashboardLayout() {
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
+  const { dashboardAnnouncementBars, fetchDashboardBars } = useContent();
+
+  useEffect(() => { fetchDashboardBars(); }, [fetchDashboardBars]);
+
+  const activeDashBars = dashboardAnnouncementBars.filter(g => g.bar.isActive && g.items.length > 0);
+  const dashBarHeight = activeDashBars.length * 40;
   const navigate = useNavigate();
   useNotifications();
   const location = useLocation();
@@ -62,11 +70,19 @@ export function UserDashboardLayout() {
         <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/5 rounded-full blur-[120px]" />
       </div>
 
+      {/* Dashboard announcement bars */}
+      {activeDashBars.map((barGroup, idx) => (
+        <AnnouncementBar key={barGroup.bar._id} barGroup={barGroup} topOffset={idx * 40} />
+      ))}
+
       <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
 
       <div className={`sm:pl-20 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} relative z-10 transition-all duration-300`}>
         {/* Topbar */}
-        <header className="h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-background/50 border-b border-border/50">
+        <header
+          className="h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between sticky z-30 backdrop-blur-md bg-background/50 border-b border-border/50"
+          style={{ top: dashBarHeight }}
+        >
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <motion.button
               onClick={() => setSidebarOpen(true)}

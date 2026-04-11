@@ -12,6 +12,17 @@ const announcementBarSchema = new mongoose.Schema({
   separatorVisible: { type: Boolean, default: true },
   separatorColor: { type: String, default: "" },
   itemSpacing: { type: Number, default: 32 },
+  /**
+   * Where this bar is displayed:
+   *  'public'    — public website pages only (default, legacy behaviour)
+   *  'dashboard' — user/team dashboards only (never shown on public pages)
+   *  'both'      — shown everywhere: public pages AND dashboards
+   */
+  visibility: {
+    type: String,
+    enum: ['public', 'dashboard', 'both'],
+    default: 'public',
+  },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 }, { timestamps: true });
 

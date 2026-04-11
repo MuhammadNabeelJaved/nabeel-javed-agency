@@ -19,7 +19,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
-import { streamTeamChat, getConfig, getChatHistory } from '../../api/chatbot.api';
+import { streamTeamChat, getDashboardConfig, getChatHistory, getMyHistory } from '../../api/chatbot.api';
 import type { ChatMessage } from '../../api/chatbot.api';
 import { toast } from 'sonner';
 
@@ -118,6 +118,7 @@ export default function TeamAIChat() {
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [quickPrompts, setQuickPrompts] = useState<string[]>(DEFAULT_TEAM_PROMPTS);
+  const [botName,      setBotName]      = useState('Nova');
   const [copied,       setCopied]       = useState<string | null>(null);
   const [hasHistory,   setHasHistory]   = useState(false);
 
@@ -140,23 +141,52 @@ export default function TeamAIChat() {
     if (!s) localStorage.setItem(SESSION_KEY, sessionId);
     sessionIdRef.current = sessionId;
 
-    getChatHistory(sessionId).then(history => {
-      if (history.length > 0) {
-        setMessages(history.map((m, i) => ({
+    getMyHistory().then(({ messages: hist, sessionId: serverSessionId }) => {
+      if (hist.length > 0) {
+        if (serverSessionId) {
+          localStorage.setItem(SESSION_KEY, serverSessionId);
+          sessionIdRef.current = serverSessionId;
+        }
+        setMessages(hist.map((m, i) => ({
           id:        `hist-${i}`,
           role:      m.role,
           content:   m.content,
           timestamp: new Date(m.timestamp),
         })));
         setHasHistory(true);
+      } else {
+        getChatHistory(sessionId).then(localHist => {
+          if (localHist.length > 0) {
+            setMessages(localHist.map((m, i) => ({
+              id:        `hist-${i}`,
+              role:      m.role,
+              content:   m.content,
+              timestamp: new Date(m.timestamp),
+            })));
+            setHasHistory(true);
+          }
+        });
       }
+    }).catch(() => {
+      getChatHistory(sessionId).then(hist => {
+        if (hist.length > 0) {
+          setMessages(hist.map((m, i) => ({
+            id:        `hist-${i}`,
+            role:      m.role,
+            content:   m.content,
+            timestamp: new Date(m.timestamp),
+          })));
+          setHasHistory(true);
+        }
+      });
     });
   }, []);
 
-  // Load team quick prompts from server
+  // Load team quick prompts + bot name from server
   useEffect(() => {
-    getConfig().then(c => {
+    getDashboardConfig().then(c => {
       if (c.teamChatQuickPrompts?.length) setQuickPrompts(c.teamChatQuickPrompts);
+      if (c.botName) setBotName(c.botName);
     }).catch(() => {});
   }, []);
 
@@ -284,7 +314,7 @@ export default function TeamAIChat() {
             </div>
             <div>
               <h2 className="font-bold text-sm flex items-center gap-2">
-                Nova — Your Work Assistant
+                {botName} — Your Work Assistant
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold border border-emerald-500/20">TEAM</span>
               </h2>
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -311,7 +341,7 @@ export default function TeamAIChat() {
                 <Sparkles className="h-10 w-10 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">Hi! I'm Nova, your work assistant.</h3>
+                <h3 className="text-xl font-bold">Hi! I'm {botName}, your work assistant.</h3>
                 <p className="text-muted-foreground text-sm mt-1 max-w-sm">
                   I have access to your assigned projects, team data, and work context. Ask me anything!
                 </p>

@@ -19,7 +19,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
-import { streamUserChat, getConfig, getChatHistory } from '../../api/chatbot.api';
+import { streamUserChat, getDashboardConfig, getChatHistory, getMyHistory } from '../../api/chatbot.api';
 import type { ChatMessage } from '../../api/chatbot.api';
 import { toast } from 'sonner';
 
@@ -118,6 +118,7 @@ export default function UserAIChat() {
   const [sidebarOpen,    setSidebarOpen]    = useState(true);
   const [sidebarWidth,   setSidebarWidth]   = useState(280);
   const [quickPrompts,   setQuickPrompts]   = useState<string[]>(DEFAULT_USER_PROMPTS);
+  const [botName,        setBotName]        = useState('Nova');
   const [copied,         setCopied]         = useState<string | null>(null);
   const [hasHistory,     setHasHistory]     = useState(false);
 
@@ -141,23 +142,53 @@ export default function UserAIChat() {
     if (!s) localStorage.setItem(SESSION_KEY, sessionId);
     sessionIdRef.current = sessionId;
 
-    getChatHistory(sessionId).then(history => {
-      if (history.length > 0) {
-        setMessages(history.map((m, i) => ({
+    // Use userId-based lookup so history persists across devices / localStorage clears
+    getMyHistory().then(({ messages: hist, sessionId: serverSessionId }) => {
+      if (hist.length > 0) {
+        if (serverSessionId) {
+          localStorage.setItem(SESSION_KEY, serverSessionId);
+          sessionIdRef.current = serverSessionId;
+        }
+        setMessages(hist.map((m, i) => ({
           id:        `hist-${i}`,
           role:      m.role,
           content:   m.content,
           timestamp: new Date(m.timestamp),
         })));
         setHasHistory(true);
+      } else {
+        getChatHistory(sessionId).then(localHist => {
+          if (localHist.length > 0) {
+            setMessages(localHist.map((m, i) => ({
+              id:        `hist-${i}`,
+              role:      m.role,
+              content:   m.content,
+              timestamp: new Date(m.timestamp),
+            })));
+            setHasHistory(true);
+          }
+        });
       }
+    }).catch(() => {
+      getChatHistory(sessionId).then(hist => {
+        if (hist.length > 0) {
+          setMessages(hist.map((m, i) => ({
+            id:        `hist-${i}`,
+            role:      m.role,
+            content:   m.content,
+            timestamp: new Date(m.timestamp),
+          })));
+          setHasHistory(true);
+        }
+      });
     });
   }, []);
 
-  // Load quick prompts from server config
+  // Load quick prompts + bot name from server config
   useEffect(() => {
-    getConfig().then(c => {
+    getDashboardConfig().then(c => {
       if (c.userChatQuickPrompts?.length) setQuickPrompts(c.userChatQuickPrompts);
+      if (c.botName) setBotName(c.botName);
     }).catch(() => {});
   }, []);
 
@@ -286,7 +317,7 @@ export default function UserAIChat() {
             </div>
             <div>
               <h2 className="font-bold text-sm flex items-center gap-2">
-                Nova — Your AI Assistant
+                {botName} — Your AI Assistant
                 <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">PERSONAL</span>
               </h2>
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -313,7 +344,7 @@ export default function UserAIChat() {
                 <Sparkles className="h-10 w-10 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold">Hi! I'm Nova, your personal assistant.</h3>
+                <h3 className="text-xl font-bold">Hi! I'm {botName}, your personal assistant.</h3>
                 <p className="text-muted-foreground text-sm mt-1 max-w-sm">
                   I have access to your projects, applied jobs, billing, and account data. Ask me anything!
                 </p>

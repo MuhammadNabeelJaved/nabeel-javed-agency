@@ -44,6 +44,8 @@ import {
   removeApiKey,
   activateApiKey,
   getHistoryBySessionId,
+  getMyHistory,
+  getDashboardConfig,
   getKnowledge,
   createKnowledge,
   updateKnowledge,
@@ -52,6 +54,11 @@ import {
   crawlUrl,
   syncFromDatabase,
   getUsageStats,
+  // New RAG / vector endpoints
+  crawlWebsite,
+  embedAllKnowledge,
+  getVectorStatus,
+  clearVectorDB,
 } from '../../controllers/usersControllers/chatbot.controller.js';
 
 import { userAuthenticated, authorizeRoles } from '../../middlewares/Auth.js';
@@ -87,8 +94,10 @@ router.post('/chat',                    mutationLimiter, chat);
 router.get('/history/:sessionId',       getHistoryBySessionId);
 
 // ── Authenticated dashboard chatbots ──────────────────────────────────────────
-router.post('/user-chat', userAuthenticated, mutationLimiter, userChat);
-router.post('/team-chat', userAuthenticated, authorizeRoles('admin', 'team'), mutationLimiter, teamChat);
+router.post('/user-chat',        userAuthenticated, mutationLimiter, userChat);
+router.post('/team-chat',        userAuthenticated, authorizeRoles('admin', 'team'), mutationLimiter, teamChat);
+router.get ('/my-history',       userAuthenticated, getMyHistory);
+router.get ('/dashboard-config', userAuthenticated, getDashboardConfig);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
 const adminOnly = [userAuthenticated, authorizeRoles('admin')];
@@ -110,12 +119,18 @@ router.delete('/config/keys/:keyId',          ...adminOnly, removeApiKey);
 router.patch ('/config/keys/:keyId/activate', ...adminOnly, activateApiKey);
 
 // Knowledge base — specific routes MUST come before /:id to avoid ambiguity
-router.get   ('/knowledge',          ...adminOnly, getKnowledge);
-router.post  ('/knowledge',          ...adminOnly, mutationLimiter, createKnowledge);
-router.post  ('/knowledge/upload',   ...adminOnly, mutationLimiter, kbUpload.single('file'), uploadKnowledgeFile);
-router.post  ('/knowledge/crawl',    ...adminOnly, mutationLimiter, crawlUrl);
-router.post  ('/knowledge/sync',     ...adminOnly, mutationLimiter, syncFromDatabase);
-router.put   ('/knowledge/:id',      ...adminOnly, mutationLimiter, updateKnowledge);
-router.delete('/knowledge/:id',      ...adminOnly, deleteKnowledge);
+router.get   ('/knowledge',              ...adminOnly, getKnowledge);
+router.post  ('/knowledge',              ...adminOnly, mutationLimiter, createKnowledge);
+router.post  ('/knowledge/upload',       ...adminOnly, mutationLimiter, kbUpload.single('file'), uploadKnowledgeFile);
+router.post  ('/knowledge/crawl',        ...adminOnly, mutationLimiter, crawlUrl);
+router.post  ('/knowledge/sync',         ...adminOnly, mutationLimiter, syncFromDatabase);
+router.post  ('/knowledge/embed-all',    ...adminOnly, mutationLimiter, embedAllKnowledge);
+router.put   ('/knowledge/:id',          ...adminOnly, mutationLimiter, updateKnowledge);
+router.delete('/knowledge/:id',          ...adminOnly, deleteKnowledge);
+
+// Vector DB / RAG management
+router.post  ('/crawl/website',          ...adminOnly, mutationLimiter, crawlWebsite);
+router.get   ('/vector/stats',           ...adminOnly, getVectorStatus);
+router.delete('/vector/clear',           ...adminOnly, clearVectorDB);
 
 export default router;

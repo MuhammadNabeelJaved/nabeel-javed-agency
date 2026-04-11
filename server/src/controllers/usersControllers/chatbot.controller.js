@@ -46,6 +46,11 @@ import User                 from '../../models/usersModels/User.model.js';
 // Models for per-user and per-team context
 import Project              from '../../models/usersModels/Project.model.js';
 import JobApplication       from '../../models/usersModels/JobApplication.model.js';
+// ── RAG / vector services ─────────────────────────────────────────────────────
+import { retrieveKnowledge, buildKnowledgeContext, embedAndSyncEntry } from '../../services/ragService.js';
+import { deleteByMongoId, getVectorStats, isVectorDBEnabled, clearVectorStore } from '../../services/vectorService.js';
+import { crawlAndStore, crawlWebsite as _crawlWebsite } from '../../services/crawlerService.js';
+import { isEmbeddingEnabled, embedBatch } from '../../services/embeddingService.js';
 
 // ─── Tone instructions ────────────────────────────────────────────────────────
 
@@ -283,43 +288,8 @@ function resolveApiKey(cfg) {
 }
 
 // ─── Knowledge retrieval ──────────────────────────────────────────────────────
-
-/**
- * Returns up to `limit` active knowledge entries most relevant to `query`.
- * Uses MongoDB full-text search; falls back to returning top entries by date
- * if the query is empty.
- */
-async function getRelevantKnowledge(query, limit = 5) {
-  if (query && query.trim().length > 2) {
-    try {
-      const results = await ChatbotKnowledge.find(
-        { isActive: true, $text: { $search: query } },
-        { score: { $meta: 'textScore' }, title: 1, content: 1 }
-      )
-        .sort({ score: { $meta: 'textScore' } })
-        .limit(limit)
-        .lean();
-
-      if (results.length) return results;
-    } catch {
-      // Text index might not be built yet — fall through to latest entries
-    }
-  }
-
-  // Fallback: just return the most recently added active entries
-  return ChatbotKnowledge.find({ isActive: true })
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .select('title content')
-    .lean();
-}
-
-/** Build a knowledge context string to inject into the system prompt. */
-function buildKnowledgeContext(entries) {
-  if (!entries.length) return '';
-  const sections = entries.map(e => `### ${e.title}\n${e.content}`).join('\n\n');
-  return `\n\n---\n## Business Knowledge Base\nUse the following information to answer user questions:\n\n${sections}\n---`;
-}
+// Delegated to ragService — supports semantic search (Supabase pgvector) with
+// MongoDB full-text and recency fallbacks. buildKnowledgeContext is also from ragService.
 
 // ─── Active public page links for navigation CTAs ─────────────────────────────
 
@@ -389,6 +359,24 @@ export const getPublicConfig = asyncHandler(async (req, res) => {
       welcomeMessage: cfg.welcomeMessage,
       isEnabled:      cfg.isEnabled,
     },
+  });
+});
+
+// ─── Authenticated: GET /dashboard-config ─────────────────────────────────────
+// Returns dashboard-safe config fields for any authenticated user/team member.
+// Does NOT require admin role — used by UserAIChat, TeamAIChat, DashboardChatbot.
+
+export const getDashboardConfig = asyncHandler(async (req, res) => {
+  if (!req.user) throw new AppError('Authentication required', 401);
+  const cfg = await getOrCreateConfig();
+  successResponse(res, 'Dashboard config retrieved', {
+    isUserChatEnabled:    cfg.isUserChatEnabled,
+    isTeamChatEnabled:    cfg.isTeamChatEnabled,
+    botName:              cfg.botName,
+    userChatWelcomeMessage: cfg.userChatWelcomeMessage || '',
+    teamChatWelcomeMessage: cfg.teamChatWelcomeMessage || '',
+    userChatQuickPrompts:  cfg.userChatQuickPrompts || [],
+    teamChatQuickPrompts:  cfg.teamChatQuickPrompts || [],
   });
 });
 
@@ -481,9 +469,9 @@ export const chat = asyncHandler(async (req, res) => {
   const apiKey = resolveApiKey(cfg);
   if (!apiKey) throw new AppError('No active API key configured for the chatbot', 503);
 
-  // Retrieve knowledge, portfolio projects, and live page statuses in parallel
+  // Retrieve knowledge (RAG: semantic → full-text → fallback), portfolio, and nav links in parallel
   const [knowledge, publicProjects, activeNavLinks] = await Promise.all([
-    getRelevantKnowledge(userMsg),
+    retrieveKnowledge(userMsg, { role: 'public', limit: 5 }),
     AdminProject.find({ isPublic: true, isArchived: false })
       .select('_id projectTitle category')
       .sort({ createdAt: -1 })
@@ -691,8 +679,8 @@ export const userChat = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const userMsg = message.trim();
 
-  // ── Fetch user's live data in parallel ────────────────────────────────────
-  const [userProjects, userApplications, userProfile] = await Promise.all([
+  // ── Fetch user's live data + public business data + RAG knowledge in parallel ─
+  const [userProjects, userApplications, userProfile, activeJobs, publishedServices, ragKnowledge] = await Promise.all([
     Project.find({ requestedBy: userId, isArchived: { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(20)
@@ -703,7 +691,40 @@ export const userChat = asyncHandler(async (req, res) => {
       .limit(10)
       .lean(),
     User.findById(userId).select('name email role createdAt teamProfile').lean(),
+    Jobs.find({ status: 'Active' })
+      .select('jobTitle department employmentType workMode location salaryRange salaryDisplay experienceLevel description')
+      .limit(20)
+      .lean(),
+    Services.find({ isPublished: true })
+      .select('title description category')
+      .limit(15)
+      .lean(),
+    retrieveKnowledge(userMsg, { role: 'user', limit: 3 }),
   ]);
+
+  // ── Build public business context (jobs, services) ───────────────────────
+  const jobsText = activeJobs.length
+    ? activeJobs.map(j => {
+        const salary = j.salaryDisplay || (j.salaryRange?.min ? `$${j.salaryRange.min}k – $${j.salaryRange.max}k` : 'Competitive');
+        return (
+          `• ${j.jobTitle} (${j.department}) — ${j.employmentType || ''}, ${j.workMode || ''}\n` +
+          `  Location: ${j.location || 'Remote'} · Salary: ${salary} · Level: ${j.experienceLevel || 'N/A'}\n` +
+          (j.description ? `  ${j.description.slice(0, 120)}\n` : '')
+        );
+      }).join('\n')
+    : 'No open positions at this time.';
+
+  const servicesText = publishedServices.length
+    ? publishedServices.map(s =>
+        `• ${s.title}${s.category ? ` (${s.category})` : ''}: ${(s.description || '').slice(0, 150)}`
+      ).join('\n')
+    : 'No services listed yet.';
+
+  const publicContext =
+    `\n\n## Public Business Information\n` +
+    `Use this data to answer any questions about job openings, services, or the company.\n\n` +
+    `### Current Job Openings (${activeJobs.length}):\n${jobsText}\n\n` +
+    `### Our Services (${publishedServices.length}):\n${servicesText}\n`;
 
   // ── Build personal context block ──────────────────────────────────────────
   const projectsText = userProjects.length
@@ -741,10 +762,14 @@ export const userChat = asyncHandler(async (req, res) => {
     `Be specific and reference actual project names, statuses, and amounts when relevant.`;
 
   const toneInstruction = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
+  const ragContext      = buildKnowledgeContext(ragKnowledge);
   const systemPrompt =
     (cfg.userChatSystemPrompt || '') +
     `\n\n## Tone\n${toneInstruction}` +
     `\n\nKeep answers concise (2–4 sentences) unless the user asks for more detail.` +
+    (cfg.userChatContextHints ? `\n\n## Additional Context & Guidelines\n${cfg.userChatContextHints}` : '') +
+    ragContext +
+    publicContext +
     personalContext;
 
   await _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg, endpoint: 'user' });
@@ -768,8 +793,8 @@ export const teamChat = asyncHandler(async (req, res) => {
   const userId  = req.user._id;
   const userMsg = message.trim();
 
-  // ── Fetch team member's live data in parallel ─────────────────────────────
-  const [clientProjects, portfolioProjects] = await Promise.all([
+  // ── Fetch team member's live data + public business data + RAG in parallel ──
+  const [clientProjects, portfolioProjects, activeJobs, publishedServices, ragKnowledgeTeam] = await Promise.all([
     Project.find({ assignedTeam: userId, isArchived: { $ne: true } })
       .populate('requestedBy', 'name email')
       .sort({ updatedAt: -1 })
@@ -779,6 +804,15 @@ export const teamChat = asyncHandler(async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(15)
       .lean(),
+    Jobs.find({ status: 'Active' })
+      .select('jobTitle department employmentType workMode location salaryRange salaryDisplay experienceLevel')
+      .limit(20)
+      .lean(),
+    Services.find({ isPublished: true })
+      .select('title description category')
+      .limit(15)
+      .lean(),
+    retrieveKnowledge(userMsg, { role: 'team', limit: 3 }),
   ]);
 
   // ── Build team context block ──────────────────────────────────────────────
@@ -813,11 +847,34 @@ export const teamChat = asyncHandler(async (req, res) => {
     `IMPORTANT: Reference actual project names and data when answering. ` +
     `Help with project management, technical decisions, deadline tracking, and client communication.`;
 
-  const toneInstruction = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
+  // ── Build public business context for team ────────────────────────────────
+  const teamJobsText = activeJobs.length
+    ? activeJobs.map(j => {
+        const salary = j.salaryDisplay || (j.salaryRange?.min ? `$${j.salaryRange.min}k – $${j.salaryRange.max}k` : 'Competitive');
+        return `• ${j.jobTitle} (${j.department}) — ${j.employmentType || ''}, ${j.workMode || ''} · Salary: ${salary}`;
+      }).join('\n')
+    : 'No open positions.';
+
+  const teamServicesText = publishedServices.length
+    ? publishedServices.map(s =>
+        `• ${s.title}${s.category ? ` (${s.category})` : ''}: ${(s.description || '').slice(0, 120)}`
+      ).join('\n')
+    : 'No services listed.';
+
+  const teamPublicContext =
+    `\n\n## Company Public Information\n` +
+    `### Active Job Openings (${activeJobs.length}):\n${teamJobsText}\n\n` +
+    `### Published Services (${publishedServices.length}):\n${teamServicesText}\n`;
+
+  const toneInstruction  = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
+  const ragContextTeam   = buildKnowledgeContext(ragKnowledgeTeam);
   const systemPrompt =
     (cfg.teamChatSystemPrompt || '') +
     `\n\n## Tone\n${toneInstruction}` +
     `\n\nKeep answers concise (2–4 sentences) unless more detail is requested.` +
+    (cfg.teamChatContextHints ? `\n\n## Additional Context & Guidelines\n${cfg.teamChatContextHints}` : '') +
+    ragContextTeam +
+    teamPublicContext +
     teamContext;
 
   await _streamDashboardChat({ req, res, sessionId, userMsg, history, systemPrompt, cfg, endpoint: 'team' });
@@ -883,6 +940,24 @@ export const getHistoryBySessionId = asyncHandler(async (req, res) => {
   // Return last 100 messages (oldest first)
   const messages = (session.messages || []).slice(-100);
   successResponse(res, 'History retrieved', { messages });
+});
+
+// ─── Authenticated: GET /my-history ──────────────────────────────────────────
+// Returns the most recent session for the authenticated user (userId-based lookup).
+// This survives localStorage clears and works across devices.
+
+export const getMyHistory = asyncHandler(async (req, res) => {
+  if (!req.user) throw new AppError('Authentication required', 401);
+
+  const session = await ChatbotSession.findOne({ userId: req.user._id })
+    .sort({ lastActivity: -1 })
+    .select('messages sessionId endpoint')
+    .lean();
+
+  if (!session) return successResponse(res, 'No history', { messages: [], sessionId: null });
+
+  const messages = (session.messages || []).slice(-100);
+  successResponse(res, 'History retrieved', { messages, sessionId: session.sessionId });
 });
 
 // ─── Admin: Usage & Cost Stats ────────────────────────────────────────────────
@@ -1072,9 +1147,13 @@ export const getConfig = asyncHandler(async (req, res) => {
     isTeamChatEnabled:     cfg.isTeamChatEnabled,
     userChatSystemPrompt:   cfg.userChatSystemPrompt,
     teamChatSystemPrompt:   cfg.teamChatSystemPrompt,
-    userChatQuickPrompts:   cfg.userChatQuickPrompts  || [],
-    teamChatQuickPrompts:   cfg.teamChatQuickPrompts  || [],
-    tone:                   cfg.tone || 'professional',
+    userChatQuickPrompts:    cfg.userChatQuickPrompts   || [],
+    teamChatQuickPrompts:    cfg.teamChatQuickPrompts   || [],
+    userChatWelcomeMessage:  cfg.userChatWelcomeMessage || '',
+    teamChatWelcomeMessage:  cfg.teamChatWelcomeMessage || '',
+    userChatContextHints:    cfg.userChatContextHints   || '',
+    teamChatContextHints:    cfg.teamChatContextHints   || '',
+    tone:                    cfg.tone || 'professional',
     maxTokens:             cfg.maxTokens,
     temperature:           cfg.temperature,
     maxMessagesPerHour:    cfg.maxMessagesPerHour,
@@ -1090,7 +1169,9 @@ export const updateConfig = asyncHandler(async (req, res) => {
     'activeProvider', 'activeModel', 'simpleModel', 'systemPrompt', 'businessContext',
     'botName', 'welcomeMessage', 'isEnabled', 'isUserChatEnabled', 'isTeamChatEnabled',
     'userChatSystemPrompt', 'teamChatSystemPrompt',
-    'userChatQuickPrompts', 'teamChatQuickPrompts', 'tone',
+    'userChatQuickPrompts', 'teamChatQuickPrompts',
+    'userChatWelcomeMessage', 'teamChatWelcomeMessage',
+    'userChatContextHints', 'teamChatContextHints', 'tone',
     'maxTokens', 'temperature', 'maxMessagesPerHour', 'maxMessagesPerDay',
   ];
 
@@ -1202,20 +1283,29 @@ export const getKnowledge = asyncHandler(async (req, res) => {
 export const createKnowledge = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
 
-  const { title, content, type, fileUrl, fileName, tags } = req.body;
+  const { title, content, type, fileUrl, fileName, tags, roleAccess } = req.body;
 
   if (!title || !content) throw new AppError('title and content are required', 400);
 
   const entry = await ChatbotKnowledge.create({
     title,
     content,
-    type:      type     || 'text',
-    fileUrl:   fileUrl  || '',
-    fileName:  fileName || '',
-    tags:      Array.isArray(tags) ? tags : [],
-    isActive:  true,
-    createdBy: req.user._id,
+    type:       type       || 'text',
+    fileUrl:    fileUrl    || '',
+    fileName:   fileName   || '',
+    tags:       Array.isArray(tags) ? tags : [],
+    roleAccess: roleAccess || 'public',
+    isActive:   true,
+    createdBy:  req.user._id,
   });
+
+  // Non-blocking: generate embedding + sync to vector store
+  embedAndSyncEntry(entry)
+    .then(() => ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'done' }))
+    .catch(e => {
+      console.error('[Embed] createKnowledge:', e.message);
+      ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'failed' }).catch(() => {});
+    });
 
   successResponse(res, 'Knowledge entry created', entry, 201);
 });
@@ -1223,7 +1313,7 @@ export const createKnowledge = asyncHandler(async (req, res) => {
 export const updateKnowledge = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
 
-  const allowed = ['title', 'content', 'type', 'fileUrl', 'fileName', 'tags', 'isActive'];
+  const allowed = ['title', 'content', 'type', 'fileUrl', 'fileName', 'tags', 'isActive', 'roleAccess'];
   const updates = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -1234,6 +1324,17 @@ export const updateKnowledge = asyncHandler(async (req, res) => {
   );
 
   if (!entry) throw new AppError('Entry not found', 404);
+
+  // Non-blocking: re-embed on content/roleAccess changes
+  if (updates.content || updates.title || updates.roleAccess) {
+    embedAndSyncEntry(entry)
+      .then(() => ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'done' }))
+      .catch(e => {
+        console.error('[Embed] updateKnowledge:', e.message);
+        ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'failed' }).catch(() => {});
+      });
+  }
+
   successResponse(res, 'Knowledge entry updated', entry);
 });
 
@@ -1242,6 +1343,11 @@ export const deleteKnowledge = asyncHandler(async (req, res) => {
 
   const entry = await ChatbotKnowledge.findByIdAndDelete(req.params.id);
   if (!entry) throw new AppError('Entry not found', 404);
+
+  // Non-blocking: remove embedding chunks from Supabase
+  deleteByMongoId(req.params.id)
+    .catch(e => console.error('[VectorDB] deleteKnowledge:', e.message));
+
   successResponse(res, 'Knowledge entry deleted');
 });
 
@@ -1258,13 +1364,19 @@ export const uploadKnowledgeFile = asyncHandler(async (req, res) => {
   const entry = await ChatbotKnowledge.create({
     title,
     content,
-    type:      'file',
-    fileUrl:   result.secure_url,
-    fileName:  req.file.originalname,
-    tags:      req.body.tags ? req.body.tags.split(',').map(t => t.trim()) : [],
-    isActive:  true,
-    createdBy: req.user._id,
+    type:       'file',
+    fileUrl:    result.secure_url,
+    fileName:   req.file.originalname,
+    roleAccess: req.body.roleAccess || 'public',
+    tags:       req.body.tags ? req.body.tags.split(',').map(t => t.trim()) : [],
+    isActive:   true,
+    createdBy:  req.user._id,
   });
+
+  // Non-blocking: generate embedding for file content
+  embedAndSyncEntry(entry)
+    .then(() => ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'done' }))
+    .catch(e => console.error('[Embed] uploadKnowledgeFile:', e.message));
 
   successResponse(res, 'File uploaded and knowledge entry created', entry, 201);
 });
@@ -1311,83 +1423,166 @@ function htmlToText(html) {
     .trim();
 }
 
-// ─── Admin: Crawl website page ────────────────────────────────────────────────
+// ─── Admin: Crawl a single page ───────────────────────────────────────────────
 
 /**
  * POST /api/v1/chatbot/knowledge/crawl
- * Fetch a public web page, extract its text, and save it as a knowledge entry.
+ * Fetch a public web page, extract its text, save to MongoDB, and embed + sync
+ * to Supabase vector store. Returns the MongoDB knowledge entry.
  */
 export const crawlUrl = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
 
-  const { url, title, tags } = req.body;
+  const { url, title, tags, roleAccess } = req.body;
   if (!url || typeof url !== 'string') throw new AppError('url is required', 400);
 
-  // Validate URL
+  // Basic URL validation
   let parsed;
   try {
     parsed = new URL(url.trim());
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      throw new Error('bad protocol');
-    }
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('bad protocol');
   } catch {
     throw new AppError('Invalid URL — must start with http:// or https://', 400);
   }
 
-  // Fetch with a 20-second timeout
-  let html;
+  let result;
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
-    const response = await fetch(parsed.href, {
-      signal:  controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; NovaCrawler/1.0)',
-        'Accept':     'text/html,application/xhtml+xml,*/*;q=0.8',
-      },
+    result = await crawlAndStore({
+      url:           parsed.href,
+      titleOverride: title ? String(title).trim() : undefined,
+      extraTags:     Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(Boolean) : []),
+      roleAccess:    roleAccess || 'public',
+      createdBy:     req.user._id,
     });
-    clearTimeout(timer);
-
-    const ct = response.headers.get('content-type') || '';
-    if (!response.ok) {
-      throw new AppError(`Page returned HTTP ${response.status}`, 400);
-    }
-    if (!ct.includes('text/html') && !ct.includes('text/plain')) {
-      throw new AppError('URL does not point to an HTML or text page', 400);
-    }
-    html = await response.text();
   } catch (err) {
-    if (err instanceof AppError) throw err;
     if (err.name === 'AbortError') throw new AppError('Page took too long to load (>20 s)', 504);
-    throw new AppError(`Could not fetch page: ${err.message}`, 400);
+    throw new AppError(`Could not crawl page: ${err.message}`, 400);
   }
 
-  // Extract and truncate text (stay within MongoDB + token budget)
-  const raw  = htmlToText(html);
-  if (raw.length < 30) {
-    throw new AppError('Could not extract meaningful text from this page', 400);
+  const entry = await ChatbotKnowledge.findById(result.mongoId).lean();
+  successResponse(
+    res,
+    `Page crawled and ${result.chunksStored > 0 ? `embedded (${result.chunksStored} chunks)` : 'added to knowledge base'}`,
+    entry,
+    201
+  );
+});
+
+// ─── Admin: Crawl entire website ─────────────────────────────────────────────
+
+/**
+ * POST /api/v1/chatbot/crawl/website
+ * Crawl all active public pages of the website.
+ * Body: { baseUrl: string, extraPaths?: string[] }
+ */
+export const crawlWebsite = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const { baseUrl, extraPaths = [] } = req.body;
+  if (!baseUrl || typeof baseUrl !== 'string') throw new AppError('baseUrl is required', 400);
+
+  try { new URL(baseUrl); } catch {
+    throw new AppError('Invalid baseUrl', 400);
   }
-  const MAX_CHARS = 10000;
-  const content   = raw.length > MAX_CHARS
-    ? raw.slice(0, MAX_CHARS) + '\n\n[Content truncated — page too long]'
-    : raw;
 
-  const pageTitle = (title && title.trim())
-    || extractTitleFromHtml(html)
-    || (parsed.hostname + parsed.pathname);
-
-  const entry = await ChatbotKnowledge.create({
-    title:     pageTitle.slice(0, 200),
-    content,
-    type:      'url',
-    sourceUrl: parsed.href,
-    fileUrl:   parsed.href,   // reuse so existing UI "view" links work
-    tags:      Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(Boolean) : []),
-    isActive:  true,
-    createdBy: req.user._id,
+  const results = await _crawlWebsite({
+    baseUrl,
+    extra:     Array.isArray(extraPaths) ? extraPaths : [],
+    createdBy: req.user._id.toString(),
   });
 
-  successResponse(res, 'Page crawled and added to knowledge base', entry, 201);
+  successResponse(res, `Website crawl complete — ${results.success.length} pages indexed, ${results.failed.length} failed`, results);
+});
+
+// ─── Admin: Batch embed all KB entries ────────────────────────────────────────
+
+/**
+ * POST /api/v1/chatbot/knowledge/embed-all
+ * Generate embeddings for every active ChatbotKnowledge document and upsert
+ * them into Supabase. Processes in batches to avoid API rate limits.
+ * Skips entries that already have embeddingStatus === 'done' unless
+ * ?force=true is passed.
+ */
+export const embedAllKnowledge = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  if (!isEmbeddingEnabled()) {
+    throw new AppError('OPENAI_API_KEY is not configured — embeddings are disabled', 503);
+  }
+  if (!isVectorDBEnabled()) {
+    throw new AppError('Supabase is not configured — vector store is disabled', 503);
+  }
+
+  const force = req.query.force === 'true';
+  const filter = { isActive: true };
+  if (!force) filter.embeddingStatus = { $ne: 'done' };
+
+  const entries = await ChatbotKnowledge.find(filter)
+    .select('_id title content type roleAccess tags sourceUrl')
+    .lean();
+
+  let done = 0;
+  let failed = 0;
+
+  for (const entry of entries) {
+    try {
+      await embedAndSyncEntry(entry);
+      await ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'done' });
+      done++;
+    } catch (e) {
+      console.error(`[Embed] embedAll entry ${entry._id}:`, e.message);
+      await ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'failed' });
+      failed++;
+    }
+    // Brief pause between entries to stay within API rate limits
+    await new Promise(r => setTimeout(r, 80));
+  }
+
+  successResponse(res, `Embedding complete — ${done} embedded, ${failed} failed`, {
+    total: entries.length, done, failed,
+  });
+});
+
+// ─── Admin: Vector DB status ──────────────────────────────────────────────────
+
+/**
+ * GET /api/v1/chatbot/vector/stats
+ * Returns vector store health + chunk counts. Also reports which services
+ * (embedding, vector DB) are currently configured.
+ */
+export const getVectorStatus = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  const [vectorStats, pendingCount, totalKB] = await Promise.all([
+    getVectorStats(),
+    ChatbotKnowledge.countDocuments({ isActive: true, embeddingStatus: { $in: ['pending', 'failed'] } }),
+    ChatbotKnowledge.countDocuments({ isActive: true }),
+  ]);
+
+  successResponse(res, 'Vector status retrieved', {
+    embeddingEnabled: isEmbeddingEnabled(),
+    vectorDBEnabled:  isVectorDBEnabled(),
+    vectorStats,
+    pendingEmbeddings: pendingCount,
+    totalKBEntries:    totalKB,
+    embeddedEntries:   totalKB - pendingCount,
+  });
+});
+
+// ─── Admin: Clear vector store ────────────────────────────────────────────────
+
+/**
+ * DELETE /api/v1/chatbot/vector/clear
+ * Hard-reset: wipes all chunks from Supabase and resets embeddingStatus to
+ * 'pending' on all KB entries. Use before a full re-embed.
+ */
+export const clearVectorDB = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
+
+  await clearVectorStore();
+  await ChatbotKnowledge.updateMany({ isActive: true }, { $set: { embeddingStatus: 'pending' } });
+
+  successResponse(res, 'Vector store cleared and all entries marked for re-embedding');
 });
 
 // ─── Database sync helpers ────────────────────────────────────────────────────
