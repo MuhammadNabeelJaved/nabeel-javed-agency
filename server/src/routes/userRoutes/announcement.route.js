@@ -10,6 +10,7 @@ import {
 } from "../../controllers/usersControllers/announcement.controller.js";
 import {
     getActiveBars,
+    getActiveDashboardBars,
     getAllBars,
     createBar,
     updateBar,
@@ -23,6 +24,9 @@ const router = express.Router();
 
 // Public
 router.get("/bars", getActiveBars);
+
+// Authenticated (any logged-in user) — dashboard-visibility bars
+router.get("/bars/dashboard", userAuthenticated, getActiveDashboardBars);
 
 // Admin only
 router.get("/bars/all", userAuthenticated, authorizeRoles("admin"), getAllBars);

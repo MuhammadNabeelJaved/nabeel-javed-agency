@@ -20,25 +20,36 @@ import Jobs             from '../models/usersModels/Jobs.model.js';
 import CMS              from '../models/usersModels/CMS.model.js';
 import User             from '../models/usersModels/User.model.js';
 import Reviews          from '../models/usersModels/Reviews.model.js';
+import { embedAndSyncEntry } from '../services/ragService.js';
 
-// ─── Upsert helper (identical to the one in chatbot.controller.js) ─────────────
-async function upsert({ syncKey, title, content, type = 'auto', tags = [] }) {
+// ─── Upsert helper ──────────────────────────────────────────────────────────
+async function upsert({ syncKey, title, content, type = 'auto', tags = [], roleAccess = 'public' }) {
   const allTags = ['auto-sync', syncKey, ...tags];
+  let doc;
+
   const existing = await ChatbotKnowledge.findOne({ tags: syncKey });
   if (existing) {
-    existing.title   = title;
-    existing.content = content.slice(0, 20000);
-    existing.tags    = allTags;
+    existing.title      = title;
+    existing.content    = content.slice(0, 20000);
+    existing.tags       = allTags;
+    existing.roleAccess = roleAccess;
     await existing.save();
+    doc = existing;
   } else {
-    await ChatbotKnowledge.create({
+    doc = await ChatbotKnowledge.create({
       title,
-      content: content.slice(0, 20000),
+      content:    content.slice(0, 20000),
       type,
-      tags: allTags,
-      isActive: true,
+      tags:       allTags,
+      roleAccess,
+      isActive:   true,
     });
   }
+
+  // Non-blocking: embed and sync to Supabase vector store
+  embedAndSyncEntry(doc)
+    .then(() => ChatbotKnowledge.findByIdAndUpdate(doc._id, { embeddingStatus: 'done' }))
+    .catch(e => console.error(`[AutoSync] Embed failed for "${title}":`, e.message));
 }
 
 // ─── Delete entry for a removed item ──────────────────────────────────────────

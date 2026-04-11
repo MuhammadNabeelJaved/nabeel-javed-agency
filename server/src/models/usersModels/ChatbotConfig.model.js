@@ -128,6 +128,36 @@ const chatbotConfigSchema = new mongoose.Schema({
       "Help me write a project update",
     ],
   },
+
+  /** Custom welcome/greeting message for the user-dashboard chatbot. */
+  userChatWelcomeMessage: {
+    type:    String,
+    default: "Hi! I'm your personal assistant. I can help you track your projects, check job applications, and answer questions about our services. What would you like to know?",
+  },
+
+  /** Custom welcome/greeting message for the team-dashboard chatbot. */
+  teamChatWelcomeMessage: {
+    type:    String,
+    default: "Hi! I'm your team assistant. I have access to your assigned projects, portfolio work, and company info. How can I help you today?",
+  },
+
+  /**
+   * Extra context hints for the user chatbot — free-text block appended to
+   * the user chat system prompt (e.g. current promotions, support policies).
+   */
+  userChatContextHints: {
+    type:    String,
+    default: '',
+  },
+
+  /**
+   * Extra context hints for the team chatbot — free-text block appended to
+   * the team chat system prompt (e.g. internal guidelines, processes).
+   */
+  teamChatContextHints: {
+    type:    String,
+    default: '',
+  },
 }, {
   timestamps: true,
 });

@@ -6,11 +6,9 @@
  * - Response time expectation
  * - Navigation back to home/services
  */
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Home, Sparkles, Mail } from 'lucide-react';
-import { Button } from '../../components/ui/button';
+import { CheckCircle2, Home, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 
 export default function ContactSuccess() {
@@ -73,24 +71,26 @@ export default function ContactSuccess() {
           </Card>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           className="flex flex-col sm:flex-row justify-center gap-4 pt-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
         >
-          <Button variant="outline" size="lg" asChild>
-            <Link to="/services">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Explore Services
-            </Link>
-          </Button>
-          <Button size="lg" asChild>
-            <Link to="/">
-              <Home className="mr-2 h-4 w-4" />
-              Back to Home
-            </Link>
-          </Button>
+          <Link
+            to="/services"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm text-foreground font-medium text-sm hover:bg-white/10 hover:border-white/30 transition-all duration-200"
+          >
+            <Sparkles className="h-4 w-4" />
+            Explore Services
+          </Link>
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-full bg-primary text-white font-medium text-sm hover:bg-primary/90 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-200"
+          >
+            <Home className="h-4 w-4" />
+            Back to Home
+          </Link>
         </motion.div>
       </div>
     </div>

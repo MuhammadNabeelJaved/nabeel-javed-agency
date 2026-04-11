@@ -47,6 +47,10 @@ export interface ChatbotConfigFull {
   teamChatSystemPrompt: string;
   userChatQuickPrompts: string[];
   teamChatQuickPrompts: string[];
+  userChatWelcomeMessage: string;
+  teamChatWelcomeMessage: string;
+  userChatContextHints: string;
+  teamChatContextHints: string;
   tone: ChatbotTone;
   maxTokens: number;
   temperature: number;
@@ -73,10 +77,49 @@ export interface KnowledgeEntry {
   fileName?: string;
   sourceUrl?: string;
   tags: string[];
+  roleAccess: 'public' | 'user' | 'team' | 'admin';
+  embeddingStatus: 'pending' | 'done' | 'failed' | 'disabled';
   isActive: boolean;
   wordCount: number;
   createdAt: string;
   createdBy?: { name: string };
+}
+
+// ─── RAG / Vector DB types ────────────────────────────────────────────────────
+
+export interface VectorStats {
+  total: number;
+  byType: Record<string, number>;
+  byRole: Record<string, number>;
+}
+
+export interface VectorStatus {
+  embeddingEnabled: boolean;
+  vectorDBEnabled: boolean;
+  vectorStats: VectorStats | null;
+  pendingEmbeddings: number;
+  totalKBEntries: number;
+  embeddedEntries: number;
+}
+
+export interface CrawlPageResult {
+  path: string;
+  url: string;
+  title?: string;
+  chunksStored?: number;
+  error?: string;
+}
+
+export interface WebsiteCrawlResult {
+  success: CrawlPageResult[];
+  failed:  CrawlPageResult[];
+  totalChunks: number;
+}
+
+export interface EmbedAllResult {
+  total: number;
+  done: number;
+  failed: number;
 }
 
 export interface ChatbotSession {
@@ -264,6 +307,39 @@ export async function getChatHistory(sessionId: string): Promise<HistoryMessage[
   }
 }
 
+/**
+ * Fetch chat history for the authenticated user (userId-based lookup).
+ * Returns the most recent session's messages + the server-assigned sessionId.
+ * Use this for logged-in users so history persists across devices / localStorage clears.
+ */
+export async function getMyHistory(): Promise<{ messages: HistoryMessage[]; sessionId: string | null }> {
+  try {
+    const data = await apiFetch<{ data: { messages: HistoryMessage[]; sessionId: string | null } }>(
+      `${BASE}/my-history`
+    );
+    return data.data;
+  } catch {
+    return { messages: [], sessionId: null };
+  }
+}
+
+// ─── Authenticated — Dashboard config ────────────────────────────────────────
+
+export interface DashboardConfig {
+  isUserChatEnabled: boolean;
+  isTeamChatEnabled: boolean;
+  botName: string;
+  userChatWelcomeMessage: string;
+  teamChatWelcomeMessage: string;
+  userChatQuickPrompts: string[];
+  teamChatQuickPrompts: string[];
+}
+
+export async function getDashboardConfig(): Promise<DashboardConfig> {
+  const data = await apiFetch<{ data: DashboardConfig }>(`${BASE}/dashboard-config`);
+  return data.data;
+}
+
 // ─── Admin — Stats & Sessions ─────────────────────────────────────────────────
 
 export async function getStats(): Promise<ChatbotStats> {
@@ -393,5 +469,46 @@ export async function syncFromDatabase(): Promise<SyncResult> {
   const data = await apiFetch<{ data: SyncResult }>(`${BASE}/knowledge/sync`, {
     method: 'POST',
   });
+  return data.data;
+}
+
+// ─── Admin — RAG / Vector DB ──────────────────────────────────────────────────
+
+/** Fetch vector DB health and chunk counts. */
+export async function getVectorStatus(): Promise<VectorStatus> {
+  const data = await apiFetch<{ data: VectorStatus }>(`${BASE}/vector/stats`);
+  return data.data;
+}
+
+/** Clear all embeddings from Supabase and reset embeddingStatus to 'pending'. */
+export async function clearVectorDB(): Promise<void> {
+  await apiFetch(`${BASE}/vector/clear`, { method: 'DELETE' });
+}
+
+/**
+ * Crawl every active public page of the website and store embeddings.
+ * @param baseUrl  - Site base URL, e.g. 'https://yoursite.com'
+ * @param extraPaths - Additional relative paths to crawl
+ */
+export async function crawlWebsite(payload: {
+  baseUrl: string;
+  extraPaths?: string[];
+}): Promise<WebsiteCrawlResult> {
+  const data = await apiFetch<{ data: WebsiteCrawlResult }>(`${BASE}/crawl/website`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data.data;
+}
+
+/**
+ * Batch-generate embeddings for all active KB entries that haven't been
+ * embedded yet (or all, if force=true).
+ */
+export async function embedAllKnowledge(force = false): Promise<EmbedAllResult> {
+  const data = await apiFetch<{ data: EmbedAllResult }>(
+    `${BASE}/knowledge/embed-all${force ? '?force=true' : ''}`,
+    { method: 'POST' }
+  );
   return data.data;
 }

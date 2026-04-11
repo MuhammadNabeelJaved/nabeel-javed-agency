@@ -10,6 +10,8 @@ import { Menu, Sun, Moon, MessageSquare, Settings, Bell, LayoutDashboard, Folder
 import { motion, AnimatePresence } from 'framer-motion';
 import { DashboardSearch } from '../components/DashboardSearch';
 import { useTheme } from '../contexts/ThemeContext';
+import { useContent } from '../contexts/ContentContext';
+import { AnnouncementBar } from '../components/AnnouncementBar';
 import { NotificationBell } from '../components/NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
@@ -19,6 +21,12 @@ import { DashboardChatbot } from '../components/DashboardChatbot';
 export function TeamDashboardLayout() {
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
+  const { dashboardAnnouncementBars, fetchDashboardBars } = useContent();
+
+  useEffect(() => { fetchDashboardBars(); }, [fetchDashboardBars]);
+
+  const activeDashBars = dashboardAnnouncementBars.filter(g => g.bar.isActive && g.items.length > 0);
+  const dashBarHeight = activeDashBars.length * 40;
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -62,11 +70,19 @@ export function TeamDashboardLayout() {
         <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px]" />
       </div>
 
+      {/* Dashboard announcement bars */}
+      {activeDashBars.map((barGroup, idx) => (
+        <AnnouncementBar key={barGroup.bar._id} barGroup={barGroup} topOffset={idx * 40} />
+      ))}
+
       <TeamSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
 
       <div className={`sm:pl-20 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} relative z-10 transition-all duration-300`}>
         {/* Topbar */}
-        <header className="h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 backdrop-blur-md bg-background/50 border-b border-border/50">
+        <header
+          className="h-16 sm:h-20 px-4 sm:px-8 flex items-center justify-between sticky z-30 backdrop-blur-md bg-background/50 border-b border-border/50"
+          style={{ top: dashBarHeight }}
+        >
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <motion.button
               onClick={() => setSidebarOpen(true)}

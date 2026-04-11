@@ -153,21 +153,28 @@ function AnnouncementFormDialog({
 }
 
 // ─── Create Bar Dialog ────────────────────────────────────────────────────────
+const VISIBILITY_OPTIONS = [
+  { value: 'public',    label: '🌐 Public pages only',         desc: 'Shown on the public-facing website' },
+  { value: 'dashboard', label: '🔒 Dashboards only',           desc: 'Shown inside user & team dashboards' },
+  { value: 'both',      label: '🌐🔒 Everywhere',              desc: 'Shown on public pages AND dashboards' },
+] as const;
+
 function CreateBarDialog({
   open, onClose, onSave, saving,
 }: {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { name: string; bgColor: string; textColor: string; scrollEnabled: boolean }) => Promise<void>;
+  onSave: (data: { name: string; bgColor: string; textColor: string; scrollEnabled: boolean; visibility: 'public' | 'dashboard' | 'both' }) => Promise<void>;
   saving: boolean;
 }) {
   const [name, setName] = useState('');
   const [bgColor, setBgColor] = useState('#7c3aed');
   const [textColor, setTextColor] = useState('#ffffff');
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [visibility, setVisibility] = useState<'public' | 'dashboard' | 'both'>('public');
 
   useEffect(() => {
-    if (open) { setName(''); setBgColor('#7c3aed'); setTextColor('#ffffff'); setScrollEnabled(true); }
+    if (open) { setName(''); setBgColor('#7c3aed'); setTextColor('#ffffff'); setScrollEnabled(true); setVisibility('public'); }
   }, [open]);
 
   return (
@@ -248,11 +255,38 @@ function CreateBarDialog({
               <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${scrollEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
           </div>
+
+          {/* Visibility */}
+          <div className="space-y-2">
+            <Label>Show on</Label>
+            <div className="grid grid-cols-1 gap-2">
+              {VISIBILITY_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setVisibility(opt.value)}
+                  className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
+                    visibility === opt.value
+                      ? 'border-primary bg-primary/10'
+                      : 'border-white/10 bg-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <div className={`mt-0.5 h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center ${visibility === opt.value ? 'border-primary bg-primary' : 'border-muted-foreground/40'}`}>
+                    {visibility === opt.value && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{opt.label}</p>
+                    <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <DialogFooter className="pt-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button
-            onClick={() => onSave({ name, bgColor, textColor, scrollEnabled })}
+            onClick={() => onSave({ name, bgColor, textColor, scrollEnabled, visibility })}
             disabled={saving || !name.trim()}
           >
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -466,6 +500,38 @@ function BarSettingsPanel({ bar, onSave }: {
         </div>
       </div>
 
+      {/* Visibility */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Show On</p>
+        <div className="flex flex-col gap-1.5">
+          {VISIBILITY_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => set('visibility', opt.value)}
+              className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
+                (local as any).visibility === opt.value || (!( local as any).visibility && opt.value === 'public')
+                  ? 'border-primary bg-primary/10'
+                  : 'border-white/10 bg-white/5 hover:border-white/20'
+              }`}
+            >
+              <div className={`h-3.5 w-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                (local as any).visibility === opt.value || (!(local as any).visibility && opt.value === 'public')
+                  ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+              }`}>
+                {((local as any).visibility === opt.value || (!(local as any).visibility && opt.value === 'public')) && (
+                  <div className="h-1 w-1 rounded-full bg-white" />
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-medium">{opt.label}</p>
+                <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Save button */}
       <Button size="sm" onClick={save} disabled={saving || !hasChanged} className="w-full gap-1.5">
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -566,6 +632,16 @@ function BarCard({
               <span>{bar.scrollEnabled ? '⟳ Ticker' : '— Static'}</span>
               <span>·</span>
               <span>{activeCount}/{items.length} active</span>
+              <span>·</span>
+              <span className={`font-medium ${
+                (bar as any).visibility === 'dashboard' ? 'text-emerald-400' :
+                (bar as any).visibility === 'both'      ? 'text-blue-400' :
+                'text-violet-400'
+              }`}>
+                {(bar as any).visibility === 'dashboard' ? '🔒 Dashboards' :
+                 (bar as any).visibility === 'both'      ? '🌐🔒 Everywhere' :
+                 '🌐 Public'}
+              </span>
             </div>
           </div>
 
@@ -794,7 +870,7 @@ export default function AnnouncementManager() {
   useEffect(() => { load(); }, []);
 
   // ── Bar actions ──
-  const handleCreateBar = async (data: { name: string; bgColor: string; textColor: string; scrollEnabled: boolean }) => {
+  const handleCreateBar = async (data: { name: string; bgColor: string; textColor: string; scrollEnabled: boolean; visibility: 'public' | 'dashboard' | 'both' }) => {
     setBarSaving(true);
     try {
       await announcementBarsApi.create({ ...data, order: barGroups.length });

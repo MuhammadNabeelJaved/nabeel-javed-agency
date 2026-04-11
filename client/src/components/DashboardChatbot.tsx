@@ -20,7 +20,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
-import { streamUserChat, streamTeamChat, getPublicConfig, getChatHistory } from '../api/chatbot.api';
+import { streamUserChat, streamTeamChat, getPublicConfig, getMyHistory, getChatHistory, getDashboardConfig } from '../api/chatbot.api';
 import type { ChatMessage } from '../api/chatbot.api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -179,27 +179,66 @@ export function DashboardChatbot({ mode }: DashboardChatbotProps) {
     if (!stored) localStorage.setItem(cfg.storageKey, sessionId);
     sessionIdRef.current = sessionId;
 
-    getChatHistory(sessionId).then(history => {
-      if (history.length > 0) {
-        setMessages(history.map((m, i) => ({
+    // Prefer server-side userId-based history (survives localStorage clears / new devices)
+    getMyHistory().then(({ messages: hist, sessionId: serverSessionId }) => {
+      if (hist.length > 0) {
+        // Sync the server sessionId back to localStorage so future messages attach
+        if (serverSessionId) {
+          localStorage.setItem(cfg.storageKey, serverSessionId);
+          sessionIdRef.current = serverSessionId;
+        }
+        setMessages(hist.map((m, i) => ({
           id:        `hist-${i}`,
           role:      m.role,
           content:   m.content,
           timestamp: new Date(m.timestamp),
         })));
         setHasHistory(true);
+      } else {
+        // Fall back to UUID-based lookup for any pre-existing local session
+        getChatHistory(sessionId).then(localHist => {
+          if (localHist.length > 0) {
+            setMessages(localHist.map((m, i) => ({
+              id:        `hist-${i}`,
+              role:      m.role,
+              content:   m.content,
+              timestamp: new Date(m.timestamp),
+            })));
+            setHasHistory(true);
+          }
+        });
       }
+    }).catch(() => {
+      // Not authenticated or network error — fall back to UUID-based lookup
+      getChatHistory(sessionId).then(hist => {
+        if (hist.length > 0) {
+          setMessages(hist.map((m, i) => ({
+            id:        `hist-${i}`,
+            role:      m.role,
+            content:   m.content,
+            timestamp: new Date(m.timestamp),
+          })));
+          setHasHistory(true);
+        }
+      });
     });
   }, [cfg.storageKey]);
 
-  // Check if enabled (piggyback on public config for now; full config needs admin route)
+  // Load dashboard config (welcome message + enabled state + bot name)
+  const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [botName, setBotName] = useState('Nova');
   useEffect(() => {
-    getPublicConfig().then(c => {
-      // Public config only has isEnabled; fall back to true for user/team specific toggle.
-      // The server-side check (cfg.isUserChatEnabled / cfg.isTeamChatEnabled) also guards.
-      setIsEnabled(c.isEnabled !== false);
-    }).catch(() => {});
-  }, []);
+    getDashboardConfig().then(c => {
+      const modeEnabled = mode === 'user' ? c.isUserChatEnabled : c.isTeamChatEnabled;
+      setIsEnabled(modeEnabled !== false);
+      const wm = mode === 'user' ? c.userChatWelcomeMessage : c.teamChatWelcomeMessage;
+      if (wm) setWelcomeMessage(wm);
+      if (c.botName) setBotName(c.botName);
+    }).catch(() => {
+      // Fall back to public config for isEnabled
+      getPublicConfig().then(c => setIsEnabled(c.isEnabled !== false)).catch(() => {});
+    });
+  }, [mode]);
 
   // Auto-scroll
   useEffect(() => {
@@ -426,7 +465,7 @@ export function DashboardChatbot({ mode }: DashboardChatbotProps) {
                   <Bot className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white leading-tight">{cfg.botName}</p>
+                  <p className="text-sm font-semibold text-white leading-tight">{botName}</p>
                   <p className="text-[10px] text-white/80 leading-tight">{cfg.subtitle}</p>
                 </div>
               </div>
@@ -470,8 +509,10 @@ export function DashboardChatbot({ mode }: DashboardChatbotProps) {
                     <Sparkles className="h-7 w-7 text-white" />
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground">{cfg.botName} — {cfg.subtitle}</p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">{cfg.description}</p>
+                    <p className="font-semibold text-foreground">{botName} — {cfg.subtitle}</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+                    {welcomeMessage || cfg.description}
+                  </p>
                   </div>
                   <div className="flex flex-col gap-1.5 w-full max-w-[260px]">
                     {(mode === 'user'

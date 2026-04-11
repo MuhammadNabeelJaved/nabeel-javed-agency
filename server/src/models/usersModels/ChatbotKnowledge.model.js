@@ -36,6 +36,32 @@ const chatbotKnowledgeSchema = new mongoose.Schema({
   /** Tags for manual categorisation (used in the admin UI filter). */
   tags: { type: [String], default: [] },
 
+  /**
+   * Access level for role-based knowledge filtering.
+   *  'public' — visible to all chatbot surfaces (default)
+   *  'user'   — authenticated users + team + admin
+   *  'team'   — team members + admin
+   *  'admin'  — admin only
+   */
+  roleAccess: {
+    type:    String,
+    enum:    ['public', 'user', 'team', 'admin'],
+    default: 'public',
+  },
+
+  /**
+   * Embedding sync status.
+   *  'pending'  — not yet embedded (new entry)
+   *  'done'     — successfully embedded in Supabase vector store
+   *  'failed'   — embedding attempt failed (will be retried on next edit)
+   *  'disabled' — embedding skipped (e.g. isActive: false)
+   */
+  embeddingStatus: {
+    type:    String,
+    enum:    ['pending', 'done', 'failed', 'disabled'],
+    default: 'pending',
+  },
+
   /** Disabled entries are excluded from knowledge retrieval. */
   isActive: { type: Boolean, default: true },
 
