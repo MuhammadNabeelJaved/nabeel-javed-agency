@@ -41,10 +41,10 @@ const chatbotSessionSchema = new mongoose.Schema({
 });
 
 // Keep lastActivity and totalMessages in sync on every save.
-chatbotSessionSchema.pre('save', function (next) {
+// Using async function (no next()) — required for reliable behaviour in Mongoose 9.
+chatbotSessionSchema.pre('save', async function () {
   this.totalMessages = this.messages.length;
   this.lastActivity  = new Date();
-  next();
 });
 
 export default mongoose.model('ChatbotSession', chatbotSessionSchema);

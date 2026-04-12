@@ -49,10 +49,15 @@ async function _callAPI(inputs) {
   }
 
   const json = await res.json();
-  // Sort by index to guarantee order matches the input array
-  return json.data
+  // Sort by index to guarantee order matches the input array, then extract
+  // only the embedding arrays — lets the full json object be GCed immediately.
+  const embeddings = json.data
     .sort((a, b) => a.index - b.index)
     .map(d => d.embedding);
+  // Explicitly drop the parsed JSON so V8 can GC it before the caller proceeds.
+  // eslint-disable-next-line no-unused-vars
+  json.data = null;
+  return embeddings;
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -80,7 +85,7 @@ export async function embedText(text) {
  * @param {number}   [batchSize=20] — max items per API call
  * @returns {Promise<(number[]|null)[]>}
  */
-export async function embedBatch(texts, batchSize = 20) {
+export async function embedBatch(texts, batchSize = 10) {
   if (!isEmbeddingEnabled()) return texts.map(() => null);
 
   const results = [];

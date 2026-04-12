@@ -49,12 +49,12 @@ const chatbotConfigSchema = new mongoose.Schema({
   businessContext: { type: String, default: '' },
 
   /** Chatbot personality name shown in the UI. */
-  botName: { type: String, default: 'Nova', trim: true },
+  botName: { type: String, default: 'WEB AI', trim: true },
 
   /** Greeting message shown when the chat opens. */
   welcomeMessage: {
     type:    String,
-    default: "Hi! I'm Nova, your AI assistant. Ask me anything about our services, projects, or team!",
+    default: "Hi! I'm WEB AI, your AI assistant. Ask me anything about our services, projects, or team!",
   },
 
   /** Whether the public chatbot widget is active on the public site. */

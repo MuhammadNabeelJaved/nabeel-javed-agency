@@ -12,10 +12,11 @@
  * - Hides itself when the admin disables the relevant chat
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageCircle, X, Send, Bot, Loader2,
   Sparkles, Minimize2, Maximize2, Trash2, AlertCircle,
-  User, Briefcase, ChevronDown,
+  User, Briefcase, ChevronDown, ArrowRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
@@ -36,10 +37,18 @@ interface Message {
   error?: boolean;
 }
 
-// ─── Inline markdown renderer (no CTA needed in dashboard context) ────────────
-function renderMarkdown(raw: string, streaming = false): React.ReactNode {
+// ─── CTA pattern ─────────────────────────────────────────────────────────────
+const CTA_RE = /\[CTA:([^\]|]+)\|([^\]]+)\]/g;
+
+// ─── Markdown renderer with CTA button support ────────────────────────────────
+function renderMarkdown(
+  raw: string,
+  streaming = false,
+  onNavigate?: (path: string) => void,
+): React.ReactNode {
   const lines = raw.split('\n');
   const nodes: React.ReactNode[] = [];
+  const ctaButtons: Array<{ path: string; label: string }> = [];
 
   const inline = (text: string, key: string): React.ReactNode => {
     const parts: React.ReactNode[] = [];
@@ -62,6 +71,16 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
   while (i < lines.length) {
     const line = lines[i];
     const trimmed = line.trim();
+
+    // CTA marker — collect, don't render as text
+    if (/^\[CTA:/.test(trimmed)) {
+      CTA_RE.lastIndex = 0;
+      let m2: RegExpExecArray | null;
+      while ((m2 = CTA_RE.exec(trimmed)) !== null) {
+        ctaButtons.push({ path: m2[1].trim(), label: m2[2].trim() });
+      }
+      i++; continue;
+    }
 
     if (/^[-*_]{3,}$/.test(trimmed)) { nodes.push(<hr key={i} className="border-border/40 my-2" />); i++; continue; }
 
@@ -104,6 +123,26 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
     <div className="space-y-0.5 text-sm">
       {nodes}
       {streaming && <span className="inline-block w-2 h-4 bg-primary/60 ml-0.5 animate-pulse rounded-sm align-middle" />}
+      {/* CTA navigation buttons — shown only after streaming is done */}
+      {!streaming && ctaButtons.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-2">
+          {ctaButtons.map((cta, idx) => (
+            <button
+              key={idx}
+              onClick={() => onNavigate?.(cta.path)}
+              className={cn(
+                'inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold',
+                'bg-primary/10 text-primary border border-primary/20',
+                'hover:bg-primary hover:text-primary-foreground hover:border-primary',
+                'transition-all duration-200 group',
+              )}
+            >
+              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              {cta.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -112,7 +151,7 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
 
 const MODE_CONFIG = {
   user: {
-    botName:      'Nova',
+    botName:      'WEB AI',
     subtitle:     'Your Personal AI Assistant',
     description:  'Ask about your projects, applied jobs, billing & account',
     gradient:     'from-blue-500 to-violet-600',
@@ -122,7 +161,7 @@ const MODE_CONFIG = {
     Icon:         User,
   },
   team: {
-    botName:      'Nova',
+    botName:      'WEB AI',
     subtitle:     'Your Work Assistant',
     description:  'Ask about assigned projects, tasks, deadlines & team info',
     gradient:     'from-emerald-500 to-teal-600',
@@ -144,6 +183,7 @@ interface DashboardChatbotProps {
 export function DashboardChatbot({ mode }: DashboardChatbotProps) {
   const cfg = MODE_CONFIG[mode];
   const streamFn = mode === 'user' ? streamUserChat : streamTeamChat;
+  const navigate = useNavigate();
 
   const [isOpen,     setIsOpen]     = useState(false);
   const [expanded,   setExpanded]   = useState(false);
@@ -226,7 +266,7 @@ export function DashboardChatbot({ mode }: DashboardChatbotProps) {
 
   // Load dashboard config (welcome message + enabled state + bot name)
   const [welcomeMessage, setWelcomeMessage] = useState('');
-  const [botName, setBotName] = useState('Nova');
+  const [botName, setBotName] = useState('WEB AI');
   useEffect(() => {
     getDashboardConfig().then(c => {
       const modeEnabled = mode === 'user' ? c.isUserChatEnabled : c.isTeamChatEnabled;
@@ -548,7 +588,7 @@ export function DashboardChatbot({ mode }: DashboardChatbotProps) {
                     {msg.role === 'assistant' ? (
                       <div className="flex items-start gap-1.5">
                         {msg.error && <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />}
-                        {renderMarkdown(msg.content, msg.isStreaming)}
+                        {renderMarkdown(msg.content, msg.isStreaming, (path) => { setIsOpen(false); navigate(path); })}
                       </div>
                     ) : (
                       <p className="text-sm leading-relaxed">{msg.content}</p>

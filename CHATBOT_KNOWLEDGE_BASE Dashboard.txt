@@ -1,0 +1,579 @@
+NABEEL AGENCY — COMPLETE DASHBOARD USER GUIDE
+==============================================
+This guide explains how registered users and team members can use their dashboards
+to add, view, update, and delete data. Use this as a step-by-step reference.
+
+
+================================================================
+SECTION 1: USER DASHBOARD GUIDE
+================================================================
+
+The User Dashboard is for all registered and verified clients of Nabeel Agency.
+After logging in at /login, users with the "user" role are redirected to /user-dashboard.
+Sidebar sections: Overview, My Projects, Applied Jobs, AI Assistant, Profile, Support.
+
+
+----------------------------------------------------------------
+1.1 OVERVIEW PAGE (/user-dashboard)
+----------------------------------------------------------------
+Read-only stats dashboard. Shows:
+- Total projects submitted
+- Projects by status: Pending, In Review, Approved, Rejected, Completed
+- Total revenue (sum of costs across projects)
+- Average progress percentage
+- 3 most recent projects with status badges
+
+Nothing can be added or deleted here. Navigate to My Projects for full management.
+
+
+----------------------------------------------------------------
+1.2 MY PROJECTS PAGE (/user-dashboard/projects)
+----------------------------------------------------------------
+
+HOW TO SUBMIT A NEW PROJECT REQUEST:
+1. Click the "New Project" button (top-right corner).
+2. Fill in the dialog form:
+   - Project Name (required)
+   - Project Type (required): Web Development, Mobile App, UI/UX Design,
+     Digital Marketing, SEO Optimization, E-Commerce, Branding, Content Creation,
+     Cloud Solutions, Cybersecurity, AI Integration, Data Analytics, Custom Solution
+   - Budget Range (required): choose the bracket that fits your project
+   - Deadline (required): pick a target completion date
+   - Project Details (required): describe goals, features, references, requirements
+   - Attachments (optional): upload any files (designs, docs, PDFs, images, etc.)
+3. Click "Submit Request".
+4. Project appears with status "Pending" while admin reviews it.
+
+HOW TO VIEW YOUR PROJECTS:
+- All submitted projects appear as cards on this page.
+- Filter by status: All, Pending, In Review, Approved, Rejected, Completed.
+- Each card shows: name, type, status badge, progress bar, deadline, budget, payment status.
+- Click the eye icon (View Details) to open the full detail modal:
+  description, attached files with download links, assigned team members,
+  progress %, total cost, amount paid, payment status.
+
+HOW TO DELETE A PROJECT:
+- You can only delete projects in "Pending" or "Rejected" status.
+- Click the trash icon on the project card and confirm.
+- Approved / In Review / Completed projects cannot be deleted by users.
+  Contact support if needed.
+
+PROJECT STATUS MEANINGS:
+- Pending     -- submitted, waiting for admin review
+- In Review   -- admin is currently evaluating the request
+- Approved    -- agency accepted, work has begun
+- Rejected    -- not accepted; you can submit a revised request
+- Completed   -- project finished and delivered
+
+
+----------------------------------------------------------------
+1.3 APPLIED JOBS PAGE (/user-dashboard/applied-jobs)
+----------------------------------------------------------------
+
+Shows all job applications you submitted through the public Careers page.
+
+HOW TO VIEW YOUR JOB APPLICATIONS:
+- Each card shows: job title, department, experience level, date applied, status badge.
+- Admin notes (if any) appear in a highlighted box on the card.
+- Click "Resume" to view the resume you submitted.
+- Click "View Job" to see the original job listing.
+
+APPLICATION STATUS MEANINGS:
+- Pending     -- submitted, not yet reviewed
+- Reviewing   -- admin is reviewing your application
+- Shortlisted -- selected for further consideration
+- Hired       -- you have been offered a position; account upgraded to "team" automatically
+- Rejected    -- not selected for this position
+
+HOW TO APPLY FOR A NEW JOB:
+- Go to the public Careers page at /careers.
+- Browse open positions and click "Apply Now" on any listing.
+- Fill in your details and upload your resume (PDF or DOC).
+
+NOTE: You cannot delete or withdraw a submitted application.
+Use the Support page to raise a concern.
+
+
+----------------------------------------------------------------
+1.4 PROFILE PAGE (/user-dashboard/profile)
+----------------------------------------------------------------
+
+HOW TO UPDATE YOUR NAME:
+1. Click the Edit (pencil) icon next to your name.
+2. Type the new name.
+3. Click "Save".
+
+HOW TO CHANGE YOUR PROFILE AVATAR:
+1. Click on your profile picture or the camera icon overlay.
+2. Select an image file (JPG, PNG, or WebP recommended).
+3. The image uploads automatically and appears across the entire dashboard.
+
+HOW TO CHANGE YOUR PASSWORD:
+1. Scroll to the "Change Password" section.
+2. Enter your current password.
+3. Enter and confirm your new password (minimum 8 characters).
+4. Click "Update Password".
+
+Forgot your password? Click "Forgot Password" on /login.
+A reset email will be sent to you.
+
+NOTIFICATION PREFERENCES:
+Toggles on the Profile page let you enable or disable email notifications
+and project update alerts. These are saved locally.
+
+
+----------------------------------------------------------------
+1.5 SUPPORT PAGE (/user-dashboard/support)
+----------------------------------------------------------------
+
+HOW TO CREATE A SUPPORT TICKET:
+1. Click "New Ticket".
+2. Fill in:
+   - Subject: a short title for your issue
+   - Category: Technical / Billing / Account / Project / General
+   - Priority: Low / Normal / High / Urgent
+   - Message: describe your issue in detail
+3. Click "Submit Ticket". It appears in the list with status "Open".
+
+HOW TO VIEW AND REPLY TO TICKETS:
+- Click a ticket card to expand the full conversation thread.
+- Type your reply at the bottom and click "Send".
+- Team responses appear in the same thread.
+
+TICKET STATUS MEANINGS:
+- Open        -- submitted, awaiting response
+- In Progress -- a team member is working on it
+- Resolved    -- issue has been addressed
+- Closed      -- ticket closed
+
+The FAQ accordion on this page answers many common questions about
+projects, billing, and accounts. Check it before submitting a ticket.
+
+
+----------------------------------------------------------------
+1.6 AI ASSISTANT PAGE (/user-dashboard/ai-assistant)
+----------------------------------------------------------------
+
+Full-page chat with Nova AI. The AI has real-time access to YOUR data:
+- Projects: name, status, progress, deadline, cost, payment
+- Applied jobs: role applied for, status, admin notes
+- Profile: name, email, role
+- Agency knowledge base
+
+WHAT NOVA AI CAN HELP YOU WITH:
+- "What is the status of my website project?"
+- "What is my outstanding balance?"
+- "Which of my job applications is shortlisted?"
+- "How do I submit a new project request?"
+- Step-by-step guidance for any dashboard action
+- Navigate you to specific pages
+
+HOW TO USE:
+1. Go to "AI Assistant" in the sidebar.
+2. Type your question and press Enter (or click the send button).
+   Shift+Enter adds a new line without sending.
+3. Use quick prompt buttons on the welcome screen for one-click queries.
+4. The info sidebar (right) shows suggested prompts and accessible data.
+5. Collapse the sidebar with the arrow button in the chat header.
+6. Click the trash icon to clear the conversation and start fresh.
+
+TIPS:
+- Be specific: "Show my pending projects" beats "show projects"
+- Ask comparisons: "Which project has the highest progress?"
+- Chat history is saved and restored on return.
+  A "Previous conversation" divider marks past messages.
+
+
+================================================================
+SECTION 2: TEAM DASHBOARD GUIDE
+================================================================
+
+The Team Dashboard is for employees and contractors hired by Nabeel Agency.
+After logging in, "team" role users are redirected to /team.
+Sidebar: Overview, Projects, Tasks, Clients, Resources, Calendar,
+         Reports, Support, AI Assistant, Applied Jobs, Settings.
+
+
+----------------------------------------------------------------
+2.1 OVERVIEW PAGE (/team)
+----------------------------------------------------------------
+
+Read-only summary of work assigned to you:
+- Number of assigned client projects
+- Active tasks
+- Quick-access links to most-used sections
+Updates in real time -- new project or task assignments appear without refreshing.
+
+
+----------------------------------------------------------------
+2.2 PROJECTS PAGE (/team/projects)
+----------------------------------------------------------------
+
+Has two tabs: "Client Requests" and "Portfolio Projects".
+
+CLIENT REQUESTS TAB:
+- Shows all client project requests assigned to you by the admin.
+- Each card: project name, client name, status, progress bar, deadline, budget.
+- Click "View Details" for the full detail page:
+  description, downloadable attachments, assigned team list,
+  client contact info, payment status, progress.
+- Team members cannot change project status, cost, or progress (admin-only).
+
+PORTFOLIO PROJECTS TAB:
+- Shows the agency published portfolio and work samples.
+- Each card: title, category, description, visibility (public/private).
+- Detail page: images, live URL, GitHub link, tech stack, timeline.
+- Team members cannot create, edit, or delete portfolio projects (admin-only).
+
+If an expected project is not showing, contact admin via Support.
+
+
+----------------------------------------------------------------
+2.3 TASKS PAGE -- KANBAN BOARD (/team/tasks)
+----------------------------------------------------------------
+
+Four columns: To Do | In Progress | In Review | Completed
+
+HOW TO ADD A NEW TASK:
+1. Click "+ Add Task" at the top of any column (or the floating "+" button).
+2. Fill in:
+   - Title (required)
+   - Description (optional)
+   - Priority: Low / Medium / High / Critical
+   - Due Date (optional)
+   - Tags (optional) -- e.g. "frontend", "bug", "design"
+3. Click "Create Task". It appears in the selected column.
+
+HOW TO MOVE A TASK BETWEEN COLUMNS:
+- Drag and drop the task card from one column to another.
+- Or open the task card and change the column using the status dropdown.
+- Moving a task to "Completed" marks it as done.
+
+HOW TO EDIT A TASK:
+1. Click the task card to open the edit dialog.
+2. Modify any field (title, description, priority, due date, tags).
+3. Click "Save" or "Update".
+
+HOW TO DELETE A TASK:
+- Single: click the trash icon on the task card or inside the task dialog, then confirm.
+- Bulk: check multiple cards using the checkboxes (visible on hover or in select mode),
+  then click "Delete Selected" and confirm.
+
+HOW TO FILTER TASKS:
+- Use the search bar to filter by title or tag keyword.
+- Use the priority filter dropdown to show only a specific priority level.
+- Tasks are colour-coded by priority for quick visual scanning.
+
+COLUMN MEANINGS:
+- To Do      -- not started
+- In Progress -- currently being worked on
+- In Review   -- done, awaiting review or approval
+- Completed   -- finished
+
+
+----------------------------------------------------------------
+2.4 RESOURCES PAGE (/team/resources)
+----------------------------------------------------------------
+
+A shared file library for uploading, viewing, downloading, and deleting files.
+
+HOW TO UPLOAD A FILE:
+1. Click "Upload File" or the "+" button.
+2. Select your file (images, PDFs, docs, spreadsheets, videos, ZIPs supported).
+3. The file uploads to secure cloud storage automatically.
+4. It appears in the library with name, type, size, and upload date.
+
+HOW TO VIEW OR DOWNLOAD A FILE:
+- Click the file card or the download icon.
+- Images and PDFs may open in a new browser tab for preview.
+
+HOW TO DELETE A FILE:
+- Single: click the trash icon on the file card and confirm.
+- Bulk: enable select mode, check multiple files, click "Delete Selected" and confirm.
+- IMPORTANT: deleted files are permanently removed from cloud storage.
+  This cannot be undone.
+
+HOW TO FIND A FILE:
+- Use the search bar at the top of the Resources page.
+  Type the file name or part of it to filter the list.
+
+
+----------------------------------------------------------------
+2.5 APPLIED JOBS PAGE (/team/applied-jobs)
+----------------------------------------------------------------
+
+View your original job application history as a team member.
+
+- Each card: job title, department, experience level, date applied, status.
+- Admin notes appear if left by the admin.
+- Click "Resume" to view the resume you submitted.
+- Click "View Job" to see the original job listing.
+- "Hired" status means this application led to your current team role.
+
+To apply for additional positions, visit /careers from the public site.
+
+
+----------------------------------------------------------------
+2.6 AI ASSISTANT PAGE (/team/ai-assistant)
+----------------------------------------------------------------
+
+Full-page chat with Nova AI (emerald theme for team). The team AI has access to:
+- Your assigned client projects (full details, timelines, client info, attachments)
+- Agency portfolio projects
+- Your team profile (name, position, department, skills)
+- Agency knowledge base
+
+WHAT NOVA AI CAN HELP TEAM MEMBERS WITH:
+- "What client projects am I currently assigned to?"
+- "Which project has the earliest deadline?"
+- "Tell me about the e-commerce project for Client X"
+- "How do I add a task to the Kanban board?"
+- "How do I bulk delete files in Resources?"
+- "How do I move a task to In Review?"
+- Step-by-step guidance for any team dashboard operation
+
+HOW TO USE:
+1. Go to "AI Assistant" in the sidebar.
+2. Type your question and press Enter (Shift+Enter for a new line).
+3. Use quick prompt buttons on the welcome screen for one-click queries.
+4. Collapse the info sidebar with the arrow button in the header.
+5. Click the trash icon to start a fresh conversation.
+
+Chat history is saved and restored when you return.
+Data is always live and up to date.
+
+
+----------------------------------------------------------------
+2.7 SUPPORT PAGE (/team/support)
+----------------------------------------------------------------
+
+Internal help resources for team members:
+- IT, HR, and Admin contact cards with email/phone links
+- Internal ticket system
+- FAQ accordion for common internal questions
+
+HOW TO CREATE AN INTERNAL SUPPORT TICKET:
+1. Click "New Ticket".
+2. Fill in: Subject, Category (IT / HR / Admin / Other), Priority, Message.
+3. Click "Submit Ticket".
+4. View and reply to tickets in the ticket list on the same page.
+
+
+----------------------------------------------------------------
+2.8 CALENDAR AND REPORTS
+----------------------------------------------------------------
+
+CALENDAR (/team/calendar):
+Displays project deadlines, task due dates, and team events. Read-only view.
+
+REPORTS (/team/reports):
+Productivity and project summaries -- completed tasks, project timelines, team metrics.
+Read-only; data pulled automatically from projects and tasks.
+
+
+----------------------------------------------------------------
+2.9 SETTINGS PAGE (/team/settings)
+----------------------------------------------------------------
+
+- Update display name
+- Change profile avatar (click avatar to upload a new image)
+- Manage notification preferences
+- Change account password (requires current password)
+
+
+================================================================
+SECTION 3: COMMON QUESTIONS AND ANSWERS
+================================================================
+
+Q: How do I log in to my dashboard?
+A: Go to /login, enter your email and password, and click "Sign In".
+   You are redirected based on your role:
+   user -> /user-dashboard, team -> /team, admin -> /admin.
+
+Q: I forgot my password. How do I reset it?
+A: On the login page, click "Forgot Password". Enter your registered email.
+   A password reset link will arrive by email. Click it to set a new password.
+
+Q: How do I verify my email after registering?
+A: After registering you receive a 6-digit OTP code by email.
+   Enter the code on the verification page.
+   If not received, check spam or click "Resend Code".
+
+Q: How do I submit a project request?
+A: Log in, go to My Projects, click "New Project", fill in all required fields
+   (name, type, budget, deadline, details), attach files if needed,
+   then click "Submit Request".
+
+Q: How do I check my project status?
+A: Go to My Projects -- each card shows the current status badge.
+   You can also ask Nova AI: "What is the status of my [project name]?"
+
+Q: Can I edit a submitted project request?
+A: No. Once submitted, project requests cannot be edited.
+   Contact support if changes are needed and the admin can make adjustments.
+
+Q: Why can I not delete my project?
+A: Only Pending or Rejected projects can be deleted by users.
+   In Review, Approved, and Completed projects are locked.
+   Contact support if you need assistance.
+
+Q: How do I upload files with my project?
+A: Use the file attachment field inside the "New Project" dialog.
+   Multiple files are supported (PDFs, images, Word docs, ZIPs, etc.).
+
+Q: How do I check my billing or payment status?
+A: Open any project from My Projects and click "View Details".
+   It shows Total Cost, Amount Paid, and Payment Status.
+   You can also ask Nova AI for a billing summary.
+
+Q: How do I change my profile picture?
+A: Go to the Profile page, click your avatar or the camera icon,
+   select a new image, and it uploads and updates automatically.
+
+Q: How do I change my email address?
+A: Email changes are not self-service at this time.
+   Please contact admin support via the Support page to request an email change.
+
+Q: I am a team member. How do I see my assigned client projects?
+A: Go to Projects in your team dashboard.
+   The "Client Requests" tab shows all projects the admin has assigned to you.
+
+Q: How do I add a task on the Kanban board?
+A: Go to Tasks in the team dashboard.
+   Click "+ Add Task" at the top of any column.
+   Fill in title, description, priority, and due date, then click "Create Task".
+
+Q: How do I move a task to Completed?
+A: Drag the task card and drop it into the "Completed" column.
+   Or open the task card and change the column using the status dropdown.
+
+Q: How do I delete multiple tasks at once?
+A: Enable select mode (checkbox icon), check the tasks you want,
+   then click "Delete Selected" and confirm.
+
+Q: How do I upload a shared file for my team?
+A: Go to Resources. Click "Upload File", select the file,
+   and it uploads immediately to cloud storage for all team members.
+
+Q: How do I find a file in Resources?
+A: Use the search bar at the top of the Resources page and type the file name.
+
+Q: How do I contact support?
+A: Users: go to Support in your dashboard and create a new ticket.
+   Team members: go to Support in the team dashboard for the internal
+   ticket system and IT/HR/Admin contact cards.
+
+Q: Can I use the AI assistant without logging in?
+A: Yes. The Nova AI chatbot widget is available on every public page of the website.
+   It can answer questions about services, pricing, team, and contact info.
+   However, it does not have access to your personal data unless you are
+   logged in and using the dashboard AI assistant.
+
+Q: What data can the AI access in the User Dashboard?
+A: Your projects (name, status, progress, deadline, cost, payment),
+   your job applications (role, status, admin notes),
+   your profile (name, email, role), and the agency knowledge base.
+
+Q: What data can the AI access in the Team Dashboard?
+A: Your assigned client projects (full details), agency portfolio projects,
+   your team profile (name, position, department, skills),
+   and the agency knowledge base.
+
+Q: How do I apply for a job at Nabeel Agency?
+A: Visit /careers. Browse open positions and click a job to see details.
+   Click "Apply Now", fill in your info, upload your resume, and submit.
+   A confirmation email is sent to you.
+
+Q: How do I track my job application status?
+A: Log in to your dashboard and go to "Applied Jobs".
+   Each application card shows the current status.
+   The page updates in real time when the admin changes your status.
+
+Q: What happens when my application status becomes "Hired"?
+A: Your account is automatically upgraded from "user" to "team".
+   On your next login you will be redirected to the Team Dashboard.
+
+Q: How do I search within the dashboard?
+A: Press Ctrl+K (Cmd+K on Mac) in any dashboard to open the command palette.
+   Type any keyword to find pages, sections, or actions and navigate instantly.
+
+Q: Can I reorder the sidebar links?
+A: Yes. Hover over any sidebar link to see the drag handle (grid icon on the left).
+   Drag links up or down to reorder them. The order is saved in your browser.
+
+Q: How do I pin a sidebar link to the top?
+A: Hover over any sidebar link and click the star icon.
+   Pinned links move to a "Pinned" section at the very top of the sidebar
+   and persist across sessions.
+
+
+================================================================
+SECTION 4: NAVIGATION QUICK REFERENCE
+================================================================
+
+USER DASHBOARD:
+/user-dashboard              -- Overview (stats and recent projects)
+/user-dashboard/projects     -- My Projects (submit, view, filter, delete)
+/user-dashboard/applied-jobs -- Applied Jobs (view status, notes, resume)
+/user-dashboard/ai-assistant -- AI Assistant (full-page Nova AI chat)
+/user-dashboard/profile      -- Profile (name, avatar, password, notifications)
+/user-dashboard/support      -- Support (create tickets, FAQ)
+
+TEAM DASHBOARD:
+/team                        -- Overview
+/team/projects               -- Projects (Client Requests + Portfolio tabs)
+/team/client-requests/:id    -- Client Request Detail page
+/team/projects/:id           -- Portfolio Project Detail page
+/team/tasks                  -- Tasks / Kanban Board
+/team/resources              -- Resources (shared file library)
+/team/calendar               -- Calendar (deadlines and events)
+/team/reports                -- Reports (productivity summaries)
+/team/support                -- Support (internal tickets, contacts, FAQ)
+/team/ai-assistant           -- AI Assistant (full-page Nova AI chat)
+/team/applied-jobs           -- Applied Jobs
+/team/settings               -- Settings (name, avatar, password)
+
+PUBLIC PAGES:
+/login                       -- Sign in
+/signup                      -- Register
+/verification                -- Email OTP verification page
+/careers                     -- Browse open job positions
+/careers/:id                 -- Job detail page
+/careers/:id/apply           -- Job application form
+/portfolio                   -- Agency portfolio
+
+KEYBOARD SHORTCUT:
+Ctrl+K or Cmd+K              -- Open dashboard command search palette
+
+
+================================================================
+SECTION 5: OPERATIONS SUMMARY TABLE
+================================================================
+
+USER DASHBOARD OPERATIONS:
+------------------------------------------------------------
+Feature           | Add            | View            | Update         | Delete
+------------------------------------------------------------
+Project Request   | New Project btn| My Projects page| Not editable   | Pending/Rejected only
+Project Files     | During create  | View Details    | Not editable   | Not supported
+Job Application   | /careers page  | Applied Jobs pg | Not editable   | Not supported
+Profile Name      | --             | Profile page    | Pencil icon    | --
+Profile Avatar    | Upload on page | Profile page    | Re-upload      | --
+Password          | --             | --              | Change section | --
+Support Ticket    | New Ticket btn | Support page    | Reply in thread| Not supported
+
+TEAM DASHBOARD OPERATIONS:
+------------------------------------------------------------
+Feature           | Add            | View            | Update         | Delete
+------------------------------------------------------------
+Task (Kanban)     | + Add Task btn | Tasks/Kanban    | Click -> edit  | Trash / bulk select
+Resource File     | Upload File btn| Resources page  | Re-upload      | Trash / bulk select
+Client Project    | Admin assigns  | Projects->Client| Read-only      | Not supported
+Portfolio Project | Admin only     | Projects->Port. | Read-only      | Not supported
+Support Ticket    | New Ticket btn | Support page    | Reply in thread| Not supported
+Applied Job       | /careers page  | Applied Jobs pg | Not editable   | Not supported
+
+
+================================================================
+END OF DASHBOARD USER GUIDE
+================================================================

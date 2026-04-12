@@ -152,9 +152,9 @@ function _isRateLimited(ip, maxPerMin = 15) {
 const _GREETING_RE = /^(hi+|hello+|hey+|salam|salaam|assalam\s*o?\s*alaikum|good\s+(morning|afternoon|evening|day)|howdy|greetings|sup|hiya|yo|namaste|bonjour|hola|ciao)\s*[!.,]?$/i;
 
 const _GREETING_REPLIES = [
-  "Hello! 👋 I'm Nova, your AI assistant. How can I help you today? Feel free to ask about our services, projects, or team!",
-  "Hi there! 😊 I'm Nova. What can I assist you with today?",
-  "Hey! Welcome! I'm Nova, ready to help. Ask me anything about our services or projects!",
+  "Hello! 👋 I'm WEB AI, your AI assistant. How can I help you today? Feel free to ask about our services, projects, or team!",
+  "Hi there! 😊 I'm WEB AI. What can I assist you with today?",
+  "Hey! Welcome! I'm WEB AI, ready to help. Ask me anything about our services or projects!",
 ];
 
 // Layer 1b — Off-topic detection (clearly non-business topics)
@@ -290,6 +290,96 @@ function resolveApiKey(cfg) {
 // ─── Knowledge retrieval ──────────────────────────────────────────────────────
 // Delegated to ragService — supports semantic search (Supabase pgvector) with
 // MongoDB full-text and recency fallbacks. buildKnowledgeContext is also from ragService.
+
+// ─── Smart CTA injection ──────────────────────────────────────────────────────
+
+/**
+ * Keyword patterns for each page/topic — used to detect what the bot mentions.
+ * Each entry: { pattern: RegExp, path: string, label: string }
+ */
+const _CTA_RULES = [
+  { pattern: /\bcontact\b|\bget in touch\b|\breach out\b|\bconsultation\b|\bfree quote\b|\bquote\b|\bschedule\b|\binquiry\b|\benquiry\b/i, path: '/contact',  label: 'Get in Touch' },
+  { pattern: /\bservice[s]?\b|\bwhat we (do|offer|provide)\b|\bour (offerings|solutions|capabilities)\b/i,                                  path: '/services', label: 'View Our Services' },
+  { pattern: /\bportfolio\b|\bour work\b|\bcase stud(y|ies)\b|\bpast project[s]?\b|\bexample[s]? of\b/i,                                   path: '/portfolio', label: 'View Our Portfolio' },
+  { pattern: /\bcareer[s]?\b|\bjob opening[s]?\b|\bopen position[s]?\b|\bhiring\b|\bjoin (us|our team)\b|\bvacancy\b|\bvacancies\b/i,      path: '/careers',  label: 'See Open Positions' },
+  { pattern: /\bprivacy policy\b|\bdata privacy\b|\bdata protection\b|\bhow we handle (your )?data\b|\bgdpr\b/i,                           path: '/privacy',  label: 'Read Privacy Policy' },
+  { pattern: /\bterms of service\b|\bterms and conditions\b|\bour terms\b/i,                                                               path: '/terms',    label: 'Terms of Service' },
+  { pattern: /\b(meet )?(our |the )?team\b|\bstaff\b|\bour experts\b|\bwho we are\b/i,                                                     path: '/our-team', label: 'Meet Our Team' },
+  { pattern: /\bsign[\s-]?up\b|\bregister\b|\bcreate (an )?account\b|\bget started\b|\bnew account\b/i,                                   path: '/signup',   label: 'Create an Account' },
+  { pattern: /\blog[\s-]?in\b|\bsign[\s-]?in\b|\byour dashboard\b|\baccess your account\b/i,                                              path: '/login',    label: 'Login to Dashboard' },
+  { pattern: /\bcookie[s]?\b|\bconsent preferences\b|\bcookie (settings|preferences|policy)\b/i,                                          path: '/cookies',  label: 'Cookie Preferences' },
+];
+
+/**
+ * Scans a response text for mentions of known pages, services, jobs, and
+ * portfolio projects, then appends [CTA:/path|Label] markers for any that
+ * are not already present in the text.
+ *
+ * @param {string}   text             - The chatbot response text
+ * @param {object}   ctx
+ * @param {Array}    ctx.navLinks     - Active nav links from getActivePublicNavLinks()
+ * @param {Array}    [ctx.services]   - Published services (title, slug)
+ * @param {Array}    [ctx.jobs]       - Active jobs (_id, jobTitle)
+ * @param {Array}    [ctx.portfolio]  - Public portfolio projects (_id, projectTitle)
+ * @returns {string} Text with CTA markers appended
+ */
+function _injectCTAs(text, { navLinks = [], services = [], jobs = [], portfolio = [] } = {}) {
+  if (!text) return text;
+
+  // Collect paths already present in the text (avoid duplicates)
+  const existingPaths = new Set();
+  for (const m of text.matchAll(/\[CTA:([^\]|]+)\|/g)) existingPaths.add(m[1].trim());
+
+  const pending = [];
+
+  const add = (path, label) => {
+    if (!existingPaths.has(path)) {
+      existingPaths.add(path);
+      pending.push({ path, label });
+    }
+  };
+
+  // Check if a given path is currently active (present in navLinks or always-on)
+  const isActive = (path) => navLinks.some(l => l.path === path);
+
+  // ── Static page rules ────────────────────────────────────────────────────────
+  for (const rule of _CTA_RULES) {
+    if (rule.pattern.test(text) && isActive(rule.path)) {
+      add(rule.path, rule.label);
+    }
+  }
+
+  // ── Individual service pages ─────────────────────────────────────────────────
+  for (const svc of services) {
+    if (!svc.slug || !svc.title) continue;
+    const path = `/services/${svc.slug}`;
+    if (text.toLowerCase().includes(svc.title.toLowerCase()) && isActive(path)) {
+      add(path, `View ${svc.title}`);
+    }
+  }
+
+  // ── Individual job pages ────────────────────────────────────────────────────
+  for (const job of jobs) {
+    if (!job._id || !job.jobTitle) continue;
+    if (text.toLowerCase().includes(job.jobTitle.toLowerCase())) {
+      add(`/careers/${job._id}`, `Apply: ${job.jobTitle}`);
+    }
+  }
+
+  // ── Individual portfolio project pages ───────────────────────────────────────
+  const portfolioPageActive = isActive('/portfolio');
+  if (portfolioPageActive) {
+    for (const proj of portfolio) {
+      if (!proj._id || !proj.projectTitle) continue;
+      if (text.toLowerCase().includes(proj.projectTitle.toLowerCase())) {
+        add(`/portfolio/${proj._id}`, `View: ${proj.projectTitle}`);
+      }
+    }
+  }
+
+  if (pending.length === 0) return text;
+  return text + '\n' + pending.map(c => `[CTA:${c.path}|${c.label}]`).join('\n');
+}
 
 // ─── Active public page links for navigation CTAs ─────────────────────────────
 
@@ -447,11 +537,26 @@ export const chat = asyncHandler(async (req, res) => {
     return;
   }
 
+  // ── Fetch nav links + entity data (used by layers 3–5 for CTA injection) ──
+  const [activeNavLinks, publicProjects, activeJobs, publishedSvcs] = await Promise.all([
+    getActivePublicNavLinks(),
+    AdminProject.find({ isPublic: true, isArchived: false })
+      .select('_id projectTitle category')
+      .sort({ createdAt: -1 }).limit(20).lean(),
+    Jobs.find({ status: 'Active' })
+      .select('_id jobTitle').limit(20).lean(),
+    Services.find({ isPublished: true })
+      .select('title slug').limit(15).lean(),
+  ]);
+
+  const ctaCtx = { navLinks: activeNavLinks, services: publishedSvcs, jobs: activeJobs, portfolio: publicProjects };
+
   // ── LAYER 3: FAQ keyword match (DB read, no API call) ────────────────────
   const faqHit = await _matchFaq(userMsg);
   if (faqHit) {
-    sendInstant(faqHit.content);
-    _persistSession(sessionId, req, userMsg, faqHit.content)
+    const reply = _injectCTAs(faqHit.content, ctaCtx);
+    sendInstant(reply);
+    _persistSession(sessionId, req, userMsg, reply)
       .catch(e => console.error('[Chatbot] Session save error:', e.message));
     return;
   }
@@ -459,8 +564,9 @@ export const chat = asyncHandler(async (req, res) => {
   // ── LAYER 4: In-memory response cache (zero cost) ─────────────────────────
   const cached = _cacheGet(cacheKey);
   if (cached) {
-    sendInstant(cached);
-    _persistSession(sessionId, req, userMsg, cached)
+    const reply = _injectCTAs(cached, ctaCtx);
+    sendInstant(reply);
+    _persistSession(sessionId, req, userMsg, reply)
       .catch(e => console.error('[Chatbot] Session save error:', e.message));
     return;
   }
@@ -469,59 +575,68 @@ export const chat = asyncHandler(async (req, res) => {
   const apiKey = resolveApiKey(cfg);
   if (!apiKey) throw new AppError('No active API key configured for the chatbot', 503);
 
-  // Retrieve knowledge (RAG: semantic → full-text → fallback), portfolio, and nav links in parallel
-  const [knowledge, publicProjects, activeNavLinks] = await Promise.all([
-    retrieveKnowledge(userMsg, { role: 'public', limit: 5 }),
-    AdminProject.find({ isPublic: true, isArchived: false })
-      .select('_id projectTitle category')
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean(),
-    getActivePublicNavLinks(),
-  ]);
-
+  // Retrieve knowledge (RAG: semantic → full-text → fallback)
+  const knowledge = await retrieveKnowledge(userMsg, { role: 'public', limit: 5 });
   const knowledgeContext = buildKnowledgeContext(knowledge);
 
-  // Build navigation CTA list — only pages that are currently active on the site
+  // Build navigation CTA list for system prompt
   const navLines = activeNavLinks.length
-    ? activeNavLinks
-        .map(p => `- [CTA:${p.path}|${p.ctaLabel}]`)
-        .join('\n')
-    : '- (No active public pages found)';
+    ? activeNavLinks.map(p => `  ${p.path} → "${p.ctaLabel}"`).join('\n')
+    : '  (No active public pages found)';
 
-  // Also check if portfolio page is active before including individual project links
+  // Individual portfolio project links
   const portfolioActive = activeNavLinks.some(p => p.path === '/portfolio');
   const projectLines = portfolioActive && publicProjects.length
-    ? publicProjects
-        .map(p => `- ${p.projectTitle} (${p.category}): [CTA:/portfolio/${p._id}|View ${p.projectTitle}]`)
-        .join('\n')
-    : portfolioActive
-      ? '- (No public portfolio projects yet)'
-      : '- (Portfolio page is currently unavailable)';
+    ? publicProjects.map(p => `  /portfolio/${p._id} → "View: ${p.projectTitle}" (${p.category})`).join('\n')
+    : portfolioActive ? '  (No public portfolio projects yet)' : '  (Portfolio page currently unavailable)';
+
+  // Individual job links
+  const jobLines = activeNavLinks.some(p => p.path === '/careers') && activeJobs.length
+    ? activeJobs.map(j => `  /careers/${j._id} → "Apply: ${j.jobTitle}"`).join('\n')
+    : '  (No active job listings)';
 
   const toneInstruction = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
 
   const systemPrompt =
     cfg.systemPrompt +
-    // Response length control — reduces token usage
     '\n\nIMPORTANT: Keep your answer concise (2–4 sentences) unless the user explicitly asks for more detail.' +
     `\n\n## Tone & Communication Style\n${toneInstruction}` +
     (cfg.businessContext ? `\n\n## About the Business\n${cfg.businessContext}` : '') +
-    `\n\n## Navigation Links — Page References
-When your answer mentions or is directly relevant to a page, append a CTA marker using EXACTLY this syntax on its own line:
+    `\n\n## Navigation CTA Buttons — MANDATORY RULE
 
-[CTA:/path|Button Label]
+Every time your response mentions or is relevant to any of the following, you MUST append the corresponding [CTA] marker on its own line at the end of your response:
 
-IMPORTANT: Only use paths from the list below. These are the pages CURRENTLY ACTIVE on the website.
-Do NOT link to any path not listed here — those pages may be under maintenance or not yet available.
+TRIGGER → CTA format to append:
+- Mention "contact", "get in touch", "reach out", "consultation", "quote" → [CTA:/contact|Get in Touch]
+- Mention "services", "what we offer", "what we do" → [CTA:/services|View Our Services]
+- Mention "portfolio", "our work", "case studies", "examples" → [CTA:/portfolio|View Our Portfolio]
+- Mention "careers", "jobs", "open positions", "hiring", "apply", "join our team" → [CTA:/careers|See Open Positions]
+- Mention "privacy policy", "data privacy", "data protection" → [CTA:/privacy|Read Privacy Policy]
+- Mention "terms of service", "terms and conditions" → [CTA:/terms|Terms of Service]
+- Mention "our team", "meet the team", "who we are" → [CTA:/our-team|Meet Our Team]
+- Mention "sign up", "register", "create account", "get started" → [CTA:/signup|Create an Account]
+- Mention "log in", "login", "dashboard", "sign in" → [CTA:/login|Login to Dashboard]
+- Mention "cookie", "cookie settings" → [CTA:/cookies|Cookie Preferences]
+- Mention a specific portfolio project by name → [CTA:/portfolio/{id}|View: {Project Name}]
+- Mention a specific job title → [CTA:/careers/{id}|Apply: {Job Title}]
 
-Currently active pages:
+FORMAT: Each CTA marker must be on its own line. Example:
+Great question! Our web development service covers...
+[CTA:/services|View Our Services]
+[CTA:/contact|Get in Touch]
+
+RULE: Only use paths from the ACTIVE PAGES list below. Do NOT invent paths.
+
+ACTIVE PAGES:
 ${navLines}
 
-## Portfolio Projects — Individual Links (only if portfolio is active above)
+PORTFOLIO PROJECT LINKS:
 ${projectLines}
 
-Rules: max 3 CTAs per response · only when genuinely relevant · use ONLY the paths listed above · short action-oriented labels.` +
+JOB LINKS:
+${jobLines}
+
+You may include multiple CTAs in a single response when multiple topics are mentioned.` +
     knowledgeContext;
 
   // Smart model routing — simple queries use cheap Haiku, complex use configured model
@@ -572,9 +687,16 @@ Rules: max 3 CTAs per response · only when genuinely relevant · use ONLY the p
       });
     } catch (_) { /* non-critical */ }
 
+    // Post-process: inject any CTAs the AI may have missed
+    const withCTAs = _injectCTAs(fullResponse, ctaCtx);
+    const extraCTAs = withCTAs.slice(fullResponse.length);
+    if (extraCTAs.trim()) {
+      sendEvent({ type: 'delta', text: extraCTAs });
+    }
+
     // Cache the response for future identical queries (skip very short or very long)
     if (fullResponse.length >= 20 && fullResponse.length <= 3000) {
-      _cacheSet(cacheKey, fullResponse);
+      _cacheSet(cacheKey, fullResponse); // cache raw (CTAs re-injected on cache hit)
     }
 
   } catch (err) {
@@ -586,7 +708,8 @@ Rules: max 3 CTAs per response · only when genuinely relevant · use ONLY the p
 
   res.end();
 
-  _persistSession(sessionId, req, userMsg, fullResponse)
+  const finalStored = _injectCTAs(fullResponse, ctaCtx);
+  _persistSession(sessionId, req, userMsg, finalStored)
     .catch(e => console.error('[Chatbot] Session save error:', e.message));
 });
 
@@ -763,11 +886,30 @@ export const userChat = asyncHandler(async (req, res) => {
 
   const toneInstruction = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
   const ragContext      = buildKnowledgeContext(ragKnowledge);
+
+  const userNavCTAs = `\n\n## Navigation CTA Buttons — MANDATORY RULE
+When your answer mentions any dashboard page or action below, append the matching [CTA] marker on its own line:
+
+- Mention "my projects", "project status", "project request" → [CTA:/user-dashboard/projects|My Projects]
+- Mention "applied jobs", "job application", "application status" → [CTA:/user-dashboard/applied-jobs|My Applications]
+- Mention "profile", "change password", "avatar", "account settings" → [CTA:/user-dashboard/profile|My Profile]
+- Mention "support", "help", "ticket", "contact support" → [CTA:/user-dashboard/support|Support]
+- Mention "billing", "payment", "outstanding balance", "invoice" → [CTA:/user-dashboard/projects|View Projects & Billing]
+- Mention "careers", "jobs", "open positions", "apply for a job" → [CTA:/careers|Browse Careers]
+- Mention "portfolio", "our work" → [CTA:/portfolio|View Portfolio]
+- Mention "services" → [CTA:/services|Our Services]
+- Mention "privacy policy" → [CTA:/privacy|Privacy Policy]
+- Mention "terms of service" → [CTA:/terms|Terms of Service]
+
+FORMAT: Each marker on its own line at the end of your response.
+You may include multiple CTAs if multiple topics are mentioned.`;
+
   const systemPrompt =
     (cfg.userChatSystemPrompt || '') +
     `\n\n## Tone\n${toneInstruction}` +
     `\n\nKeep answers concise (2–4 sentences) unless the user asks for more detail.` +
     (cfg.userChatContextHints ? `\n\n## Additional Context & Guidelines\n${cfg.userChatContextHints}` : '') +
+    userNavCTAs +
     ragContext +
     publicContext +
     personalContext;
@@ -868,11 +1010,34 @@ export const teamChat = asyncHandler(async (req, res) => {
 
   const toneInstruction  = TONE_INSTRUCTIONS[cfg.tone || 'professional'];
   const ragContextTeam   = buildKnowledgeContext(ragKnowledgeTeam);
+
+  const teamNavCTAs = `\n\n## Navigation CTA Buttons — MANDATORY RULE
+When your answer mentions any of the pages or actions below, append the matching [CTA] marker on its own line:
+
+- Mention "client projects", "assigned projects", "client requests" → [CTA:/team/projects|My Projects]
+- Mention "tasks", "kanban", "to do", "in progress" → [CTA:/team/tasks|Task Board]
+- Mention "resources", "files", "upload file", "shared files" → [CTA:/team/resources|Resources]
+- Mention "calendar", "schedule", "deadlines", "events" → [CTA:/team/calendar|Calendar]
+- Mention "reports", "analytics", "performance" → [CTA:/team/reports|Reports]
+- Mention "support", "help", "ticket", "IT", "HR" → [CTA:/team/support|Support]
+- Mention "settings", "profile", "password", "avatar" → [CTA:/team/settings|Settings]
+- Mention "applied jobs", "my application", "job application" → [CTA:/team/applied-jobs|My Applications]
+- Mention "careers", "open positions", "hiring", "apply for a job" → [CTA:/careers|Browse Careers]
+- Mention "portfolio projects", "agency portfolio" → [CTA:/portfolio|View Portfolio]
+- Mention "services", "what we offer" → [CTA:/services|Our Services]
+- Mention "privacy policy" → [CTA:/privacy|Privacy Policy]
+- Mention "terms of service" → [CTA:/terms|Terms of Service]
+- Mention "contact" → [CTA:/contact|Contact Page]
+
+FORMAT: Each marker on its own line at the end of your response.
+You may include multiple CTAs if multiple topics are mentioned.`;
+
   const systemPrompt =
     (cfg.teamChatSystemPrompt || '') +
     `\n\n## Tone\n${toneInstruction}` +
     `\n\nKeep answers concise (2–4 sentences) unless more detail is requested.` +
     (cfg.teamChatContextHints ? `\n\n## Additional Context & Guidelines\n${cfg.teamChatContextHints}` : '') +
+    teamNavCTAs +
     ragContextTeam +
     teamPublicContext +
     teamContext;
@@ -1503,6 +1668,10 @@ export const crawlWebsite = asyncHandler(async (req, res) => {
  * Skips entries that already have embeddingStatus === 'done' unless
  * ?force=true is passed.
  */
+// Track in-progress embed-all runs so the UI can poll for completion
+let _embedAllRunning = false;
+let _embedAllProgress = { total: 0, done: 0, failed: 0, running: false, lastRun: null };
+
 export const embedAllKnowledge = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') throw new AppError('Admin only', 403);
 
@@ -1513,33 +1682,60 @@ export const embedAllKnowledge = asyncHandler(async (req, res) => {
     throw new AppError('Supabase is not configured — vector store is disabled', 503);
   }
 
+  if (_embedAllRunning) {
+    return successResponse(res, 'Embedding already in progress', {
+      total: _embedAllProgress.total,
+      done:  _embedAllProgress.done,
+      failed: _embedAllProgress.failed,
+      running: true,
+    });
+  }
+
   const force = req.query.force === 'true';
   const filter = { isActive: true };
   if (!force) filter.embeddingStatus = { $ne: 'done' };
 
-  const entries = await ChatbotKnowledge.find(filter)
-    .select('_id title content type roleAccess tags sourceUrl')
-    .lean();
+  const ids = await ChatbotKnowledge.find(filter).select('_id').lean();
+  const total = ids.length;
 
-  let done = 0;
-  let failed = 0;
+  // Respond immediately so the HTTP connection is freed
+  successResponse(res, `Embedding started — ${total} entries queued`, {
+    total, done: 0, failed: 0, running: true,
+  });
 
-  for (const entry of entries) {
-    try {
-      await embedAndSyncEntry(entry);
-      await ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'done' });
-      done++;
-    } catch (e) {
-      console.error(`[Embed] embedAll entry ${entry._id}:`, e.message);
-      await ChatbotKnowledge.findByIdAndUpdate(entry._id, { embeddingStatus: 'failed' });
-      failed++;
+  // Process in background — one entry at a time to keep memory low
+  _embedAllRunning = true;
+  _embedAllProgress = { total, done: 0, failed: 0, running: true, lastRun: new Date().toISOString() };
+
+  (async () => {
+    for (const { _id } of ids) {
+      try {
+        const entry = await ChatbotKnowledge.findById(_id)
+          .select('_id title content type roleAccess tags sourceUrl')
+          .lean();
+        if (!entry) continue;
+        await embedAndSyncEntry(entry);
+        // Use { lean: true } equivalent — don't hold a full Mongoose document
+        await ChatbotKnowledge.updateOne({ _id }, { embeddingStatus: 'done' });
+        _embedAllProgress.done++;
+        console.log(`[Embed] ${_embedAllProgress.done}/${total} — ${entry.title}`);
+      } catch (e) {
+        console.error(`[Embed] failed ${_id}:`, e.message);
+        await ChatbotKnowledge.updateOne({ _id }, { embeddingStatus: 'failed' });
+        _embedAllProgress.failed++;
+      }
+      // Pause between entries — longer than before to give V8's GC time to
+      // reclaim the embedding vectors and fetch buffers from the previous entry
+      // before the next round of allocations begins.
+      await new Promise(r => setTimeout(r, 500));
     }
-    // Brief pause between entries to stay within API rate limits
-    await new Promise(r => setTimeout(r, 80));
-  }
-
-  successResponse(res, `Embedding complete — ${done} embedded, ${failed} failed`, {
-    total: entries.length, done, failed,
+    _embedAllRunning = false;
+    _embedAllProgress.running = false;
+    console.log(`[Embed] Complete — ${_embedAllProgress.done} done, ${_embedAllProgress.failed} failed`);
+  })().catch(e => {
+    console.error('[Embed] Background job crashed:', e.message);
+    _embedAllRunning = false;
+    _embedAllProgress.running = false;
   });
 });
 

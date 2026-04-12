@@ -11,6 +11,7 @@
  * The divider can be dragged left/right to resize.  The sidebar is collapsible.
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bot, Send, Loader2, Sparkles, Trash2, Copy,
   ChevronRight, ChevronLeft, AlertCircle, ArrowRight,
@@ -37,9 +38,12 @@ const SESSION_KEY   = 'team-ai-page-session';
 const CHARS_PER_TICK = 4;
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
-function renderMarkdown(raw: string, streaming = false): React.ReactNode {
+const CTA_RE = /^\[CTA:([^\]|]+)\|([^\]]+)\]$/;
+
+function renderMarkdown(raw: string, streaming = false, onNavigate?: (path: string) => void): React.ReactNode {
   const lines = raw.split('\n');
   const nodes: React.ReactNode[] = [];
+  const ctaButtons: Array<{ path: string; label: string }> = [];
 
   const inline = (text: string, key: string): React.ReactNode => {
     const parts: React.ReactNode[] = [];
@@ -59,6 +63,8 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i]; const trimmed = line.trim();
+    const ctaMatch = trimmed.match(CTA_RE);
+    if (ctaMatch) { ctaButtons.push({ path: ctaMatch[1].trim(), label: ctaMatch[2].trim() }); i++; continue; }
     if (/^[-*_]{3,}$/.test(trimmed)) { nodes.push(<hr key={i} className="border-border/40 my-3" />); i++; continue; }
     const hMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
     if (hMatch) { nodes.push(<p key={i} className={hMatch[1].length === 1 ? 'text-base font-bold mt-3 mb-1' : 'text-sm font-bold mt-2 mb-0.5'}>{inline(hMatch[2], `h${i}`)}</p>); i++; continue; }
@@ -91,6 +97,19 @@ function renderMarkdown(raw: string, streaming = false): React.ReactNode {
     <div className="text-sm space-y-0.5">
       {nodes}
       {streaming && <span className="inline-block w-2 h-4 bg-emerald-500/60 ml-0.5 animate-pulse rounded-sm align-middle" />}
+      {!streaming && ctaButtons.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-2">
+          {ctaButtons.map((cta, idx) => (
+            <button
+              key={idx}
+              onClick={() => onNavigate?.(cta.path)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all duration-150"
+            >
+              <ArrowRight className="h-3 w-3" />{cta.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -112,13 +131,14 @@ const CAPABILITIES = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function TeamAIChat() {
+  const navigate = useNavigate();
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [input,        setInput]        = useState('');
   const [isSending,    setIsSending]    = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [quickPrompts, setQuickPrompts] = useState<string[]>(DEFAULT_TEAM_PROMPTS);
-  const [botName,      setBotName]      = useState('Nova');
+  const [botName,      setBotName]      = useState('WEB AI');
   const [copied,       setCopied]       = useState<string | null>(null);
   const [hasHistory,   setHasHistory]   = useState(false);
 
@@ -392,7 +412,7 @@ export default function TeamAIChat() {
                   {msg.role === 'assistant' ? (
                     <div className="flex gap-1.5">
                       {msg.error && <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />}
-                      {renderMarkdown(msg.content, msg.isStreaming)}
+                      {renderMarkdown(msg.content, msg.isStreaming, (path) => navigate(path))}
                     </div>
                   ) : (
                     <p className="text-sm leading-relaxed">{msg.content}</p>

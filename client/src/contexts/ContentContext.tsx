@@ -106,6 +106,22 @@ export interface FooterSectionItem {
   links: FooterLinkItem[];
 }
 
+export interface FooterBottomLinkItem {
+  _id?: string;
+  label: string;
+  href: string;
+  order: number;
+  isActive: boolean;
+  openInNewTab: boolean;
+}
+
+export interface FooterBottomContent {
+  copyrightText: string;
+  links: FooterBottomLinkItem[];
+  taglineText: string;
+  taglineVisible: boolean;
+}
+
 export interface ContentContextType {
   logoUrl: string;
   heroContent: HeroContent;
@@ -158,8 +174,10 @@ export interface ContentContextType {
   // Nav & Footer links
   navLinks: NavLinkItem[];
   footerSections: FooterSectionItem[];
+  footerBottom: FooterBottomContent;
   updateNavLinks: (links: NavLinkItem[]) => Promise<void>;
   updateFooterSections: (sections: FooterSectionItem[]) => Promise<void>;
+  updateFooterBottom: (data: Partial<FooterBottomContent>) => Promise<void>;
   // Refetch from API
   refetch: () => Promise<void>;
 }
@@ -322,6 +340,16 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [globalTheme, setGlobalTheme] = useState<'dark' | 'light' | null>(null);
   const [navLinks, setNavLinks] = useState<NavLinkItem[]>([]);
   const [footerSections, setFooterSections] = useState<FooterSectionItem[]>([]);
+  const [footerBottom, setFooterBottom] = useState<FooterBottomContent>({
+    copyrightText: 'Nabeel Agency. All rights reserved.',
+    links: [
+      { label: 'Privacy Policy', href: '/privacy',  order: 0, isActive: true, openInNewTab: false },
+      { label: 'Terms',          href: '/terms',    order: 1, isActive: true, openInNewTab: false },
+      { label: 'Cookies',        href: '/cookies',  order: 2, isActive: true, openInNewTab: false },
+    ],
+    taglineText: 'Made with ♥ in California',
+    taglineVisible: true,
+  });
 
   // Hero content stays in localStorage (managed via HomePageHero API separately)
   const [heroContent, setHeroContent] = useState<HeroContent>(() => {
@@ -369,6 +397,15 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
+  const fetchFooterBottom = useCallback(() => {
+    cmsApi.getFooterBottom()
+      .then(res => {
+        const d = (res.data as any).data?.footerBottom;
+        if (d) setFooterBottom(d);
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchPageStatuses = useCallback(() => {
     pageStatusApi.getAll()
       .then(res => setPageStatuses(res.data.data ?? []))
@@ -406,6 +443,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     fetchCMS();
     fetchNavLinks();
     fetchFooterSections();
+    fetchFooterBottom();
     fetchPageStatuses();
     fetchAnnouncements();
   }, []);
@@ -424,6 +462,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       switch (section) {
         case 'navLinks':       fetchNavLinks();       break;
         case 'footerSections': fetchFooterSections(); break;
+        case 'footerBottom':   fetchFooterBottom();   break;
         case 'pageStatus':     fetchPageStatuses();   break;
         case 'announcements':  fetchAnnouncements(); fetchDashboardBars(); break;
         case 'globalTheme':
@@ -436,7 +475,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     return () => {
       socket.disconnect();
     };
-  }, [fetchCMS, fetchNavLinks, fetchFooterSections, fetchPageStatuses, fetchAnnouncements, fetchDashboardBars]);
+  }, [fetchCMS, fetchNavLinks, fetchFooterSections, fetchFooterBottom, fetchPageStatuses, fetchAnnouncements, fetchDashboardBars]);
 
   const updateLogoUrl = async (url: string) => {
     setLogoUrl(url);
@@ -506,6 +545,11 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     await cmsApi.updateFooterSections(sections);
   };
 
+  const updateFooterBottom = async (data: Partial<FooterBottomContent>) => {
+    setFooterBottom(prev => ({ ...prev, ...data }));
+    await cmsApi.updateFooterBottom(data);
+  };
+
   const updateTestimonials = async (items: Testimonial[]) => {
     setTestimonials(items);
     await cmsApi.updateTestimonials(items);
@@ -530,7 +574,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       updateLogoUrl, updateTechStack, updateProcessSteps, updateWhyChooseUs,
       updateContactInfo, updateSocialLinks, updateTestimonials,
       globalTheme, updateGlobalTheme,
-      navLinks, footerSections, updateNavLinks, updateFooterSections,
+      navLinks, footerSections, footerBottom,
+      updateNavLinks, updateFooterSections, updateFooterBottom,
       refetch: fetchCMS,
     }}>
       {children}

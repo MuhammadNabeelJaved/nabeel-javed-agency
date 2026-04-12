@@ -1,0 +1,5 @@
+{
+  "nodeArgs": ["--max-old-space-size=4096"],
+  "watch": ["src"],
+  "ext": "js,mjs,cjs,json"
+}

@@ -445,6 +445,10 @@ function KnowledgeTab() {
       toast.error('Title and content are required');
       return;
     }
+    if (form.content.length > 200000) {
+      toast.error(`Content too long (${form.content.length.toLocaleString()} chars). Maximum is 200,000.`);
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -726,7 +730,12 @@ function KnowledgeTab() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Content *</Label>
+              <div className="flex items-center justify-between">
+                <Label>Content *</Label>
+                <span className={`text-xs tabular-nums ${form.content.length > 180000 ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                  {form.content.length.toLocaleString()} / 200,000 chars
+                </span>
+              </div>
               <Textarea
                 value={form.content}
                 onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
@@ -1148,7 +1157,7 @@ function ConfigTab() {
           </div>
           <div className="space-y-1.5">
             <Label>Bot Name</Label>
-            <Input value={local.botName ?? ''} onChange={e => setLocal(l => ({ ...l, botName: e.target.value }))} placeholder="Nova" />
+            <Input value={local.botName ?? ''} onChange={e => setLocal(l => ({ ...l, botName: e.target.value }))} placeholder="WEB AI" />
           </div>
 
           {/* ── Model Selector ─────────────────────────────────────────────── */}
@@ -2400,7 +2409,7 @@ export default function ChatbotManager() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">Chatbot Manager</h1>
-          <p className="text-sm text-muted-foreground">Configure Nova AI, manage knowledge, and review conversations</p>
+          <p className="text-sm text-muted-foreground">Configure WEB AI, manage knowledge, and review conversations</p>
         </div>
       </div>
 

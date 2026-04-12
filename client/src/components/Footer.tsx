@@ -23,7 +23,7 @@ import { usePageVisibility } from '../hooks/usePageVisibility';
 
 export function Footer() {
   const { t } = useLanguage();
-  const { socialLinks: cms, contactInfo, footerSections: cmsFooterSections } = useContent();
+  const { socialLinks: cms, contactInfo, footerSections: cmsFooterSections, footerBottom } = useContent();
   const { isVisible } = usePageVisibility();
   const currentYear = new Date().getFullYear();
 
@@ -204,17 +204,33 @@ export function Footer() {
 
         {/* Bottom Section: Copyright */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-muted-foreground/60 border-t border-border/50 pt-8">
-          <p>© {currentYear} {t('footer.copyright')}</p>
-          <div className="flex items-center gap-6">
-            <Link to="/privacy" className="hover:text-foreground transition-colors">{t('footer.privacy')}</Link>
-            <Link to="/terms" className="hover:text-foreground transition-colors">{t('footer.terms')}</Link>
-            <Link to="/cookies" className="hover:text-foreground transition-colors">{t('footer.cookies')}</Link>
-          </div>
-          <div className="flex items-center gap-1.5 opacity-50 hover:opacity-100 transition-opacity">
-            <span>{t('footer.madeWith')}</span>
-            <Heart className="w-3 h-3 text-red-500 fill-red-500 animate-pulse" />
-            <span>{t('footer.inCalifornia')}</span>
-          </div>
+          <p>© {currentYear} {footerBottom.copyrightText}</p>
+
+          {footerBottom.links.filter(l => l.isActive).length > 0 && (
+            <div className="flex items-center gap-6">
+              {footerBottom.links
+                .filter(l => l.isActive)
+                .sort((a, b) => a.order - b.order)
+                .map(link => (
+                  <Link
+                    key={link._id || link.href}
+                    to={link.href}
+                    target={link.openInNewTab ? '_blank' : undefined}
+                    rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+            </div>
+          )}
+
+          {footerBottom.taglineVisible && footerBottom.taglineText && (
+            <div className="flex items-center gap-1.5 opacity-50 hover:opacity-100 transition-opacity">
+              <Heart className="w-3 h-3 text-red-500 fill-red-500 animate-pulse" />
+              <span>{footerBottom.taglineText}</span>
+            </div>
+          )}
         </div>
       </div>
     </footer>

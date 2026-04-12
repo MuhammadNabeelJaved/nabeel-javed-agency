@@ -9,12 +9,12 @@ import {
   Plus, Trash2, Save, Loader2, GripVertical,
   Link as LinkIcon, ExternalLink, Eye, EyeOff,
   ChevronDown, ChevronRight, Navigation, LayoutTemplate,
-  RotateCcw, Pencil, Check, X, Globe,
+  RotateCcw, Pencil, Check, X, Globe, Copyright, AlignJustify, Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { useContent, type NavLinkItem, type FooterSectionItem, type FooterLinkItem } from '../../contexts/ContentContext';
+import { useContent, type NavLinkItem, type FooterSectionItem, type FooterLinkItem, type FooterBottomContent, type FooterBottomLinkItem } from '../../contexts/ContentContext';
 
 // ── tiny toggle ────────────────────────────────────────────────────────────────
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
@@ -253,9 +253,9 @@ function NavbarTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FOOTER TAB
+// FOOTER LINK COLUMNS sub-panel (existing footer sections)
 // ─────────────────────────────────────────────────────────────────────────────
-function FooterTab() {
+function FooterColumnsPanel() {
   const { footerSections, updateFooterSections } = useContent();
   const [sections, setSections] = useState<FooterSectionItem[]>([]);
   const [saving, setSaving] = useState(false);
@@ -275,7 +275,6 @@ function FooterTab() {
   };
 
   const removeSection = (id: string) => setSections(prev => prev.filter(s => s._id !== id));
-
   const updateSectionTitle = (id: string, title: string) =>
     setSections(prev => prev.map(s => s._id === id ? { ...s, title } : s));
 
@@ -367,7 +366,6 @@ function FooterTab() {
                 layout
                 className="rounded-xl border border-border bg-card overflow-hidden"
               >
-                {/* Section header */}
                 <div className="flex items-center gap-3 px-4 py-3">
                   <div className="flex flex-col gap-0.5 shrink-0">
                     <button onClick={() => moveSectionUp(si)} disabled={si === 0} className="p-0.5 rounded hover:bg-accent disabled:opacity-20">
@@ -378,16 +376,13 @@ function FooterTab() {
                     </button>
                   </div>
                   <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-
                   <Input
                     value={section.title}
                     onChange={e => updateSectionTitle(section._id!, e.target.value)}
                     placeholder="Section title…"
                     className="h-8 font-semibold text-sm flex-1"
                   />
-
                   <span className="text-xs text-muted-foreground shrink-0">{section.links.length} links</span>
-
                   <button
                     onClick={() => setExpandedSection(isExpanded ? null : section._id!)}
                     className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors shrink-0"
@@ -402,7 +397,6 @@ function FooterTab() {
                   </button>
                 </div>
 
-                {/* Links list */}
                 <AnimatePresence initial={false}>
                   {isExpanded && (
                     <motion.div
@@ -473,7 +467,6 @@ function FooterTab() {
                             );
                           })}
                         </AnimatePresence>
-
                         <button
                           onClick={() => addLink(section._id!)}
                           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
@@ -489,6 +482,310 @@ function FooterTab() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FOOTER BOTTOM BAR sub-panel
+// ─────────────────────────────────────────────────────────────────────────────
+function FooterBottomPanel() {
+  const { footerBottom, updateFooterBottom } = useContent();
+
+  const [copyright, setCopyright] = useState(footerBottom.copyrightText);
+  const [tagline, setTagline] = useState(footerBottom.taglineText);
+  const [taglineVisible, setTaglineVisible] = useState(footerBottom.taglineVisible);
+  const [links, setLinks] = useState<FooterBottomLinkItem[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Sync from context when it loads / changes
+  useEffect(() => {
+    setCopyright(footerBottom.copyrightText);
+    setTagline(footerBottom.taglineText);
+    setTaglineVisible(footerBottom.taglineVisible);
+    setLinks(
+      [...footerBottom.links].sort((a, b) => a.order - b.order).map((l, i) => ({ ...l, order: i }))
+    );
+  }, [footerBottom]);
+
+  const addLink = () => {
+    const newLink: FooterBottomLinkItem = {
+      _id: `new-bl-${Date.now()}`,
+      label: '', href: '',
+      order: links.length,
+      isActive: true, openInNewTab: false,
+    };
+    setLinks(prev => [...prev, newLink]);
+    setEditingId(newLink._id!);
+  };
+
+  const removeLink = (id: string) => setLinks(prev => prev.filter(l => l._id !== id));
+
+  const updateField = (id: string, field: keyof FooterBottomLinkItem, value: any) =>
+    setLinks(prev => prev.map(l => l._id === id ? { ...l, [field]: value } : l));
+
+  const moveUp = (i: number) => {
+    if (i === 0) return;
+    setLinks(prev => {
+      const arr = [...prev];
+      [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+      return arr.map((l, idx) => ({ ...l, order: idx }));
+    });
+  };
+
+  const moveDown = (i: number) => {
+    setLinks(prev => {
+      if (i >= prev.length - 1) return prev;
+      const arr = [...prev];
+      [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+      return arr.map((l, idx) => ({ ...l, order: idx }));
+    });
+  };
+
+  const handleSave = async () => {
+    const invalid = links.find(l => !l.label.trim() || !l.href.trim());
+    if (invalid) { toast.error('All links must have a label and URL'); return; }
+    setSaving(true);
+    try {
+      await updateFooterBottom({
+        copyrightText: copyright.trim(),
+        links: links.map((l, i) => ({ ...l, order: i })),
+        taglineText: tagline.trim(),
+        taglineVisible,
+      });
+      toast.success('Footer bottom bar saved');
+    } catch {
+      toast.error('Failed to save footer bottom bar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Text fields ──────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Copyright */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <Copyright className="h-3.5 w-3.5" /> Copyright text
+          </label>
+          <Input
+            value={copyright}
+            onChange={e => setCopyright(e.target.value)}
+            placeholder="Nabeel Agency. All rights reserved."
+            className="h-9"
+          />
+          <p className="text-[11px] text-muted-foreground/60">Shown after "© {new Date().getFullYear()}"</p>
+        </div>
+
+        {/* Tagline */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+            <Heart className="h-3.5 w-3.5" /> Tagline text
+            <span className="ml-auto">
+              <Toggle checked={taglineVisible} onChange={() => setTaglineVisible(v => !v)} />
+            </span>
+          </label>
+          <Input
+            value={tagline}
+            onChange={e => setTagline(e.target.value)}
+            placeholder="Made with ♥ in California"
+            className="h-9"
+            disabled={!taglineVisible}
+          />
+          <p className="text-[11px] text-muted-foreground/60">Toggle to show/hide this tagline</p>
+        </div>
+      </div>
+
+      {/* ── Live preview ─────────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-muted/20 px-5 py-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Preview</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground/60">
+          <span>© {new Date().getFullYear()} {copyright || <span className="italic opacity-50">Copyright text…</span>}</span>
+          {links.filter(l => l.isActive).length > 0 && (
+            <div className="flex items-center gap-4">
+              {links.filter(l => l.isActive).sort((a, b) => a.order - b.order).map(l => (
+                <span key={l._id} className="underline underline-offset-2 cursor-default">{l.label}</span>
+              ))}
+            </div>
+          )}
+          {taglineVisible && tagline && (
+            <div className="flex items-center gap-1.5 opacity-60">
+              <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+              <span>{tagline}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Privacy / policy links ────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <AlignJustify className="h-4 w-4 text-muted-foreground" />
+            Bottom links
+            <span className="text-xs font-normal text-muted-foreground">({links.length})</span>
+          </h4>
+          <Button variant="outline" size="sm" onClick={addLink} className="gap-1.5 h-7 text-xs">
+            <Plus className="h-3.5 w-3.5" /> Add link
+          </Button>
+        </div>
+
+        {links.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground border border-dashed border-border rounded-xl">
+            <LinkIcon className="h-8 w-8 mx-auto mb-2 opacity-30" />
+            <p className="text-xs">No bottom links yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <AnimatePresence initial={false}>
+              {links.map((link, i) => (
+                <motion.div
+                  key={link._id}
+                  layout
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  className={`rounded-xl border overflow-hidden ${link.isActive ? 'border-border bg-card' : 'border-border/40 bg-muted/20'}`}
+                >
+                  {editingId !== link._id ? (
+                    /* Collapsed row */
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button onClick={() => moveUp(i)} disabled={i === 0} className="p-0.5 rounded hover:bg-accent disabled:opacity-20">
+                          <ChevronRight className="h-3 w-3 -rotate-90" />
+                        </button>
+                        <button onClick={() => moveDown(i)} disabled={i === links.length - 1} className="p-0.5 rounded hover:bg-accent disabled:opacity-20">
+                          <ChevronRight className="h-3 w-3 rotate-90" />
+                        </button>
+                      </div>
+                      <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${!link.isActive ? 'line-through text-muted-foreground' : ''}`}>
+                          {link.label || <span className="italic text-muted-foreground">Untitled</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{link.href || '—'}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {link.openInNewTab && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />}
+                        <Toggle checked={link.isActive} onChange={() => updateField(link._id!, 'isActive', !link.isActive)} />
+                        <button onClick={() => setEditingId(link._id!)} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => removeLink(link._id!)} className="p-1.5 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Expanded edit form */
+                    <div className="p-4 space-y-3">
+                      {/* Quick-pick */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                          <Globe className="h-3 w-3" /> Quick-pick an existing page
+                        </label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {EXISTING_PAGES.map(page => (
+                            <button
+                              key={page.href}
+                              type="button"
+                              onClick={() => {
+                                updateField(link._id!, 'href', page.href);
+                                if (!link.label) updateField(link._id!, 'label', page.label);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                                link.href === page.href
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-border/60 bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                              }`}
+                            >
+                              {page.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground font-medium">Label</label>
+                          <Input value={link.label} onChange={e => updateField(link._id!, 'label', e.target.value)} placeholder="e.g. Privacy Policy" className="h-9" autoFocus />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground font-medium">URL / Path</label>
+                          <Input value={link.href} onChange={e => updateField(link._id!, 'href', e.target.value)} placeholder="/privacy or https://…" className="h-9" />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Toggle checked={link.isActive} onChange={() => updateField(link._id!, 'isActive', !link.isActive)} />
+                            Active
+                          </label>
+                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Toggle checked={link.openInNewTab} onChange={() => updateField(link._id!, 'openInNewTab', !link.openInNewTab)} />
+                            Open in new tab
+                          </label>
+                        </div>
+                        <button onClick={() => setEditingId(null)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+                          <Check className="h-3.5 w-3.5" /> Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* ── Save button ───────────────────────────────────────────────────────── */}
+      <div className="flex justify-end">
+        <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Save Bottom Bar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FOOTER TAB  (wraps both sub-panels with a secondary tab switcher)
+// ─────────────────────────────────────────────────────────────────────────────
+type FooterSubTab = 'columns' | 'bottom';
+
+function FooterTab() {
+  const [sub, setSub] = useState<FooterSubTab>('columns');
+
+  return (
+    <div className="space-y-5">
+      {/* Sub-tab switcher */}
+      <div className="flex gap-1 p-1 rounded-lg bg-muted/40 w-fit">
+        {([
+          { id: 'columns', label: 'Link Columns', icon: LayoutTemplate },
+          { id: 'bottom',  label: 'Bottom Bar',   icon: AlignJustify },
+        ] as const).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setSub(t.id)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              sub === t.id
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <t.icon className="h-3.5 w-3.5" />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {sub === 'columns' ? <FooterColumnsPanel /> : <FooterBottomPanel />}
     </div>
   );
 }

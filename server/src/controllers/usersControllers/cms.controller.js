@@ -139,6 +139,66 @@ export const updateFooterSections = asyncHandler(async (req, res) => {
 });
 
 // =========================
+// GET FOOTER BOTTOM (public)
+// =========================
+const DEFAULT_FOOTER_BOTTOM = {
+    copyrightText: 'Nabeel Agency. All rights reserved.',
+    links: [
+        { label: 'Privacy Policy', href: '/privacy', order: 0, isActive: true, openInNewTab: false },
+        { label: 'Terms',          href: '/terms',   order: 1, isActive: true, openInNewTab: false },
+        { label: 'Cookies',        href: '/cookies', order: 2, isActive: true, openInNewTab: false },
+    ],
+    taglineText: 'Made with ♥ in California',
+    taglineVisible: true,
+};
+
+export const getFooterBottom = asyncHandler(async (req, res) => {
+    const cms = await CMS.getOrCreate();
+    // Seed defaults on first access if links are empty
+    if (!cms.footerBottom?.links?.length) {
+        cms.footerBottom = DEFAULT_FOOTER_BOTTOM;
+        await cms.save();
+    }
+    successResponse(res, 'Footer bottom fetched', { footerBottom: cms.footerBottom });
+});
+
+// =========================
+// UPDATE FOOTER BOTTOM (admin)
+// =========================
+export const updateFooterBottom = asyncHandler(async (req, res) => {
+    const { copyrightText, links, taglineText, taglineVisible } = req.body;
+
+    const cms = await CMS.getOrCreate();
+
+    if (copyrightText !== undefined)
+        cms.footerBottom.copyrightText = String(copyrightText).trim().slice(0, 200);
+
+    if (Array.isArray(links)) {
+        cms.footerBottom.links = links
+            .map((l, i) => ({
+                label:        String(l.label || '').trim(),
+                href:         String(l.href  || '').trim(),
+                order:        typeof l.order === 'number' ? l.order : i,
+                isActive:     l.isActive !== false,
+                openInNewTab: Boolean(l.openInNewTab),
+            }))
+            .filter(l => l.label && l.href);
+    }
+
+    if (taglineText !== undefined)
+        cms.footerBottom.taglineText = String(taglineText).trim().slice(0, 200);
+
+    if (taglineVisible !== undefined)
+        cms.footerBottom.taglineVisible = Boolean(taglineVisible);
+
+    cms.lastUpdatedBy = req.user._id;
+    cms.markModified('footerBottom');
+    await cms.save();
+    emitCmsUpdate(req, 'footerBottom');
+    successResponse(res, 'Footer bottom updated', { footerBottom: cms.footerBottom });
+});
+
+// =========================
 // UPDATE GLOBAL THEME
 // =========================
 export const updateGlobalTheme = asyncHandler(async (req, res) => {

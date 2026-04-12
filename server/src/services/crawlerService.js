@@ -70,7 +70,7 @@ export async function fetchPageText(url) {
   try {
     const res = await fetch(url, {
       signal:  controller.signal,
-      headers: { 'User-Agent': 'Nova-Crawler/1.0 (knowledge-base indexer)' },
+      headers: { 'User-Agent': 'WEBAI-Crawler/1.0 (knowledge-base indexer)' },
     });
 
     clearTimeout(timer);
