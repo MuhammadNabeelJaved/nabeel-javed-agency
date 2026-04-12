@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Bell, X, CheckCheck, FolderOpen, UserCheck, UserX,
     MessageSquare, Paperclip, ClipboardList, RefreshCw, Info,
+    TicketCheck, Briefcase, FileBox, UserPlus, Reply,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../hooks/useNotifications';
@@ -20,14 +21,26 @@ interface NotificationBellProps {
 
 // ─── Per-type config ────────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-    project_accepted:  { icon: UserCheck,     color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    project_rejected:  { icon: UserX,         color: 'text-red-500',     bg: 'bg-red-500/10'     },
-    project_assigned:  { icon: FolderOpen,    color: 'text-blue-500',    bg: 'bg-blue-500/10'    },
-    project_submitted: { icon: FolderOpen,    color: 'text-violet-500',  bg: 'bg-violet-500/10'  },
-    status_updated:    { icon: RefreshCw,     color: 'text-amber-500',   bg: 'bg-amber-500/10'   },
-    task_assigned:     { icon: ClipboardList, color: 'text-sky-500',     bg: 'bg-sky-500/10'     },
-    file_received:     { icon: Paperclip,     color: 'text-purple-500',  bg: 'bg-purple-500/10'  },
-    message:           { icon: MessageSquare, color: 'text-primary',     bg: 'bg-primary/10'     },
+    // Projects
+    project_accepted:          { icon: UserCheck,     color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    project_rejected:          { icon: UserX,         color: 'text-red-500',     bg: 'bg-red-500/10'     },
+    project_assigned:          { icon: FolderOpen,    color: 'text-blue-500',    bg: 'bg-blue-500/10'    },
+    project_submitted:         { icon: FolderOpen,    color: 'text-violet-500',  bg: 'bg-violet-500/10'  },
+    status_updated:            { icon: RefreshCw,     color: 'text-amber-500',   bg: 'bg-amber-500/10'   },
+    // Tasks & chat
+    task_assigned:             { icon: ClipboardList, color: 'text-sky-500',     bg: 'bg-sky-500/10'     },
+    file_received:             { icon: Paperclip,     color: 'text-purple-500',  bg: 'bg-purple-500/10'  },
+    message:                   { icon: MessageSquare, color: 'text-primary',     bg: 'bg-primary/10'     },
+    // Support tickets
+    ticket_submitted:          { icon: TicketCheck,   color: 'text-amber-500',   bg: 'bg-amber-500/10'   },
+    ticket_reply:              { icon: Reply,         color: 'text-blue-500',    bg: 'bg-blue-500/10'    },
+    ticket_status_updated:     { icon: RefreshCw,     color: 'text-teal-500',    bg: 'bg-teal-500/10'    },
+    // Job applications
+    application_received:      { icon: Briefcase,     color: 'text-indigo-500',  bg: 'bg-indigo-500/10'  },
+    application_status_updated:{ icon: Briefcase,     color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    // Resources & users
+    resource_added:            { icon: FileBox,       color: 'text-cyan-500',    bg: 'bg-cyan-500/10'    },
+    user_registered:           { icon: UserPlus,      color: 'text-violet-500',  bg: 'bg-violet-500/10'  },
 };
 
 const DEFAULT_CONFIG = { icon: Info, color: 'text-blue-500', bg: 'bg-blue-500/10' };
@@ -39,6 +52,40 @@ function formatTime(dateStr: string) {
     if (diff < 86_400_000)      return `${Math.floor(diff / 3_600_000)}h ago`;
     if (diff < 7 * 86_400_000)  return `${Math.floor(diff / 86_400_000)}d ago`;
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/** Map each notification type to a dashboard-relative path to navigate to on click */
+function getNavPath(type: string, payload: Record<string, unknown>, chatRoute?: string): string | null {
+    switch (type) {
+        case 'message':
+        case 'file_received':
+            return chatRoute && payload?.conversationId
+                ? `${chatRoute}?convoId=${payload.conversationId as string}${payload.messageId ? `&messageId=${payload.messageId as string}` : ''}`
+                : null;
+        case 'ticket_submitted':
+        case 'ticket_reply':
+        case 'ticket_status_updated':
+            return '/admin/support';
+        case 'application_received':
+            return '/admin/job-applications';
+        case 'application_status_updated':
+            return '/user-dashboard/applied-jobs';
+        case 'resource_added':
+            return '/team/resources';
+        case 'user_registered':
+            return '/admin/team';
+        case 'project_accepted':
+        case 'project_rejected':
+        case 'project_submitted':
+        case 'status_updated':
+            return '/user-dashboard/projects';
+        case 'project_assigned':
+            return '/team/projects';
+        case 'task_assigned':
+            return '/team/tasks';
+        default:
+            return null;
+    }
 }
 
 export function NotificationBell({ notificationsRoute, chatRoute }: NotificationBellProps) {
@@ -145,7 +192,6 @@ export function NotificationBell({ notificationsRoute, chatRoute }: Notification
                                     {recent.map((notif, i) => {
                                         const cfg = TYPE_CONFIG[notif.type] ?? DEFAULT_CONFIG;
                                         const Icon = cfg.icon;
-                                        const isChatNotif = notif.type === 'message' || notif.type === 'file_received';
 
                                         return (
                                             <motion.div
@@ -155,15 +201,8 @@ export function NotificationBell({ notificationsRoute, chatRoute }: Notification
                                                 transition={{ delay: i * 0.03 }}
                                                 onClick={() => {
                                                     if (!notif.isRead) markAsRead(notif._id);
-                                                    if (isChatNotif && chatRoute && notif.payload?.conversationId) {
-                                                        setOpen(false);
-                                                        const convoId = notif.payload.conversationId as string;
-                                                        const msgId = notif.payload.messageId as string | undefined;
-                                                        navigate(msgId
-                                                            ? `${chatRoute}?convoId=${convoId}&messageId=${msgId}`
-                                                            : `${chatRoute}?convoId=${convoId}`
-                                                        );
-                                                    }
+                                                    const path = getNavPath(notif.type, notif.payload, chatRoute);
+                                                    if (path) { setOpen(false); navigate(path); }
                                                 }}
                                                 className={`group relative flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors duration-150
                                                     ${!notif.isRead

@@ -31,6 +31,7 @@ import {
     sendVerificationEmail,
     sendPasswordResetEmail,
 } from "../../utils/sendEmails.js";
+import { notifyAdmins } from "../../utils/notificationService.js";
 
 // ─── Cookie helpers ───────────────────────────────────────────────────────────
 
@@ -103,6 +104,15 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     const userObj = user.toObject();
     delete userObj.password;
+
+    // Notify all admins of the new signup (non-blocking, no createdBy since user is unverified)
+    const io = req.app.get("io");
+    notifyAdmins(io, {
+        type: "user_registered",
+        title: "New User Registered",
+        message: `${name} (${email}) just created an account`,
+        payload: { userId: user._id, name, email },
+    }).catch(() => {});
 
     successResponse(res, "Account created. Check your email for the verification code.", userObj, 201);
 });

@@ -15,6 +15,7 @@
  *   });
  */
 import Notification from "../models/usersModels/Notification.model.js";
+import User from "../models/usersModels/User.model.js";
 
 /**
  * @param {import('socket.io').Server} io - The Socket.IO server instance
@@ -57,4 +58,51 @@ export async function createAndEmitNotification(
     }
 
     return notification;
+}
+
+/**
+ * Create and emit notifications to ALL admin users at once.
+ * Uses Promise.allSettled so one failing admin ID never blocks others.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {Object} opts - same as createAndEmitNotification minus recipientId
+ * @returns {Promise<void>}
+ */
+export async function notifyAdmins(io, { type, title, message, payload = {}, createdBy = null }) {
+    const admins = await User.find({ role: "admin" }).select("_id").lean();
+    await Promise.allSettled(
+        admins.map((admin) =>
+            createAndEmitNotification(io, {
+                recipientId: admin._id,
+                type,
+                title,
+                message,
+                payload,
+                createdBy,
+            })
+        )
+    );
+}
+
+/**
+ * Create and emit notifications to ALL team members at once.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {Object} opts - same as createAndEmitNotification minus recipientId
+ * @returns {Promise<void>}
+ */
+export async function notifyTeam(io, { type, title, message, payload = {}, createdBy = null }) {
+    const members = await User.find({ role: "team" }).select("_id").lean();
+    await Promise.allSettled(
+        members.map((member) =>
+            createAndEmitNotification(io, {
+                recipientId: member._id,
+                type,
+                title,
+                message,
+                payload,
+                createdBy,
+            })
+        )
+    );
 }

@@ -30,14 +30,28 @@ const notificationSchema = new mongoose.Schema(
         type: {
             type: String,
             enum: [
+                // Chat
                 "message",
                 "file_received",
+                // Projects
                 "project_accepted",
                 "project_rejected",
                 "project_assigned",
                 "project_submitted",
-                "task_assigned",
                 "status_updated",
+                // Tasks
+                "task_assigned",
+                // Support tickets
+                "ticket_submitted",
+                "ticket_reply",
+                "ticket_status_updated",
+                // Job applications
+                "application_received",
+                "application_status_updated",
+                // Resources
+                "resource_added",
+                // Users
+                "user_registered",
             ],
             required: true,
         },

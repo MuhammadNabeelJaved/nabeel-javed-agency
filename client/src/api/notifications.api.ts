@@ -6,7 +6,22 @@ import apiClient from './apiClient';
 
 export interface ApiNotification {
     _id: string;
-    type: 'message' | 'file_received' | 'project_accepted' | 'project_rejected' | 'project_assigned';
+    type:
+        | 'message'
+        | 'file_received'
+        | 'project_accepted'
+        | 'project_rejected'
+        | 'project_assigned'
+        | 'project_submitted'
+        | 'status_updated'
+        | 'task_assigned'
+        | 'ticket_submitted'
+        | 'ticket_reply'
+        | 'ticket_status_updated'
+        | 'application_received'
+        | 'application_status_updated'
+        | 'resource_added'
+        | 'user_registered';
     title: string;
     message: string;
     payload: Record<string, unknown>;

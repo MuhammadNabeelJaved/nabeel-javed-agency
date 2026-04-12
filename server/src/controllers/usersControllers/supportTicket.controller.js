@@ -8,6 +8,8 @@ import SupportTicket from '../../models/usersModels/SupportTicket.model.js';
 import AppError from '../../utils/AppError.js';
 import asyncHandler from '../../middlewares/asyncHandler.js';
 import { successResponse } from '../../utils/apiResponse.js';
+import { notifyAdmins, createAndEmitNotification } from '../../utils/notificationService.js';
+import { emitDataUpdate } from '../../utils/dataUpdateService.js';
 
 // ─── User: Create Ticket ──────────────────────────────────────────────────────
 export const createTicket = asyncHandler(async (req, res) => {
@@ -23,6 +25,18 @@ export const createTicket = asyncHandler(async (req, res) => {
   });
 
   await ticket.populate('submittedBy', 'name email photo');
+
+  // Notify all admins of the new ticket (non-blocking)
+  const io = req.app.get('io');
+  notifyAdmins(io, {
+    type: 'ticket_submitted',
+    title: 'New Support Ticket',
+    message: `${req.user.name} submitted a ${ticket.priority} priority ticket: "${ticket.subject}"`,
+    payload: { ticketId: ticket._id, priority: ticket.priority, category: ticket.category },
+    createdBy: req.user._id,
+  }).catch(() => {});
+  emitDataUpdate(io, 'support-tickets', ['admin:global']);
+
   return successResponse(res, 'Ticket submitted successfully', ticket, 201);
 });
 
@@ -52,6 +66,17 @@ export const addUserReply = asyncHandler(async (req, res) => {
   await ticket.save();
   await ticket.populate('submittedBy', 'name email photo');
   await ticket.populate('responses.respondedBy', 'name role');
+
+  // Notify all admins that the user replied (non-blocking)
+  const io = req.app.get('io');
+  notifyAdmins(io, {
+    type: 'ticket_reply',
+    title: 'User Replied to Ticket',
+    message: `${req.user.name} replied to ticket: "${ticket.subject}"`,
+    payload: { ticketId: ticket._id },
+    createdBy: req.user._id,
+  }).catch(() => {});
+  emitDataUpdate(io, 'support-tickets', ['admin:global']);
 
   return successResponse(res, 'Reply added', ticket);
 });
@@ -112,6 +137,7 @@ export const updateTicket = asyncHandler(async (req, res) => {
   const ticket = await SupportTicket.findById(id);
   if (!ticket) throw new AppError('Ticket not found', 404);
 
+  const prevStatus = ticket.status;
   if (status)               ticket.status     = status;
   if (priority)             ticket.priority   = priority;
   if (adminNotes !== undefined) ticket.adminNotes = adminNotes;
@@ -120,6 +146,20 @@ export const updateTicket = asyncHandler(async (req, res) => {
   await ticket.save();
   await ticket.populate('submittedBy', 'name email photo role');
   await ticket.populate('responses.respondedBy', 'name role');
+
+  // Notify ticket submitter if status changed (non-blocking)
+  if (status && status !== prevStatus && ticket.submittedBy?._id) {
+    const io = req.app.get('io');
+    createAndEmitNotification(io, {
+      recipientId: ticket.submittedBy._id,
+      type: 'ticket_status_updated',
+      title: 'Ticket Status Updated',
+      message: `Your ticket "${ticket.subject}" status changed to ${status}`,
+      payload: { ticketId: ticket._id, oldStatus: prevStatus, newStatus: status },
+      createdBy: req.user._id,
+    }).catch(() => {});
+    emitDataUpdate(io, 'support-tickets', [`user:${ticket.submittedBy._id}`]);
+  }
 
   return successResponse(res, 'Ticket updated', ticket);
 });
@@ -139,6 +179,20 @@ export const addAdminResponse = asyncHandler(async (req, res) => {
   await ticket.save();
   await ticket.populate('submittedBy', 'name email photo role');
   await ticket.populate('responses.respondedBy', 'name role');
+
+  // Notify the ticket submitter about the admin reply (non-blocking)
+  if (ticket.submittedBy?._id) {
+    const io = req.app.get('io');
+    createAndEmitNotification(io, {
+      recipientId: ticket.submittedBy._id,
+      type: 'ticket_reply',
+      title: 'Support Team Replied',
+      message: `Your ticket "${ticket.subject}" received a new reply from our support team`,
+      payload: { ticketId: ticket._id },
+      createdBy: req.user._id,
+    }).catch(() => {});
+    emitDataUpdate(io, 'support-tickets', [`user:${ticket.submittedBy._id}`, 'admin:global']);
+  }
 
   return successResponse(res, 'Response added', ticket);
 });

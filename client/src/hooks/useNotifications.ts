@@ -144,10 +144,28 @@ export function useNotifications({ enableToast = true }: { enableToast?: boolean
         [notifications]
     );
 
+    // Count of unread ticket notifications — drives support badge
+    const ticketUnreadCount = useMemo(
+        () => notifications.filter(n => !n.isRead && (
+            n.type === 'ticket_submitted' || n.type === 'ticket_reply' || n.type === 'ticket_status_updated'
+        )).length,
+        [notifications]
+    );
+
+    // Count of unread job-related notifications — drives hiring badge
+    const jobUnreadCount = useMemo(
+        () => notifications.filter(n => !n.isRead && (
+            n.type === 'application_received' || n.type === 'application_status_updated'
+        )).length,
+        [notifications]
+    );
+
     return {
         notifications,
         unreadCount,
         chatUnreadCount,
+        ticketUnreadCount,
+        jobUnreadCount,
         isLoading,
         markAsRead,
         markAllAsRead,
@@ -160,13 +178,28 @@ export function useNotifications({ enableToast = true }: { enableToast?: boolean
 // ── Toast style per notification type ─────────────────────────────────────────
 function getToastFn(type: string) {
     switch (type) {
+        // Success states
         case 'project_accepted':
+        case 'application_status_updated': // caller message says hired/shortlisted
             return toast.success;
+        // Error/rejection states
         case 'project_rejected':
             return toast.error;
+        // Info — actionable items for admin
+        case 'ticket_submitted':
+        case 'application_received':
+        case 'user_registered':
+        case 'project_submitted':
+        case 'task_assigned':
         case 'project_assigned':
         case 'file_received':
+        case 'resource_added':
             return toast.info;
+        // Warning-ish — ticket replies need attention
+        case 'ticket_reply':
+        case 'ticket_status_updated':
+        case 'status_updated':
+            return toast.warning;
         case 'message':
         default:
             return toast.message;

@@ -28,6 +28,7 @@ import {
     sendJobApplicationAdminNotification,
 } from "../../utils/sendEmails.js";
 import { emitDataUpdate } from "../../utils/dataUpdateService.js";
+import { notifyAdmins, createAndEmitNotification } from "../../utils/notificationService.js";
 
 // =========================
 // SUBMIT APPLICATION (public)
@@ -92,6 +93,14 @@ export const submitApplication = asyncHandler(async (req, res) => {
     // Notify admin dashboard in real-time
     const io = req.app.get("io");
     emitDataUpdate(io, "job-applications", ["admin:global"]);
+
+    // Persist in-app notification for all admins (non-blocking)
+    notifyAdmins(io, {
+        type: "application_received",
+        title: "New Job Application",
+        message: `${firstName} ${lastName} applied for "${jobPosting.jobTitle}" (${jobPosting.department})`,
+        payload: { applicationId: application._id, jobTitle: jobPosting.jobTitle, applicantEmail: email },
+    }).catch(() => {});
 
     // Send confirmation email to applicant + admin notification (non-blocking)
     Promise.allSettled([
@@ -221,6 +230,25 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
     const rooms = ["admin:global"];
     if (applicantUserId) rooms.push(`user:${applicantUserId}`);
     emitDataUpdate(io, "job-applications", rooms);
+
+    // Persist in-app notification to the applicant if they have an account (non-blocking)
+    if (applicantUserId) {
+        const statusMessages = {
+            reviewing:   `Your application for "${application.job?.jobTitle}" is now under review`,
+            shortlisted: `Congratulations! You've been shortlisted for "${application.job?.jobTitle}"`,
+            rejected:    `Your application for "${application.job?.jobTitle}" was not selected this time`,
+            hired:       `Congratulations! You've been hired for "${application.job?.jobTitle}". Welcome to the team!`,
+            pending:     `Your application for "${application.job?.jobTitle}" status has been updated`,
+        };
+        createAndEmitNotification(io, {
+            recipientId: applicantUserId,
+            type: "application_status_updated",
+            title: status === "hired" ? "You're Hired!" : status === "shortlisted" ? "Shortlisted!" : "Application Update",
+            message: statusMessages[status] || `Application status updated to ${status}`,
+            payload: { applicationId: application._id, status, jobTitle: application.job?.jobTitle },
+            createdBy: req.user._id,
+        }).catch(() => {});
+    }
 
     successResponse(res, "Application status updated", application);
 });
