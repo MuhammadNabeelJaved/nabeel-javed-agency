@@ -3,7 +3,9 @@
  * System alerts and messages — wired to real REST API via useNotifications hook.
  */
 import React, { useState } from 'react';
-import { Bell, Check, Clock, Info, AlertTriangle, CheckCircle2, Loader2, Trash2 } from 'lucide-react';
+import { Bell, Check, Clock, Info, AlertTriangle, CheckCircle2, Loader2, Trash2,
+    TicketCheck, Briefcase, FileBox, UserPlus, Reply, MessageSquare, Paperclip,
+    FolderOpen, ClipboardList, RefreshCw, UserX, UserCheck } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -24,12 +26,27 @@ export default function Notifications() {
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'project_accepted': return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-            case 'project_rejected': return <AlertTriangle className="h-5 w-5 text-red-500" />;
-            case 'project_assigned': return <Info className="h-5 w-5 text-blue-500" />;
-            case 'file_received': return <Info className="h-5 w-5 text-purple-500" />;
-            case 'message': return <Bell className="h-5 w-5 text-primary" />;
-            default: return <Info className="h-5 w-5 text-blue-500" />;
+            // Projects
+            case 'project_accepted':           return <UserCheck    className="h-5 w-5 text-emerald-500" />;
+            case 'project_rejected':           return <UserX        className="h-5 w-5 text-red-500"     />;
+            case 'project_assigned':           return <FolderOpen   className="h-5 w-5 text-blue-500"    />;
+            case 'project_submitted':          return <FolderOpen   className="h-5 w-5 text-violet-500"  />;
+            case 'status_updated':             return <RefreshCw    className="h-5 w-5 text-amber-500"   />;
+            // Tasks & chat
+            case 'task_assigned':              return <ClipboardList className="h-5 w-5 text-sky-500"    />;
+            case 'file_received':              return <Paperclip    className="h-5 w-5 text-purple-500"  />;
+            case 'message':                    return <MessageSquare className="h-5 w-5 text-primary"    />;
+            // Support tickets
+            case 'ticket_submitted':           return <TicketCheck  className="h-5 w-5 text-amber-500"  />;
+            case 'ticket_reply':               return <Reply        className="h-5 w-5 text-blue-500"   />;
+            case 'ticket_status_updated':      return <RefreshCw    className="h-5 w-5 text-teal-500"   />;
+            // Job applications
+            case 'application_received':       return <Briefcase    className="h-5 w-5 text-indigo-500" />;
+            case 'application_status_updated': return <Briefcase    className="h-5 w-5 text-emerald-500"/>;
+            // Resources & users
+            case 'resource_added':             return <FileBox      className="h-5 w-5 text-cyan-500"   />;
+            case 'user_registered':            return <UserPlus     className="h-5 w-5 text-violet-500" />;
+            default:                           return <Info         className="h-5 w-5 text-blue-500"   />;
         }
     };
 

@@ -8,6 +8,8 @@ import asyncHandler from "../../middlewares/asyncHandler.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import AppError from "../../utils/AppError.js";
 import Resource from "../../models/usersModels/Resource.model.js";
+import { notifyTeam } from "../../utils/notificationService.js";
+import { emitDataUpdate } from "../../utils/dataUpdateService.js";
 
 dotenv.config();
 
@@ -55,6 +57,18 @@ export const uploadResource = asyncHandler(async (req, res) => {
     });
 
     const populated = await resource.populate("uploadedBy", "name photo");
+
+    // Notify all team members about the new resource (non-blocking)
+    const io = req.app.get("io");
+    const uploaderName = req.user?.name || "Admin";
+    notifyTeam(io, {
+        type: "resource_added",
+        title: "New Resource Uploaded",
+        message: `${uploaderName} uploaded "${resource.name}" — available in the resources section`,
+        payload: { resourceId: resource._id, name: resource.name, mimeType: resource.mimeType },
+        createdBy: req.user._id,
+    }).catch(() => {});
+    emitDataUpdate(io, "resources", ["team:global", "admin:global"]);
 
     return successResponse(res, "File uploaded", populated, 201);
 });
