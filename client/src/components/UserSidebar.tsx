@@ -163,15 +163,16 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
         )}
 
         {/* Logo + collapse toggle */}
-        <div className="relative h-16 sm:h-20 flex items-center border-b border-border/50 shrink-0 px-3 lg:px-4">
-          <Link
-            to="/"
-            className={cn(
-              'flex items-center gap-3 group min-w-0 transition-all duration-300',
-              !showText && 'lg:flex-1 lg:justify-center',
-            )}
-          >
+        <motion.div
+          layout
+          className={cn(
+            'h-16 sm:h-20 flex items-center border-b border-border/50 shrink-0 transition-all duration-300',
+            showText ? 'px-3 lg:px-4 justify-between' : 'justify-center gap-2 px-2',
+          )}
+        >
+          <Link to="/" className="flex items-center gap-2.5 group min-w-0">
             <motion.img
+              layout
               src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png"
               alt="Nabeel Logo"
               className="h-9 w-auto dark:invert shrink-0"
@@ -180,25 +181,35 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
             />
             <AnimatePresence initial={false}>
               {showText && (
-                <motion.span key="logo-text" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.2 }} className="hidden lg:block font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors duration-200 overflow-hidden whitespace-nowrap">
+                <motion.span key="logo-text" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.22, ease: 'easeInOut' }} className="hidden lg:block font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors duration-200 overflow-hidden whitespace-nowrap">
                   NABEEL
                 </motion.span>
               )}
             </AnimatePresence>
           </Link>
           {onToggleCollapse && (
-            <button
+            <motion.button
+              layout
               onClick={onToggleCollapse}
               title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className={cn(
-                'hidden lg:flex p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0',
-                !showText && 'absolute right-1.5 top-1/2 -translate-y-1/2',
-              )}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="hidden lg:flex p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
             >
-              {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-            </button>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={collapsed ? 'open' : 'close'}
+                  initial={{ opacity: 0, rotate: -90 }}
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                </motion.div>
+              </AnimatePresence>
+            </motion.button>
           )}
-        </div>
+        </motion.div>
 
         {/* User compact profile — only when expanded */}
         <AnimatePresence initial={false}>
