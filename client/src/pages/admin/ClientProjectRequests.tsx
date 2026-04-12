@@ -130,8 +130,7 @@ export default function ClientProjectRequests() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleting, setDeleting]         = useState(false);
 
-  // Bulk select
-  const bulk = useBulkSelect(filtered);
+  // Bulk select state
   const [bulkApproving, setBulkApproving] = useState(false);
   const [bulkRejecting, setBulkRejecting] = useState(false);
   const [bulkDeleting,  setBulkDeleting]  = useState(false);
@@ -358,6 +357,9 @@ export default function ClientProjectRequests() {
       (r.requestedBy?.email ?? '').toLowerCase().includes(search.toLowerCase())
     )
   );
+
+  // Bulk select — must come after `filtered` is defined
+  const bulk = useBulkSelect(filtered);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
