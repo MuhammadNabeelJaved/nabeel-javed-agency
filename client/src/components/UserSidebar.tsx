@@ -23,6 +23,7 @@ interface UserSidebarProps {
   onClose?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  topOffset?: number;
 }
 
 const DEFAULT_LINKS = [
@@ -37,7 +38,7 @@ const DEFAULT_LINKS = [
   { name: 'Support',            path: '/user-dashboard/support',        icon: HelpCircle },
 ];
 
-export function UserSidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse }: UserSidebarProps) {
+export function UserSidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse, topOffset = 0 }: UserSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isVisible } = usePageVisibility();
@@ -147,12 +148,15 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
         )}
       </AnimatePresence>
 
-      <aside className={cn(
-        'fixed left-0 top-0 h-screen bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col w-72',
-        isOpen ? 'translate-x-0' : '-translate-x-full',
-        'sm:translate-x-0 sm:w-20',
-        collapsed ? 'lg:w-20' : 'lg:w-72',
-      )}>
+      <aside
+        className={cn(
+          'fixed left-0 bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col w-72',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'sm:translate-x-0 sm:w-20',
+          collapsed ? 'lg:w-20' : 'lg:w-72',
+        )}
+        style={{ top: topOffset, height: `calc(100vh - ${topOffset}px)` }}
+      >
         {isOpen && (
           <motion.button onClick={onClose} whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} className="absolute top-4 right-4 sm:hidden p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors">
             <X className="h-4 w-4" />

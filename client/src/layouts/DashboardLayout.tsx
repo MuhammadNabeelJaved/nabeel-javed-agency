@@ -88,7 +88,7 @@ export function DashboardLayout() {
         <AnnouncementBar key={barGroup.bar._id} barGroup={barGroup} topOffset={idx * 40} />
       ))}
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} topOffset={dashBarHeight} />
 
       <div className={`sm:pl-20 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} relative z-10 transition-all duration-300`}>
         {/* Topbar — shifts down when announcement bars are present */}

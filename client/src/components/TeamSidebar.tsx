@@ -23,6 +23,7 @@ interface TeamSidebarProps {
   onClose?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  topOffset?: number;
 }
 
 const DEFAULT_LINKS = [
@@ -40,7 +41,7 @@ const DEFAULT_LINKS = [
   { name: 'Support',      path: '/team/support',        icon: HelpCircle },
 ];
 
-export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse }: TeamSidebarProps) {
+export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse, topOffset = 0 }: TeamSidebarProps) {
   const location = useLocation();
   const { isVisible } = usePageVisibility();
   const { logout } = useAuth();
@@ -154,12 +155,15 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
         )}
       </AnimatePresence>
 
-      <aside className={cn(
-        'fixed left-0 top-0 h-screen bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col w-72',
-        isOpen ? 'translate-x-0' : '-translate-x-full',
-        'sm:translate-x-0 sm:w-20',
-        collapsed ? 'lg:w-20' : 'lg:w-72',
-      )}>
+      <aside
+        className={cn(
+          'fixed left-0 bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col w-72',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'sm:translate-x-0 sm:w-20',
+          collapsed ? 'lg:w-20' : 'lg:w-72',
+        )}
+        style={{ top: topOffset, height: `calc(100vh - ${topOffset}px)` }}
+      >
         {isOpen && (
           <motion.button
             onClick={onClose}
