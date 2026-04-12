@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../hooks/useNotifications';
+import { useAuth } from '../contexts/AuthContext';
 
 interface NotificationBellProps {
     notificationsRoute: string;
@@ -54,35 +55,65 @@ function formatTime(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-/** Map each notification type to a dashboard-relative path to navigate to on click */
-function getNavPath(type: string, payload: Record<string, unknown>, chatRoute?: string): string | null {
+/** Map each notification type to the correct dashboard path based on the viewer's role */
+function getNavPath(
+    type: string,
+    payload: Record<string, unknown>,
+    role: string,
+    chatRoute?: string,
+): string | null {
+    const projectId = payload?.projectId as string | undefined;
+
     switch (type) {
         case 'message':
         case 'file_received':
             return chatRoute && payload?.conversationId
                 ? `${chatRoute}?convoId=${payload.conversationId as string}${payload.messageId ? `&messageId=${payload.messageId as string}` : ''}`
                 : null;
+
+        // Admin always goes to their own client-requests page with the project pre-opened
+        case 'project_submitted':
+            if (role === 'admin') {
+                return projectId
+                    ? `/admin/client-requests?projectId=${projectId}`
+                    : '/admin/client-requests';
+            }
+            return '/user-dashboard/projects';
+
+        // User/team receives accepted/rejected/status_updated → their own projects page
+        case 'project_accepted':
+        case 'project_rejected':
+        case 'status_updated':
+            if (role === 'admin') return '/admin/client-requests';
+            return '/user-dashboard/projects';
+
+        // Team member assigned to a project
+        case 'project_assigned':
+            return role === 'team' ? '/team/projects' : '/admin/client-requests';
+
+        case 'task_assigned':
+            return role === 'team' ? '/team/tasks' : '/admin/client-requests';
+
+        // Tickets — admin sees all tickets, user sees their own support page
         case 'ticket_submitted':
         case 'ticket_reply':
         case 'ticket_status_updated':
-            return '/admin/support';
+            return role === 'admin' ? '/admin/support' : '/user-dashboard/support';
+
+        // Job applications
         case 'application_received':
             return '/admin/job-applications';
         case 'application_status_updated':
             return '/user-dashboard/applied-jobs';
+
+        // Resources
         case 'resource_added':
-            return '/team/resources';
+            return role === 'admin' ? '/admin/resources' : '/team/resources';
+
+        // New user registered — admin only
         case 'user_registered':
             return '/admin/team';
-        case 'project_accepted':
-        case 'project_rejected':
-        case 'project_submitted':
-        case 'status_updated':
-            return '/user-dashboard/projects';
-        case 'project_assigned':
-            return '/team/projects';
-        case 'task_assigned':
-            return '/team/tasks';
+
         default:
             return null;
     }
@@ -90,6 +121,8 @@ function getNavPath(type: string, payload: Record<string, unknown>, chatRoute?: 
 
 export function NotificationBell({ notificationsRoute, chatRoute }: NotificationBellProps) {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const role = user?.role ?? 'user';
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications({ enableToast: false });
     const [open, setOpen] = React.useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -201,7 +234,7 @@ export function NotificationBell({ notificationsRoute, chatRoute }: Notification
                                                 transition={{ delay: i * 0.03 }}
                                                 onClick={() => {
                                                     if (!notif.isRead) markAsRead(notif._id);
-                                                    const path = getNavPath(notif.type, notif.payload, chatRoute);
+                                                    const path = getNavPath(notif.type, notif.payload, role, chatRoute);
                                                     if (path) { setOpen(false); navigate(path); }
                                                 }}
                                                 className={`group relative flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors duration-150
