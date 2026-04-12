@@ -5,6 +5,8 @@ import {
     updateNavLinks,
     getFooterSections,
     updateFooterSections,
+    getFooterBottom,
+    updateFooterBottom,
     updateGlobalTheme,
     updateLogo,
     updateTechStack,
@@ -34,6 +36,7 @@ const router = express.Router();
 router.get("/", getCMS);
 router.get("/nav-links", getNavLinks);
 router.get("/footer-sections", getFooterSections);
+router.get("/footer-bottom", getFooterBottom);
 
 // Admin-only writes
 router.use(userAuthenticated, authorizeRoles("admin"));
@@ -44,6 +47,7 @@ router.patch("/global-theme", updateGlobalTheme);
 // Nav & Footer links
 router.put("/nav-links", updateNavLinks);
 router.put("/footer-sections", updateFooterSections);
+router.put("/footer-bottom", updateFooterBottom);
 
 // Global Logo
 router.patch("/logo", updateLogo);

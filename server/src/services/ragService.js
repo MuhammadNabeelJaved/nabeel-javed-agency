@@ -246,5 +246,8 @@ export async function embedAndSyncEntry(doc) {
       sourceUrl:  doc.sourceUrl || '',
       metadata:   { chunkCount: chunks.length, syncedAt: new Date().toISOString() },
     });
+    // Release the 1 536-float array immediately after it has been serialised
+    // and sent — prevents them accumulating in the vecs[] array during long loops.
+    vecs[i] = null;
   }
 }

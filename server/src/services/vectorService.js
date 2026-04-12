@@ -1,10 +1,15 @@
 /**
  * vectorService.js
  *
- * Supabase pgvector integration — stores and retrieves knowledge embeddings.
- * All functions degrade gracefully if SUPABASE_URL / SUPABASE_SERVICE_KEY are
- * absent from the environment; they return null / empty arrays instead of
- * throwing so the main chatbot continues to work via keyword-based fallback.
+ * Supabase pgvector integration — uses the Supabase REST API directly via
+ * Node.js fetch instead of the @supabase/supabase-js SDK.
+ *
+ * WHY NOT THE SDK: supabase-js v2 opens persistent WebSocket realtime
+ * connections that cause significant memory growth in long-running servers,
+ * leading to OOM crashes during batch embedding jobs.
+ *
+ * This implementation keeps memory usage minimal — every call opens a single
+ * HTTP request and frees all memory on completion.
  *
  * Required env vars:
  *   SUPABASE_URL          — e.g. https://xyzxyz.supabase.co
@@ -13,22 +18,37 @@
  * Required Supabase schema: server/supabase-schema.sql
  */
 
-import { createClient } from '@supabase/supabase-js';
-
-let _client = null;
-
-function getClient() {
-  if (_client) return _client;
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!url || !key) return null;
-  _client = createClient(url, key, { auth: { persistSession: false } });
-  return _client;
-}
+const _url = () => process.env.SUPABASE_URL;
+const _key = () => process.env.SUPABASE_SERVICE_KEY;
 
 /** True when Supabase credentials are configured. */
 export const isVectorDBEnabled = () =>
   Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY);
+
+/** Shared auth headers for every request. */
+function _headers(extra = {}) {
+  return {
+    'Content-Type':  'application/json',
+    'apikey':        _key(),
+    'Authorization': `Bearer ${_key()}`,
+    ...extra,
+  };
+}
+
+/**
+ * Always drain the response body (required to free Node.js fetch buffers +
+ * TCP connections). Throws if the status indicates an error.
+ * Returns the body text so callers can parse it (avoids double-read).
+ */
+async function _check(res, label) {
+  // MUST consume the body — undrained responses hold the TCP connection open
+  // and accumulate buffer memory until the process OOMs.
+  const body = await res.text().catch(() => '');
+  if (!res.ok) {
+    throw new Error(`[VectorDB] ${label} failed ${res.status}: ${body.slice(0, 200)}`);
+  }
+  return body;
+}
 
 // ── Write operations ──────────────────────────────────────────────────────────
 
@@ -36,18 +56,6 @@ export const isVectorDBEnabled = () =>
  * Upsert a knowledge chunk with its embedding.
  * Uses (mongo_id, chunk_index) as the composite natural key — safe to call
  * multiple times; existing chunks are overwritten.
- *
- * @param {Object}   opts
- * @param {string}   opts.mongoId      — MongoDB _id of the parent ChatbotKnowledge doc
- * @param {number}   opts.chunkIndex   — 0-based position of this chunk in the doc
- * @param {string}   opts.title        — Human-readable label
- * @param {string}   opts.content      — Chunk text (what is embedded and returned)
- * @param {number[]} opts.embedding    — 1536-dimensional float array
- * @param {string}   [opts.type]       — 'text'|'faq'|'url'|'auto'|'file'
- * @param {string}   [opts.roleAccess] — 'public'|'user'|'team'|'admin'
- * @param {string[]} [opts.tags]
- * @param {string}   [opts.sourceUrl]
- * @param {Object}   [opts.metadata]
  */
 export async function upsertChunk({
   mongoId,
@@ -61,49 +69,45 @@ export async function upsertChunk({
   sourceUrl = '',
   metadata = {},
 }) {
-  const client = getClient();
-  if (!client) return;
+  if (!isVectorDBEnabled()) return;
 
-  const { error } = await client.from('knowledge_chunks').upsert(
+  const res = await fetch(
+    `${_url()}/rest/v1/knowledge_chunks`,
     {
-      mongo_id:    mongoId,
-      chunk_index: chunkIndex,
-      title,
-      content,
-      embedding,
-      type,
-      role_access: roleAccess,
-      tags,
-      source_url:  sourceUrl,
-      metadata,
-      updated_at:  new Date().toISOString(),
-    },
-    { onConflict: 'mongo_id,chunk_index' }
+      method: 'POST',
+      headers: _headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify({
+        mongo_id:    mongoId,
+        chunk_index: chunkIndex,
+        title,
+        content,
+        embedding,
+        type,
+        role_access: roleAccess,
+        tags,
+        source_url:  sourceUrl,
+        metadata,
+        updated_at:  new Date().toISOString(),
+      }),
+    }
   );
 
-  if (error) {
-    throw new Error(`[VectorDB] upsert failed: ${error.message}`);
-  }
+  await _check(res, 'upsert');
 }
 
 /**
  * Delete all vector chunks for a given MongoDB document _id.
  * Call before re-embedding an updated document to avoid stale chunks.
- *
- * @param {string} mongoId
  */
 export async function deleteByMongoId(mongoId) {
-  const client = getClient();
-  if (!client) return;
+  if (!isVectorDBEnabled()) return;
 
-  const { error } = await client
-    .from('knowledge_chunks')
-    .delete()
-    .eq('mongo_id', String(mongoId));
+  const res = await fetch(
+    `${_url()}/rest/v1/knowledge_chunks?mongo_id=eq.${encodeURIComponent(mongoId)}`,
+    { method: 'DELETE', headers: _headers({ Prefer: 'return=minimal' }) }
+  );
 
-  if (error) {
-    throw new Error(`[VectorDB] delete failed: ${error.message}`);
-  }
+  await _check(res, 'delete');
 }
 
 // ── Read / search ──────────────────────────────────────────────────────────────
@@ -111,77 +115,105 @@ export async function deleteByMongoId(mongoId) {
 /**
  * Semantic similarity search using cosine distance on the stored embeddings.
  * Calls the `match_knowledge` Postgres function defined in supabase-schema.sql.
- *
- * @param {number[]} queryEmbedding  — 1536-dim vector from embedText()
- * @param {Object}   opts
- * @param {number}   [opts.limit=5]           — Max results
- * @param {number}   [opts.threshold=0.60]    — Min cosine similarity (0–1)
- * @param {string}   [opts.roleAccess='public'] — Caller's access level
- * @returns {Promise<Array<{id,mongo_id,title,content,type,source_url,similarity}>>}
  */
 export async function semanticSearch(queryEmbedding, {
   limit = 5,
   threshold = 0.60,
   roleAccess = 'public',
 } = {}) {
-  const client = getClient();
-  if (!client) return [];
+  if (!isVectorDBEnabled()) return [];
 
-  const { data, error } = await client.rpc('match_knowledge', {
-    query_embedding: queryEmbedding,
-    match_threshold: threshold,
-    match_count:     limit,
-    role_filter:     roleAccess,
-  });
+  const res = await fetch(
+    `${_url()}/rest/v1/rpc/match_knowledge`,
+    {
+      method: 'POST',
+      headers: _headers(),
+      body: JSON.stringify({
+        query_embedding: queryEmbedding,
+        match_threshold: threshold,
+        match_count:     limit,
+        role_filter:     roleAccess,
+      }),
+    }
+  );
 
-  if (error) {
-    throw new Error(`[VectorDB] search failed: ${error.message}`);
-  }
-
-  return data || [];
+  const body = await _check(res, 'semanticSearch');
+  return JSON.parse(body);
 }
 
 // ── Stats & admin ─────────────────────────────────────────────────────────────
 
 /**
  * Return aggregate counts about the vector store.
- * @returns {Promise<{total:number, byType:Object, byRole:Object}|null>}
+ *
+ * Memory-safe implementation:
+ *  - Total count is read from the Content-Range response header (no rows
+ *    transferred for the count query).
+ *  - Breakdown data is capped at 2 000 rows (~80 KB JSON) so the type/role
+ *    aggregation never causes an OOM regardless of table size.
  */
 export async function getVectorStats() {
-  const client = getClient();
-  if (!client) return null;
+  if (!isVectorDBEnabled()) return null;
 
-  const { data, error } = await client
-    .from('knowledge_chunks')
-    .select('type, role_access');
+  try {
+    // ── Step 1: get total count from Content-Range header ──────────────────────
+    // Fetching limit=1 keeps the payload tiny while still returning the header
+    // "Content-Range: 0-0/<TOTAL>" when Prefer: count=exact is set.
+    const countRes = await fetch(
+      `${_url()}/rest/v1/knowledge_chunks?select=id&limit=1`,
+      { headers: _headers({ Prefer: 'count=exact' }) }
+    );
 
-  if (error) return null;
+    if (!countRes.ok) {
+      await countRes.text().catch(() => '');
+      return null;
+    }
 
-  const byType = {};
-  const byRole = {};
-  for (const row of data || []) {
-    byType[row.type]        = (byType[row.type]        || 0) + 1;
-    byRole[row.role_access] = (byRole[row.role_access] || 0) + 1;
+    // Drain the tiny body (1 row or empty)
+    await countRes.text().catch(() => '');
+    const range = countRes.headers.get('content-range') || '';
+    // Content-Range format:  "0-0/12345"  or  "*/0"  (when empty)
+    const total = parseInt(range.split('/')[1] || '0', 10) || 0;
+
+    // ── Step 2: breakdown by type / role (cap at 2 000 rows) ──────────────────
+    // 2 000 rows × ~40 bytes each = ~80 KB — safe for in-memory aggregation.
+    const dataRes = await fetch(
+      `${_url()}/rest/v1/knowledge_chunks?select=type,role_access&limit=2000`,
+      { headers: _headers() }
+    );
+
+    const byType = {};
+    const byRole = {};
+
+    if (dataRes.ok) {
+      const body = await dataRes.text().catch(() => '[]');
+      const data = JSON.parse(body);
+      for (const row of data || []) {
+        byType[row.type]        = (byType[row.type]        || 0) + 1;
+        byRole[row.role_access] = (byRole[row.role_access] || 0) + 1;
+      }
+    } else {
+      await dataRes.text().catch(() => '');
+    }
+
+    return { total, byType, byRole };
+  } catch (e) {
+    console.error('[VectorDB] getVectorStats error:', e.message);
+    return null;
   }
-
-  return { total: data?.length ?? 0, byType, byRole };
 }
 
 /**
  * Hard-reset: deletes every row in knowledge_chunks.
- * Use with caution — this removes all vector embeddings.
  */
 export async function clearVectorStore() {
-  const client = getClient();
-  if (!client) return;
+  if (!isVectorDBEnabled()) return;
 
-  // Supabase requires a filter clause — match all rows via NOT IS NULL on PK
-  const { error } = await client
-    .from('knowledge_chunks')
-    .delete()
-    .not('id', 'is', null);
+  // Delete all rows — Supabase requires at least one filter; use a catch-all
+  const res = await fetch(
+    `${_url()}/rest/v1/knowledge_chunks?id=not.is.null`,
+    { method: 'DELETE', headers: _headers({ Prefer: 'return=minimal' }) }
+  );
 
-  if (error) {
-    throw new Error(`[VectorDB] clear failed: ${error.message}`);
-  }
+  await _check(res, 'clearVectorStore');
 }

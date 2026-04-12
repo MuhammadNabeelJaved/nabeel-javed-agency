@@ -433,7 +433,7 @@ export function Chatbot() {
     twTimerRef.current.clear();
     twBufferRef.current.clear();
     abortRef.current?.abort();
-    const welcome = config?.welcomeMessage || "Hi! I'm Nova. How can I help?";
+    const welcome = config?.welcomeMessage || "Hi! I'm WEB AI. How can I help?";
     sessionId.current = crypto.randomUUID();
     localStorage.setItem('nova_session_id', sessionId.current);
     historyLoadedRef.current = false;
@@ -450,7 +450,7 @@ export function Chatbot() {
   // ── Don't render if disabled or config failed ─────────────────────────────
   if (configErr || (config !== null && !config.isEnabled)) return null;
 
-  const botName = config?.botName || 'Nova';
+  const botName = config?.botName || 'WEB AI';
 
   return (
     <>

@@ -95,6 +95,7 @@ import TeamResources from './pages/team/TeamResources';
 import TeamClientRequestDetail from './pages/team/TeamClientRequestDetail';
 import TeamSupport from './pages/team/TeamSupport';
 import TeamAIChat from './pages/team/TeamAIChat';
+import TeamAppliedJobs from './pages/team/TeamAppliedJobs';
 
 // User Dashboard Pages
 import { UserDashboardLayout } from './layouts/UserDashboardLayout';
@@ -305,6 +306,7 @@ export default function App() {
                 <Route path="settings" element={<TeamSettings />} />
                 <Route path="ai-assistant" element={<TeamAIChat />} />
                 <Route path="support" element={<TeamSupport />} />
+                <Route path="applied-jobs" element={<TeamAppliedJobs />} />
               </Route>
 
               {/* User Dashboard Routes */}

@@ -159,6 +159,28 @@ const cmsSchema = new mongoose.Schema(
             }],
         }],
 
+        // ── Footer Bottom Bar ──
+        // Controls the copyright strip and privacy-policy links at the very
+        // bottom of the footer.
+        footerBottom: {
+            copyrightText: {
+                type: String, trim: true, maxlength: 200,
+                default: 'Nabeel Agency. All rights reserved.',
+            },
+            links: [{
+                label:        { type: String, required: true, trim: true, maxlength: 60 },
+                href:         { type: String, required: true, trim: true, maxlength: 200 },
+                order:        { type: Number, default: 0 },
+                isActive:     { type: Boolean, default: true },
+                openInNewTab: { type: Boolean, default: false },
+            }],
+            taglineText: {
+                type: String, trim: true, maxlength: 200,
+                default: 'Made with ♥ in California',
+            },
+            taglineVisible: { type: Boolean, default: true },
+        },
+
         // ── Global Site Theme ──
         // When set, overrides all visitor theme preferences site-wide
         globalTheme: {

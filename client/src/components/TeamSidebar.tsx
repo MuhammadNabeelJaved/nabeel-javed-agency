@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, BarChart2, Settings, LogOut, Bell,
-  ChevronRight, Calendar, MessageSquare, Files, HelpCircle, X, Sparkles,
+  ChevronRight, Calendar, MessageSquare, Files, HelpCircle, X, Sparkles, Briefcase,
   PanelLeftClose, PanelLeftOpen, GripVertical, Star,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -36,7 +36,8 @@ const DEFAULT_LINKS = [
   { name: 'Reports',       path: '/team/reports',        icon: BarChart2 },
   { name: 'Notifications', path: '/team/notifications',  icon: Bell },
   { name: 'Settings',      path: '/team/settings',       icon: Settings },
-  { name: 'Support',       path: '/team/support',        icon: HelpCircle },
+  { name: 'Applied Jobs',  path: '/team/applied-jobs',   icon: Briefcase },
+  { name: 'Support',      path: '/team/support',        icon: HelpCircle },
 ];
 
 export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse }: TeamSidebarProps) {

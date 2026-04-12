@@ -11,6 +11,9 @@ export const cmsApi = {
   getFooterSections: () => apiClient.get('/cms/footer-sections'),
   updateFooterSections: (footerSections: any[]) => apiClient.put('/cms/footer-sections', { footerSections }),
 
+  getFooterBottom: () => apiClient.get('/cms/footer-bottom'),
+  updateFooterBottom: (data: any) => apiClient.put('/cms/footer-bottom', data),
+
   updateLogo: (logoUrl: string) => apiClient.patch('/cms/logo', { logoUrl }),
 
   updateTechStack: (techStack: any[]) => apiClient.put('/cms/tech-stack', { techStack }),
