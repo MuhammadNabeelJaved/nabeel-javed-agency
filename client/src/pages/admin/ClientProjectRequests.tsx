@@ -3,7 +3,8 @@
  * View, filter, and manage all client-submitted project requests.
  * Admin can accept, reject, delete, edit, and assign team members.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Search, Loader2, X, Eye, CheckCircle2, Clock, RefreshCw,
   AlertCircle, FolderKanban, FileText, Save, Trash2, Check, XCircle,
@@ -96,6 +97,10 @@ function timeAgo(dateStr: string): string {
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export default function ClientProjectRequests() {
+  const location = useLocation();
+  const autoOpenId = new URLSearchParams(location.search).get('projectId');
+  const autoOpenHandled = useRef(false);
+
   const [requests, setRequests]         = useState<ProjectRequest[]>([]);
   const [teamMembers, setTeamMembers]   = useState<TeamMember[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -157,6 +162,18 @@ export default function ClientProjectRequests() {
 
   // Real-time: refresh when a user submits/deletes a project, or admin updates one
   useDataRealtime('projects', fetchRequests);
+
+  // Auto-open a project dialog when navigated from a notification (?projectId=xxx)
+  useEffect(() => {
+    if (!autoOpenId || loading || autoOpenHandled.current) return;
+    const target = requests.find(r => r._id === autoOpenId);
+    if (target) {
+      autoOpenHandled.current = true;
+      openDetail(target);
+      // Clear the query param from the URL without a full reload so back-nav works
+      window.history.replaceState({}, '', '/admin/client-requests');
+    }
+  }, [autoOpenId, loading, requests]);
 
   // ── Quick: Approve ────────────────────────────────────────────────────────
 
