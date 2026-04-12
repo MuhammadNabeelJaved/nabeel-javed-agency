@@ -163,8 +163,14 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
         )}
 
         {/* Logo + collapse toggle */}
-        <div className="h-16 sm:h-20 flex items-center justify-between px-3 lg:px-4 border-b border-border/50 shrink-0">
-          <Link to="/" className="flex items-center gap-3 group min-w-0">
+        <div className="relative h-16 sm:h-20 flex items-center border-b border-border/50 shrink-0 px-3 lg:px-4">
+          <Link
+            to="/"
+            className={cn(
+              'flex items-center gap-3 group min-w-0 transition-all duration-300',
+              !showText && 'lg:flex-1 lg:justify-center',
+            )}
+          >
             <motion.img
               src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png"
               alt="Nabeel Logo"
@@ -181,7 +187,14 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
             </AnimatePresence>
           </Link>
           {onToggleCollapse && (
-            <button onClick={onToggleCollapse} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} className="hidden lg:flex p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            <button
+              onClick={onToggleCollapse}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className={cn(
+                'hidden lg:flex p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0',
+                !showText && 'absolute right-1.5 top-1/2 -translate-y-1/2',
+              )}
+            >
               {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </button>
           )}
