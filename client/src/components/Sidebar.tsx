@@ -23,6 +23,7 @@ interface SidebarProps {
   onClose?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  topOffset?: number;
 }
 
 const DEFAULT_LINKS = [
@@ -47,7 +48,7 @@ const DEFAULT_LINKS = [
   { name: 'Settings',         path: '/admin/settings',         icon: Settings },
 ];
 
-export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse, topOffset = 0 }: SidebarProps) {
   const location = useLocation();
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -173,12 +174,15 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
         )}
       </AnimatePresence>
 
-      <aside className={cn(
-        'fixed left-0 top-0 h-screen bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col w-72',
-        isOpen ? 'translate-x-0' : '-translate-x-full',
-        'sm:translate-x-0 sm:w-20',
-        collapsed ? 'lg:w-20' : 'lg:w-72',
-      )}>
+      <aside
+        className={cn(
+          'fixed left-0 bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col w-72',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'sm:translate-x-0 sm:w-20',
+          collapsed ? 'lg:w-20' : 'lg:w-72',
+        )}
+        style={{ top: topOffset, height: `calc(100vh - ${topOffset}px)` }}
+      >
         {/* Mobile close */}
         {isOpen && (
           <motion.button

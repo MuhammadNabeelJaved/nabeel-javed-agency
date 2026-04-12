@@ -75,7 +75,7 @@ export function UserDashboardLayout() {
         <AnnouncementBar key={barGroup.bar._id} barGroup={barGroup} topOffset={idx * 40} />
       ))}
 
-      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
+      <UserSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} topOffset={dashBarHeight} />
 
       <div className={`sm:pl-20 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'} relative z-10 transition-all duration-300`}>
         {/* Topbar */}
