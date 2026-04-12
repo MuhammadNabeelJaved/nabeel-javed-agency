@@ -187,20 +187,24 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
           )}
         </div>
 
-        {/* User mini profile — only when expanded */}
+        {/* User compact profile — only when expanded */}
         <AnimatePresence initial={false}>
           {showText && (
-            <motion.div key="user-profile" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="hidden lg:flex flex-col items-center p-5 border-b border-border/50 bg-secondary/5 overflow-hidden">
-              <motion.div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-blue-600 p-[2px] mb-3 cursor-pointer" whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
-                <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
-                  {user?.photo && user.photo !== 'default.jpg'
-                    ? <img src={user.photo} alt={user.name} className="h-full w-full object-cover" />
-                    : <span className="text-xl font-bold text-primary">{user?.name?.charAt(0) ?? 'U'}</span>
-                  }
+            <motion.div key="user-profile" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="hidden lg:block overflow-hidden border-b border-border/50">
+              <div className="flex items-center gap-3 px-4 py-3 bg-secondary/5">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-blue-600 p-[2px] shrink-0">
+                  <div className="h-full w-full rounded-full bg-background flex items-center justify-center overflow-hidden">
+                    {user?.photo && user.photo !== 'default.jpg'
+                      ? <img src={user.photo} alt={user.name} className="h-full w-full object-cover" />
+                      : <span className="text-sm font-bold text-primary">{user?.name?.charAt(0) ?? 'U'}</span>
+                    }
+                  </div>
                 </div>
-              </motion.div>
-              <h3 className="font-semibold text-base">{user?.name ?? 'User'}</h3>
-              <p className="text-xs text-muted-foreground capitalize">{user?.role ?? 'Client Account'}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate leading-tight">{user?.name ?? 'User'}</p>
+                  <p className="text-[11px] text-muted-foreground capitalize mt-0.5">{user?.role ?? 'Client Account'}</p>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
