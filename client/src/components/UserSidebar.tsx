@@ -170,23 +170,30 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
             showText ? 'px-3 lg:px-4 justify-between' : 'justify-center gap-2 px-2',
           )}
         >
-          <Link to="/" className="flex items-center gap-2.5 group min-w-0">
-            <motion.img
-              layout
-              src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png"
-              alt="Nabeel Logo"
-              className="h-9 w-auto dark:invert shrink-0"
-              whileHover={{ scale: 1.08, rotate: -3 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-            />
-            <AnimatePresence initial={false}>
-              {showText && (
-                <motion.span key="logo-text" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.22, ease: 'easeInOut' }} className="hidden lg:block font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors duration-200 overflow-hidden whitespace-nowrap">
-                  NABEEL
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Link>
+          <motion.div
+            key="logo-link"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.18 }}
+            className={cn(!showText && 'lg:hidden')}
+          >
+            <Link to="/" className="flex items-center gap-2.5 group min-w-0">
+              <motion.img
+                src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png"
+                alt="Nabeel Logo"
+                className="h-9 w-auto dark:invert shrink-0"
+                whileHover={{ scale: 1.08, rotate: -3 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              />
+              <AnimatePresence initial={false}>
+                {showText && (
+                  <motion.span key="logo-text" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.22, ease: 'easeInOut' }} className="hidden lg:block font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors duration-200 overflow-hidden whitespace-nowrap">
+                    NABEEL
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Link>
+          </motion.div>
           {onToggleCollapse && (
             <motion.button
               layout
