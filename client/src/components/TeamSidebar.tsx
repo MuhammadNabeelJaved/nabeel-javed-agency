@@ -91,7 +91,6 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
           {isActive && (
             <>
               <motion.div layoutId="activeTeamTab" className="absolute inset-0 bg-primary/10 rounded-xl border border-primary/20" initial={false} transition={{ type: 'spring', stiffness: 350, damping: 30 }} />
-              <motion.div layoutId="activeTeamBar" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_8px_rgba(139,92,246,0.7)]" initial={false} transition={{ type: 'spring', stiffness: 350, damping: 30 }} />
             </>
           )}
           <motion.div
