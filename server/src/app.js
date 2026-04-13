@@ -18,6 +18,7 @@ import path from "path";
 import cors from "cors"
 import cookieParser from "cookie-parser"
 import helmet from "helmet";
+import compression from "compression";
 import errorHandler from "./middlewares/errorHandler.js";
 import notFound from "./middlewares/notFound.js";
 import { globalLimiter } from "./middlewares/rateLimiter.js";
@@ -58,6 +59,10 @@ app.use(helmet({
         preload:           true,
     },
 }));
+
+// ─── Compression ─────────────────────────────────────────────────────────────
+// Gzip-compress all responses above 1KB — reduces JSON payload by 60-80%.
+app.use(compression({ threshold: 1024 }));
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN ?? "")
