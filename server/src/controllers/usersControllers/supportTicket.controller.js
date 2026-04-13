@@ -29,10 +29,10 @@ export const createTicket = asyncHandler(async (req, res) => {
   // Notify all admins of the new ticket (non-blocking)
   const io = req.app.get('io');
   notifyAdmins(io, {
-    type: 'ticket_submitted',
-    title: 'New Support Ticket',
-    message: `${req.user.name} submitted a ${ticket.priority} priority ticket: "${ticket.subject}"`,
-    payload: { ticketId: ticket._id, priority: ticket.priority, category: ticket.category },
+    type:      'ticket_submitted',
+    title:     'New Support Ticket',
+    message:   `${req.user.name} submitted a ${ticket.priority} priority ticket: "${ticket.subject}"`,
+    payload:   { ticketId: ticket._id, priority: ticket.priority, category: ticket.category },
     createdBy: req.user._id,
   }).catch(() => {});
   emitDataUpdate(io, 'support-tickets', ['admin:global']);
