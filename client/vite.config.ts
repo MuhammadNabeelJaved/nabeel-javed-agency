@@ -9,12 +9,28 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    minify: 'esbuild',
+    chunkSizeWarningLimit: 800,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-charts': ['recharts'],
+          'vendor-socket': ['socket.io-client'],
+          'vendor-icons':  ['lucide-react'],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        proxyTimeout: 300000,  // 5 min — allows long-running embed-all requests
+        proxyTimeout: 300000,
         timeout: 300000,
       },
       '/socket.io': {
@@ -23,7 +39,6 @@ export default defineConfig({
         ws: true,
         configure: (proxy) => {
           proxy.on('error', (err, _req, res) => {
-            // Backend not running — return 503 instead of leaving http-proxy to send 500
             if (err.message.includes('ECONNREFUSED') || err.message.includes('ECONNABORTED')) {
               if ('writeHead' in res && typeof res.writeHead === 'function') {
                 res.writeHead(503, { 'Content-Type': 'text/plain' });
