@@ -95,6 +95,8 @@ const notificationSchema = new mongoose.Schema(
 notificationSchema.index({ recipientId: 1, isRead: 1 });
 // Compound index for notification list page (newest first per user)
 notificationSchema.index({ recipientId: 1, createdAt: -1 });
+// 3-field compound: user's unread notifications sorted newest-first (covers both filters + sort in one scan)
+notificationSchema.index({ recipientId: 1, isRead: 1, createdAt: -1 });
 
 const Notification =
     mongoose.models.Notification ||
