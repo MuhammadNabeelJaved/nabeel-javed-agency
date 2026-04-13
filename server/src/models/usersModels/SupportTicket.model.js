@@ -67,12 +67,11 @@ const supportTicketSchema = new mongoose.Schema(
 );
 
 // Auto-generate a human-readable ticket ID before first save
-supportTicketSchema.pre('save', async function (next) {
+supportTicketSchema.pre('save', async function () {
   if (!this.ticketId) {
     const count = await mongoose.model('SupportTicket').countDocuments();
     this.ticketId = `TCK-${String(count + 1001).padStart(4, '0')}`;
   }
-  next();
 });
 
 // Indexes
