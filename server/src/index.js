@@ -14,9 +14,11 @@
 import dns from "dns";
 import http from "http";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 import connectDB from "./database/database.js";
 import app from "./app.js";
 import { initSocket } from "./socket/socketServer.js";
+import { closeRedis } from "./config/redis.js";
 
 // Override DNS before any network call — must be the very first action
 // so that the subsequent mongoose.connect() SRV lookup succeeds.
@@ -51,3 +53,42 @@ connectDB()
         console.log(error.message);
         process.exit(1);
     });
+
+// ─── Graceful Shutdown ───────────────────────────────────────────────────────
+// On SIGTERM (container stop) or SIGINT (Ctrl-C), drain in-flight requests
+// then close DB and Redis connections cleanly before exiting.
+async function shutdown(signal) {
+    console.log(`[shutdown] ${signal} received — starting graceful shutdown`);
+
+    // Force-exit after 10 seconds if shutdown hangs
+    const forceExit = setTimeout(() => {
+        console.error("[shutdown] force-exiting after 10s timeout");
+        process.exit(1);
+    }, 10_000);
+    forceExit.unref();
+
+    try {
+        // 1. Stop accepting new connections
+        await new Promise((resolve, reject) =>
+            httpServer.close((err) => (err ? reject(err) : resolve()))
+        );
+        console.log("[shutdown] HTTP server closed");
+
+        // 2. Close MongoDB connection
+        await mongoose.connection.close();
+        console.log("[shutdown] MongoDB connection closed");
+
+        // 3. Close Redis connection
+        await closeRedis();
+        console.log("[shutdown] Redis connection closed");
+
+        console.log("[shutdown] clean exit");
+        process.exit(0);
+    } catch (err) {
+        console.error("[shutdown] error during shutdown:", err.message);
+        process.exit(1);
+    }
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT",  () => shutdown("SIGINT"));

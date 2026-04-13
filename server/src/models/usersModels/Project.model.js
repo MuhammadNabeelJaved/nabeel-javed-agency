@@ -203,6 +203,8 @@ projectRequestSchema.pre("save", function () {
 // =========================
 // Enables full-text search via { $text: { $search: "..." } }
 projectRequestSchema.index({ projectName: "text", projectDetails: "text" });
+// Compound index for the most common dashboard query: user's non-archived projects filtered by status
+projectRequestSchema.index({ requestedBy: 1, isArchived: 1, status: 1 });
 
 // =========================
 // EXPORT MODEL
