@@ -4,8 +4,8 @@
  * - Sets up Routing
  * - Provides Theme Context
  */
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ContentProvider } from './contexts/ContentContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -16,102 +16,105 @@ import { GlobalStyles } from './components/GlobalStyles';
 import { Toaster } from 'sonner';
 import { useTheme } from './contexts/ThemeContext';
 import { PublicLayout } from './layouts/PublicLayout';
-import { DashboardLayout } from './layouts/DashboardLayout';
-
-// Public Pages
-import Home from './pages/public/Home';
-import Services from './pages/public/Services';
-import ServiceDetail from './pages/public/ServiceDetail';
-import Portfolio from './pages/public/Portfolio';
-import ProjectDetail from './pages/public/ProjectDetail';
-import Contact from './pages/public/Contact';
-import ContactSuccess from './pages/public/ContactSuccess';
-import Login from './pages/public/Login';
-import Signup from './pages/public/Signup';
-import NotFound from './pages/public/NotFound';
-import ServerError from './pages/public/ServerError';
-import StyleGuide from './pages/public/StyleGuide';
-import PrivacyPolicy from './pages/public/PrivacyPolicy';
-import TermsOfService from './pages/public/TermsOfService';
-import CookiesSettings from './pages/public/CookiesSettings';
-import Verification from './pages/public/Verification';
-import Team from './pages/public/Team';
-import JobApplication from './pages/public/JobApplication';
-import JobPrivacyPolicy from './pages/public/JobPrivacyPolicy';
-import JobApplicationSuccess from './pages/public/JobApplicationSuccess';
-import Careers from './pages/public/Careers';
-import JobDetail from './pages/public/JobDetail';
-import UnderConstruction from './pages/public/UnderConstruction';
-import Maintenance from './pages/public/Maintenance';
-import SkeletonPage from './pages/public/SkeletonPage';
-import LoadingPage from './pages/public/LoadingPage';
-import PageLoader from './pages/public/PageLoader';
-
-// Email Templates
-import SignupConfirmation from './pages/emails/SignupConfirmation';
-import EmailVerification from './pages/emails/EmailVerification';
-import PasswordReset from './pages/emails/PasswordReset';
-import ProjectCreated from './pages/emails/ProjectCreated';
-import ProjectCompleted from './pages/emails/ProjectCompleted';
-import FeedbackRequest from './pages/emails/FeedbackRequest';
-import OtpVerification from './pages/OtpVerification';
-import OAuthCallback from './pages/public/OAuthCallback';
-
-// Admin Pages
-import DashboardHome from './pages/admin/DashboardHome';
-import Messages from './pages/admin/Messages';
-import Projects from './pages/admin/Projects';
-import ServicesAdmin from './pages/admin/ServicesAdmin';
-import CategoriesAdmin from './pages/admin/CategoriesAdmin';
-import AITools from './pages/admin/AITools';
-import ChatbotManager from './pages/admin/ChatbotManager';
-import Support from './pages/admin/Support';
-import Notifications from './pages/admin/Notifications';
-import Settings from './pages/admin/Settings';
-import ContentEditor from './pages/admin/ContentEditor';
-import TeamManagement from './pages/admin/TeamManagement';
-import JobManagement from './pages/admin/JobManagement';
-import AdminJobApplications from './pages/admin/AdminJobApplications';
-import ClientManagement from './pages/admin/ClientManagement';
-import ContactManagement from './pages/admin/ContactManagement';
-import DatabaseManager from './pages/admin/DatabaseManager';
-import ClientProjectRequests from './pages/admin/ClientProjectRequests';
-import PageManager from './pages/admin/PageManager';
-import AnnouncementManager from './pages/admin/AnnouncementManager';
-import NavFooterManager from './pages/admin/NavFooterManager';
-
-// Team Dashboard Pages
-import { TeamDashboardLayout } from './layouts/TeamDashboardLayout';
-import TeamDashboardHome from './pages/team/TeamDashboardHome';
-import TeamProjects from './pages/team/TeamProjects';
-import TeamProjectDetail from './pages/team/TeamProjectDetail';
-import TeamTasks from './pages/team/TeamTasks';
-import TeamReports from './pages/team/TeamReports';
-import TeamNotifications from './pages/team/TeamNotifications';
-import TeamSettings from './pages/team/TeamSettings';
-import TeamCalendar from './pages/team/TeamCalendar';
-import TeamChat from './pages/team/TeamChat';
-import TeamResources from './pages/team/TeamResources';
-import TeamClientRequestDetail from './pages/team/TeamClientRequestDetail';
-import TeamSupport from './pages/team/TeamSupport';
-import TeamAIChat from './pages/team/TeamAIChat';
-import TeamAppliedJobs from './pages/team/TeamAppliedJobs';
-
-// User Dashboard Pages
-import { UserDashboardLayout } from './layouts/UserDashboardLayout';
-import UserDashboardHome from './pages/user/UserDashboardHome';
-import UserProjects from './pages/user/UserProjects';
-import UserChat from './pages/user/UserChat';
-import UserAIChat from './pages/user/UserAIChat';
-import UserProfile from './pages/user/UserProfile';
-import UserNotifications from './pages/user/UserNotifications';
-import UserAppliedJobs from './pages/user/UserAppliedJobs';
-import UserBilling from './pages/user/UserBilling';
-import UserSupport from './pages/user/UserSupport';
-
 import { CookieConsent } from './components/CookieConsent';
 import { CookieConsentProvider } from './contexts/CookieConsentContext';
 import { useContent } from './contexts/ContentContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import PageLoaderFallback from './pages/public/PageLoader';
+
+// Dashboard layouts (lazy — only needed for authenticated users)
+const DashboardLayout      = lazy(() => import('./layouts/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
+const TeamDashboardLayout  = lazy(() => import('./layouts/TeamDashboardLayout').then(m => ({ default: m.TeamDashboardLayout })));
+const UserDashboardLayout  = lazy(() => import('./layouts/UserDashboardLayout').then(m => ({ default: m.UserDashboardLayout })));
+
+// ─── Public Pages ─────────────────────────────────────────────────────────────
+const Home                   = lazy(() => import('./pages/public/Home'));
+const Services               = lazy(() => import('./pages/public/Services'));
+const ServiceDetail          = lazy(() => import('./pages/public/ServiceDetail'));
+const Portfolio              = lazy(() => import('./pages/public/Portfolio'));
+const ProjectDetail          = lazy(() => import('./pages/public/ProjectDetail'));
+const Contact                = lazy(() => import('./pages/public/Contact'));
+const ContactSuccess         = lazy(() => import('./pages/public/ContactSuccess'));
+const Login                  = lazy(() => import('./pages/public/Login'));
+const Signup                 = lazy(() => import('./pages/public/Signup'));
+const NotFound               = lazy(() => import('./pages/public/NotFound'));
+const ServerError            = lazy(() => import('./pages/public/ServerError'));
+const StyleGuide             = lazy(() => import('./pages/public/StyleGuide'));
+const PrivacyPolicy          = lazy(() => import('./pages/public/PrivacyPolicy'));
+const TermsOfService         = lazy(() => import('./pages/public/TermsOfService'));
+const CookiesSettings        = lazy(() => import('./pages/public/CookiesSettings'));
+const Verification           = lazy(() => import('./pages/public/Verification'));
+const Team                   = lazy(() => import('./pages/public/Team'));
+const JobApplication         = lazy(() => import('./pages/public/JobApplication'));
+const JobPrivacyPolicy       = lazy(() => import('./pages/public/JobPrivacyPolicy'));
+const JobApplicationSuccess  = lazy(() => import('./pages/public/JobApplicationSuccess'));
+const Careers                = lazy(() => import('./pages/public/Careers'));
+const JobDetail              = lazy(() => import('./pages/public/JobDetail'));
+const UnderConstruction      = lazy(() => import('./pages/public/UnderConstruction'));
+const Maintenance            = lazy(() => import('./pages/public/Maintenance'));
+const SkeletonPage           = lazy(() => import('./pages/public/SkeletonPage'));
+const LoadingPage            = lazy(() => import('./pages/public/LoadingPage'));
+const PageLoader             = lazy(() => import('./pages/public/PageLoader'));
+const OAuthCallback          = lazy(() => import('./pages/public/OAuthCallback'));
+const OtpVerification        = lazy(() => import('./pages/OtpVerification'));
+
+// ─── Email Templates ──────────────────────────────────────────────────────────
+const SignupConfirmation  = lazy(() => import('./pages/emails/SignupConfirmation'));
+const EmailVerification  = lazy(() => import('./pages/emails/EmailVerification'));
+const PasswordReset      = lazy(() => import('./pages/emails/PasswordReset'));
+const ProjectCreated     = lazy(() => import('./pages/emails/ProjectCreated'));
+const ProjectCompleted   = lazy(() => import('./pages/emails/ProjectCompleted'));
+const FeedbackRequest    = lazy(() => import('./pages/emails/FeedbackRequest'));
+
+// ─── Admin Pages ──────────────────────────────────────────────────────────────
+const DashboardHome         = lazy(() => import('./pages/admin/DashboardHome'));
+const Messages              = lazy(() => import('./pages/admin/Messages'));
+const Projects              = lazy(() => import('./pages/admin/Projects'));
+const ServicesAdmin         = lazy(() => import('./pages/admin/ServicesAdmin'));
+const CategoriesAdmin       = lazy(() => import('./pages/admin/CategoriesAdmin'));
+const AITools               = lazy(() => import('./pages/admin/AITools'));
+const ChatbotManager        = lazy(() => import('./pages/admin/ChatbotManager'));
+const Support               = lazy(() => import('./pages/admin/Support'));
+const Notifications         = lazy(() => import('./pages/admin/Notifications'));
+const Settings              = lazy(() => import('./pages/admin/Settings'));
+const ContentEditor         = lazy(() => import('./pages/admin/ContentEditor'));
+const TeamManagement        = lazy(() => import('./pages/admin/TeamManagement'));
+const JobManagement         = lazy(() => import('./pages/admin/JobManagement'));
+const AdminJobApplications  = lazy(() => import('./pages/admin/AdminJobApplications'));
+const ClientManagement      = lazy(() => import('./pages/admin/ClientManagement'));
+const ContactManagement     = lazy(() => import('./pages/admin/ContactManagement'));
+const DatabaseManager       = lazy(() => import('./pages/admin/DatabaseManager'));
+const ClientProjectRequests = lazy(() => import('./pages/admin/ClientProjectRequests'));
+const PageManager           = lazy(() => import('./pages/admin/PageManager'));
+const AnnouncementManager   = lazy(() => import('./pages/admin/AnnouncementManager'));
+const NavFooterManager      = lazy(() => import('./pages/admin/NavFooterManager'));
+
+// ─── Team Pages ───────────────────────────────────────────────────────────────
+const TeamDashboardHome       = lazy(() => import('./pages/team/TeamDashboardHome'));
+const TeamProjects            = lazy(() => import('./pages/team/TeamProjects'));
+const TeamProjectDetail       = lazy(() => import('./pages/team/TeamProjectDetail'));
+const TeamTasks               = lazy(() => import('./pages/team/TeamTasks'));
+const TeamReports             = lazy(() => import('./pages/team/TeamReports'));
+const TeamNotifications       = lazy(() => import('./pages/team/TeamNotifications'));
+const TeamSettings            = lazy(() => import('./pages/team/TeamSettings'));
+const TeamCalendar            = lazy(() => import('./pages/team/TeamCalendar'));
+const TeamChat                = lazy(() => import('./pages/team/TeamChat'));
+const TeamResources           = lazy(() => import('./pages/team/TeamResources'));
+const TeamClientRequestDetail = lazy(() => import('./pages/team/TeamClientRequestDetail'));
+const TeamSupport             = lazy(() => import('./pages/team/TeamSupport'));
+const TeamAIChat              = lazy(() => import('./pages/team/TeamAIChat'));
+const TeamAppliedJobs         = lazy(() => import('./pages/team/TeamAppliedJobs'));
+
+// ─── User Pages ───────────────────────────────────────────────────────────────
+const UserDashboardHome  = lazy(() => import('./pages/user/UserDashboardHome'));
+const UserProjects       = lazy(() => import('./pages/user/UserProjects'));
+const UserChat           = lazy(() => import('./pages/user/UserChat'));
+const UserAIChat         = lazy(() => import('./pages/user/UserAIChat'));
+const UserProfile        = lazy(() => import('./pages/user/UserProfile'));
+const UserNotifications  = lazy(() => import('./pages/user/UserNotifications'));
+const UserAppliedJobs    = lazy(() => import('./pages/user/UserAppliedJobs'));
+const UserBilling        = lazy(() => import('./pages/user/UserBilling'));
+const UserSupport        = lazy(() => import('./pages/user/UserSupport'));
 
 // Configure Tailwind Theme Extension
 // This must run before rendering
@@ -216,114 +219,121 @@ export default function App() {
             <Routes>
               {/* Public Routes */}
               <Route element={<PublicLayout />}>
-                <Route path="/" element={<Home />} />
-                <Route path="/services" element={<Services />} />
-                <Route path="/services/:slug" element={<ServiceDetail />} />
-                <Route path="/portfolio" element={<Portfolio />} />
-                <Route path="/portfolio/:slug" element={<ProjectDetail />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/contact/success" element={<ContactSuccess />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/500" element={<ServerError />} />
-                <Route path="/style-guide" element={<StyleGuide />} />
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<TermsOfService />} />
-                <Route path="/cookies" element={<CookiesSettings />} />
-                <Route path="/verification" element={<Verification />} />
-                <Route path="/our-team" element={<Team />} />
-                <Route path="/careers" element={<Careers />} />
-                <Route path="/careers/:id" element={<JobDetail />} />
-                <Route path="/careers/apply" element={<JobApplication />} />
-                <Route path="/careers/apply/success" element={<JobApplicationSuccess />} />
-                <Route path="/careers/privacy" element={<JobPrivacyPolicy />} />
-                <Route path="/coming-soon" element={<UnderConstruction />} />
-                <Route path="/maintenance" element={<Maintenance />} />
-                <Route path="/skeleton" element={<SkeletonPage />} />
-                <Route path="/loading" element={<LoadingPage />} />
-                <Route path="/page-loader" element={<PageLoader />} />
-                
-                {/* Email Templates */}
-                <Route path="/emails/signup-confirmation" element={<SignupConfirmation />} />
-                <Route path="/emails/email-verification" element={<EmailVerification />} />
-                <Route path="/emails/password-reset" element={<PasswordReset />} />
-                <Route path="/emails/project-created" element={<ProjectCreated />} />
-                <Route path="/emails/project-completed" element={<ProjectCompleted />} />
-                <Route path="/emails/feedback-request" element={<FeedbackRequest />} />
-                
-                {/* Auth Pages */}
-                <Route path="/otp-verification" element={<OtpVerification />} />
-                <Route path="/auth/callback" element={<OAuthCallback />} />
-
-                <Route path="*" element={<NotFound />} />
+                <Route path="/" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Home /></ErrorBoundary></Suspense>} />
+                <Route path="/services" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Services /></ErrorBoundary></Suspense>} />
+                <Route path="/services/:slug" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><ServiceDetail /></ErrorBoundary></Suspense>} />
+                <Route path="/portfolio" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Portfolio /></ErrorBoundary></Suspense>} />
+                <Route path="/portfolio/:slug" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><ProjectDetail /></ErrorBoundary></Suspense>} />
+                <Route path="/contact" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Contact /></ErrorBoundary></Suspense>} />
+                <Route path="/contact/success" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><ContactSuccess /></ErrorBoundary></Suspense>} />
+                <Route path="/login" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Login /></ErrorBoundary></Suspense>} />
+                <Route path="/signup" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Signup /></ErrorBoundary></Suspense>} />
+                <Route path="/500" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><ServerError /></ErrorBoundary></Suspense>} />
+                <Route path="/style-guide" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><StyleGuide /></ErrorBoundary></Suspense>} />
+                <Route path="/privacy" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><PrivacyPolicy /></ErrorBoundary></Suspense>} />
+                <Route path="/terms" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><TermsOfService /></ErrorBoundary></Suspense>} />
+                <Route path="/cookies" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><CookiesSettings /></ErrorBoundary></Suspense>} />
+                <Route path="/verification" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Verification /></ErrorBoundary></Suspense>} />
+                <Route path="/our-team" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Team /></ErrorBoundary></Suspense>} />
+                <Route path="/careers" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Careers /></ErrorBoundary></Suspense>} />
+                <Route path="/careers/:id" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><JobDetail /></ErrorBoundary></Suspense>} />
+                <Route path="/careers/apply" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><JobApplication /></ErrorBoundary></Suspense>} />
+                <Route path="/careers/apply/success" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><JobApplicationSuccess /></ErrorBoundary></Suspense>} />
+                <Route path="/careers/privacy" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><JobPrivacyPolicy /></ErrorBoundary></Suspense>} />
+                <Route path="/coming-soon" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><UnderConstruction /></ErrorBoundary></Suspense>} />
+                <Route path="/maintenance" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><Maintenance /></ErrorBoundary></Suspense>} />
+                <Route path="/skeleton" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><SkeletonPage /></ErrorBoundary></Suspense>} />
+                <Route path="/loading" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><LoadingPage /></ErrorBoundary></Suspense>} />
+                <Route path="/page-loader" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><PageLoader /></ErrorBoundary></Suspense>} />
+                <Route path="/emails/signup-confirmation" element={<Suspense fallback={<PageLoaderFallback />}><SignupConfirmation /></Suspense>} />
+                <Route path="/emails/email-verification" element={<Suspense fallback={<PageLoaderFallback />}><EmailVerification /></Suspense>} />
+                <Route path="/emails/password-reset" element={<Suspense fallback={<PageLoaderFallback />}><PasswordReset /></Suspense>} />
+                <Route path="/emails/project-created" element={<Suspense fallback={<PageLoaderFallback />}><ProjectCreated /></Suspense>} />
+                <Route path="/emails/project-completed" element={<Suspense fallback={<PageLoaderFallback />}><ProjectCompleted /></Suspense>} />
+                <Route path="/emails/feedback-request" element={<Suspense fallback={<PageLoaderFallback />}><FeedbackRequest /></Suspense>} />
+                <Route path="/otp-verification" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><OtpVerification /></ErrorBoundary></Suspense>} />
+                <Route path="/auth/callback" element={<Suspense fallback={<PageLoaderFallback />}><ErrorBoundary><OAuthCallback /></ErrorBoundary></Suspense>} />
+                <Route path="*" element={<Suspense fallback={<PageLoaderFallback />}><NotFound /></Suspense>} />
               </Route>
 
               {/* Admin Routes */}
               <Route path="/admin" element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <DashboardLayout />
+                  <ErrorBoundary>
+                    <Suspense fallback={<PageLoaderFallback />}>
+                      <DashboardLayout />
+                    </Suspense>
+                  </ErrorBoundary>
                 </ProtectedRoute>
               }>
-                <Route index element={<DashboardHome />} />
-                <Route path="messages" element={<Messages />} />
-                <Route path="projects" element={<Projects />} />
-                <Route path="services" element={<ServicesAdmin />} />
-                <Route path="categories" element={<CategoriesAdmin />} />
-                <Route path="ai-tools" element={<AITools />} />
-                <Route path="chatbot-manager" element={<ChatbotManager />} />
-                <Route path="support" element={<Support />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="team" element={<TeamManagement />} />
-                <Route path="clients" element={<ClientManagement />} />
-                <Route path="client-requests" element={<ClientProjectRequests />} />
-                <Route path="contacts" element={<ContactManagement />} />
-                <Route path="jobs" element={<JobManagement />} />
-                <Route path="job-applications" element={<AdminJobApplications />} />
-                <Route path="database" element={<DatabaseManager />} />
-                <Route path="announcements" element={<AnnouncementManager />} />
-                <Route path="page-manager" element={<PageManager />} />
-                <Route path="nav-footer" element={<NavFooterManager />} />
-                <Route path="content-editor" element={<ContentEditor />} />
-                <Route path="settings" element={<Settings />} />
+                <Route index element={<Suspense fallback={<PageLoaderFallback />}><DashboardHome /></Suspense>} />
+                <Route path="messages" element={<Suspense fallback={<PageLoaderFallback />}><Messages /></Suspense>} />
+                <Route path="projects" element={<Suspense fallback={<PageLoaderFallback />}><Projects /></Suspense>} />
+                <Route path="services" element={<Suspense fallback={<PageLoaderFallback />}><ServicesAdmin /></Suspense>} />
+                <Route path="categories" element={<Suspense fallback={<PageLoaderFallback />}><CategoriesAdmin /></Suspense>} />
+                <Route path="ai-tools" element={<Suspense fallback={<PageLoaderFallback />}><AITools /></Suspense>} />
+                <Route path="chatbot-manager" element={<Suspense fallback={<PageLoaderFallback />}><ChatbotManager /></Suspense>} />
+                <Route path="support" element={<Suspense fallback={<PageLoaderFallback />}><Support /></Suspense>} />
+                <Route path="notifications" element={<Suspense fallback={<PageLoaderFallback />}><Notifications /></Suspense>} />
+                <Route path="team" element={<Suspense fallback={<PageLoaderFallback />}><TeamManagement /></Suspense>} />
+                <Route path="clients" element={<Suspense fallback={<PageLoaderFallback />}><ClientManagement /></Suspense>} />
+                <Route path="client-requests" element={<Suspense fallback={<PageLoaderFallback />}><ClientProjectRequests /></Suspense>} />
+                <Route path="contacts" element={<Suspense fallback={<PageLoaderFallback />}><ContactManagement /></Suspense>} />
+                <Route path="jobs" element={<Suspense fallback={<PageLoaderFallback />}><JobManagement /></Suspense>} />
+                <Route path="job-applications" element={<Suspense fallback={<PageLoaderFallback />}><AdminJobApplications /></Suspense>} />
+                <Route path="database" element={<Suspense fallback={<PageLoaderFallback />}><DatabaseManager /></Suspense>} />
+                <Route path="announcements" element={<Suspense fallback={<PageLoaderFallback />}><AnnouncementManager /></Suspense>} />
+                <Route path="page-manager" element={<Suspense fallback={<PageLoaderFallback />}><PageManager /></Suspense>} />
+                <Route path="nav-footer" element={<Suspense fallback={<PageLoaderFallback />}><NavFooterManager /></Suspense>} />
+                <Route path="content-editor" element={<Suspense fallback={<PageLoaderFallback />}><ContentEditor /></Suspense>} />
+                <Route path="settings" element={<Suspense fallback={<PageLoaderFallback />}><Settings /></Suspense>} />
               </Route>
 
               {/* Team Dashboard Routes */}
               <Route path="/team" element={
                 <ProtectedRoute allowedRoles={['admin', 'team']}>
-                  <TeamDashboardLayout />
+                  <ErrorBoundary>
+                    <Suspense fallback={<PageLoaderFallback />}>
+                      <TeamDashboardLayout />
+                    </Suspense>
+                  </ErrorBoundary>
                 </ProtectedRoute>
               }>
-                <Route index element={<TeamDashboardHome />} />
-                <Route path="projects" element={<TeamProjects />} />
-                <Route path="projects/:id" element={<TeamProjectDetail />} />
-                <Route path="client-requests/:id" element={<TeamClientRequestDetail />} />
-                <Route path="tasks" element={<TeamTasks />} />
-                <Route path="reports" element={<TeamReports />} />
-                <Route path="calendar" element={<TeamCalendar />} />
-                <Route path="chat" element={<TeamChat />} />
-                <Route path="resources" element={<TeamResources />} />
-                <Route path="notifications" element={<TeamNotifications />} />
-                <Route path="settings" element={<TeamSettings />} />
-                <Route path="ai-assistant" element={<TeamAIChat />} />
-                <Route path="support" element={<TeamSupport />} />
-                <Route path="applied-jobs" element={<TeamAppliedJobs />} />
+                <Route index element={<Suspense fallback={<PageLoaderFallback />}><TeamDashboardHome /></Suspense>} />
+                <Route path="projects" element={<Suspense fallback={<PageLoaderFallback />}><TeamProjects /></Suspense>} />
+                <Route path="projects/:id" element={<Suspense fallback={<PageLoaderFallback />}><TeamProjectDetail /></Suspense>} />
+                <Route path="client-requests/:id" element={<Suspense fallback={<PageLoaderFallback />}><TeamClientRequestDetail /></Suspense>} />
+                <Route path="tasks" element={<Suspense fallback={<PageLoaderFallback />}><TeamTasks /></Suspense>} />
+                <Route path="reports" element={<Suspense fallback={<PageLoaderFallback />}><TeamReports /></Suspense>} />
+                <Route path="calendar" element={<Suspense fallback={<PageLoaderFallback />}><TeamCalendar /></Suspense>} />
+                <Route path="chat" element={<Suspense fallback={<PageLoaderFallback />}><TeamChat /></Suspense>} />
+                <Route path="resources" element={<Suspense fallback={<PageLoaderFallback />}><TeamResources /></Suspense>} />
+                <Route path="notifications" element={<Suspense fallback={<PageLoaderFallback />}><TeamNotifications /></Suspense>} />
+                <Route path="settings" element={<Suspense fallback={<PageLoaderFallback />}><TeamSettings /></Suspense>} />
+                <Route path="ai-assistant" element={<Suspense fallback={<PageLoaderFallback />}><TeamAIChat /></Suspense>} />
+                <Route path="support" element={<Suspense fallback={<PageLoaderFallback />}><TeamSupport /></Suspense>} />
+                <Route path="applied-jobs" element={<Suspense fallback={<PageLoaderFallback />}><TeamAppliedJobs /></Suspense>} />
               </Route>
 
               {/* User Dashboard Routes */}
               <Route path="/user-dashboard" element={
                 <ProtectedRoute allowedRoles={['admin', 'team', 'user']}>
-                  <UserDashboardLayout />
+                  <ErrorBoundary>
+                    <Suspense fallback={<PageLoaderFallback />}>
+                      <UserDashboardLayout />
+                    </Suspense>
+                  </ErrorBoundary>
                 </ProtectedRoute>
               }>
-                <Route index element={<UserDashboardHome />} />
-                <Route path="projects" element={<UserProjects />} />
-                <Route path="messages" element={<UserChat />} />
-                <Route path="ai-assistant" element={<UserAIChat />} />
-                <Route path="applied-jobs" element={<UserAppliedJobs />} />
-                <Route path="billing" element={<UserBilling />} />
-                <Route path="profile" element={<UserProfile />} />
-                <Route path="notifications" element={<UserNotifications />} />
-                <Route path="support" element={<UserSupport />} />
+                <Route index element={<Suspense fallback={<PageLoaderFallback />}><UserDashboardHome /></Suspense>} />
+                <Route path="projects" element={<Suspense fallback={<PageLoaderFallback />}><UserProjects /></Suspense>} />
+                <Route path="messages" element={<Suspense fallback={<PageLoaderFallback />}><UserChat /></Suspense>} />
+                <Route path="ai-assistant" element={<Suspense fallback={<PageLoaderFallback />}><UserAIChat /></Suspense>} />
+                <Route path="applied-jobs" element={<Suspense fallback={<PageLoaderFallback />}><UserAppliedJobs /></Suspense>} />
+                <Route path="billing" element={<Suspense fallback={<PageLoaderFallback />}><UserBilling /></Suspense>} />
+                <Route path="profile" element={<Suspense fallback={<PageLoaderFallback />}><UserProfile /></Suspense>} />
+                <Route path="notifications" element={<Suspense fallback={<PageLoaderFallback />}><UserNotifications /></Suspense>} />
+                <Route path="support" element={<Suspense fallback={<PageLoaderFallback />}><UserSupport /></Suspense>} />
               </Route>
             </Routes>
           </BrowserRouter>
