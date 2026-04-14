@@ -60,6 +60,10 @@ export default function ContentEditor() {
   const [aboutDraft, setAboutDraft] = useState<AboutContent>(about);
   useEffect(() => { setAboutDraft(about); }, [about]);
 
+  // Contact info draft state — local edits accumulate here; only saved on explicit button click
+  const [contactDraft, setContactDraft] = useState<ContactInfo>(contactInfo);
+  useEffect(() => { setContactDraft(contactInfo); }, [contactInfo]);
+
   // Legal pages draft states
   const [privacyDraft, setPrivacyDraft] = useState<PrivacyPolicyContent>(privacyPolicy);
   useEffect(() => { setPrivacyDraft(privacyPolicy); }, [privacyPolicy]);
@@ -414,29 +418,32 @@ export default function ContentEditor() {
         <TabsContent value="contact">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <div><CardTitle>Contact Information</CardTitle><CardDescription>Shown on the Contact page. Changes save automatically.</CardDescription></div>
+              <div><CardTitle>Contact Information</CardTitle><CardDescription>Shown on the Contact page.</CardDescription></div>
+              <Button size="sm" disabled={isSaving} onClick={() => saveWithFeedback(() => updateContactInfo(contactDraft))}>
+                <Save className="h-4 w-4 mr-1" />{isSaving ? 'Saving…' : 'Save'}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2"><Label>Address</Label><Textarea value={contactInfo.address} onChange={e => updateContactInfo({ ...contactInfo, address: e.target.value })} placeholder="123 Tech Blvd, San Francisco, CA 94107" rows={2} /></div>
+              <div className="space-y-2"><Label>Address</Label><Textarea value={contactDraft.address} onChange={e => setContactDraft(d => ({ ...d, address: e.target.value }))} placeholder="123 Tech Blvd, San Francisco, CA 94107" rows={2} /></div>
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Email</Label><Input value={contactInfo.email} onChange={e => updateContactInfo({ ...contactInfo, email: e.target.value })} placeholder="hello@agency.com" /></div>
-                <div className="space-y-2"><Label>Phone</Label><Input value={contactInfo.phone} onChange={e => updateContactInfo({ ...contactInfo, phone: e.target.value })} placeholder="+1 (555) 123-4567" /></div>
+                <div className="space-y-2"><Label>Email</Label><Input value={contactDraft.email} onChange={e => setContactDraft(d => ({ ...d, email: e.target.value }))} placeholder="hello@agency.com" /></div>
+                <div className="space-y-2"><Label>Phone</Label><Input value={contactDraft.phone} onChange={e => setContactDraft(d => ({ ...d, phone: e.target.value }))} placeholder="+1 (555) 123-4567" /></div>
               </div>
-              <div className="space-y-2"><Label>Business Hours</Label><Textarea value={contactInfo.businessHours} onChange={e => updateContactInfo({ ...contactInfo, businessHours: e.target.value })} placeholder="Monday - Friday&#10;9:00 AM - 6:00 PM PST" rows={2} /></div>
+              <div className="space-y-2"><Label>Business Hours</Label><Textarea value={contactDraft.businessHours} onChange={e => setContactDraft(d => ({ ...d, businessHours: e.target.value }))} placeholder="Monday - Friday&#10;9:00 AM - 6:00 PM PST" rows={2} /></div>
               <div className="space-y-2">
                 <Label>Google Maps Embed URL</Label>
                 <Input
-                  value={contactInfo.mapEmbedUrl}
-                  onChange={e => updateContactInfo({ ...contactInfo, mapEmbedUrl: e.target.value })}
+                  value={contactDraft.mapEmbedUrl}
+                  onChange={e => setContactDraft(d => ({ ...d, mapEmbedUrl: e.target.value }))}
                   placeholder="https://www.google.com/maps/embed?pb=..."
                 />
                 <p className="text-xs text-muted-foreground">
                   Go to Google Maps → share your location → Embed a map → copy only the <code>src="..."</code> URL from the iframe code. Leave blank to hide the map.
                 </p>
-                {contactInfo.mapEmbedUrl && (
+                {contactDraft.mapEmbedUrl && (
                   <div className="mt-3 rounded-xl overflow-hidden border border-border/50 aspect-video">
                     <iframe
-                      src={contactInfo.mapEmbedUrl}
+                      src={contactDraft.mapEmbedUrl}
                       width="100%"
                       height="100%"
                       style={{ border: 0 }}
