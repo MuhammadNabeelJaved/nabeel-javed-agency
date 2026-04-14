@@ -357,14 +357,15 @@ export const toggleFeaturedHome = asyncHandler(async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) throw new AppError("Invalid project ID", 400);
 
-    // Use aggregation pipeline update to atomically toggle the boolean.
-    // This bypasses Mongoose validation and works even if the field never existed.
+    const existing = await adminProject.findById(id).select('featuredOnHome').lean();
+    if (!existing) throw new AppError("Project not found", 404);
+
+    const newValue = !existing.featuredOnHome;
     const updated = await adminProject.findByIdAndUpdate(
         id,
-        [{ $set: { featuredOnHome: { $not: { $ifNull: ["$featuredOnHome", false] } } } }],
+        { $set: { featuredOnHome: newValue } },
         { new: true, select: 'featuredOnHome' }
     );
-    if (!updated) throw new AppError("Project not found", 404);
 
     const io = req.app.get("io");
     if (io) io.of("/public").emit("cms:updated", { section: "projects" });
