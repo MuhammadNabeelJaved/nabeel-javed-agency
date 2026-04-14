@@ -17,6 +17,8 @@ export function FeaturedProjects() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const lastFetchRef = useRef(0);
 
+  console.log("Project Lists:", projects)
+
   const loadFeatured = useCallback(() => {
     const now = Date.now();
     // Debounce: skip if already fetched within the last 2 seconds
@@ -26,10 +28,11 @@ export function FeaturedProjects() {
     adminProjectsApi.getHomeFeatured()
       .then(res => {
         const list = Array.isArray(res.data?.data?.projects) ? res.data.data.projects : [];
+
         setProjects(list);
         setActiveId(prev => (prev && list.find((p: any) => p._id === prev) ? prev : list[0]?._id ?? null));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Initial load
@@ -56,13 +59,13 @@ export function FeaturedProjects() {
     <section className="relative py-16 sm:py-24 md:py-32 overflow-hidden bg-background">
       {/* Background Ambience */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        
+
         {/* Section Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 sm:mb-12 md:mb-16 gap-4 sm:gap-6">
           <div className="space-y-4 max-w-2xl">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -71,8 +74,8 @@ export function FeaturedProjects() {
               <div className="h-1 w-12 bg-primary rounded-full" />
               <span className="text-primary font-bold tracking-widest uppercase text-sm">Selected Works</span>
             </motion.div>
-            
-            <motion.h2 
+
+            <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -92,7 +95,7 @@ export function FeaturedProjects() {
           >
             <Link to="/portfolio">
               <Button variant="outline" className="rounded-full px-6 h-12 gap-2 border-border/50 bg-background/50 hover:bg-muted backdrop-blur-md group text-foreground">
-                View All Projects 
+                View All Projects
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
@@ -114,7 +117,7 @@ export function FeaturedProjects() {
         {/* Mobile Stack Layout (Hidden on Desktop) */}
         <div className="grid grid-cols-1 gap-8 lg:hidden">
           {projects.map((project) => (
-            <ProjectCard key={project._id} {...project} slug={project._id} title={project.projectTitle} category={project.category} description={project.projectDescription} image={project.projectGallery?.[0] || ''} tags={project.techStack || []} />
+            <ProjectCard key={project._id} {...project} slug={project._id} title={project.projectTitle} category={project.category} description={project.projectDescription} image={typeof project.projectGallery?.[0] === 'string' ? project.projectGallery[0] : project.projectGallery?.[0]?.url || ''} tags={project.techStack || []} />
           ))}
         </div>
 
@@ -127,19 +130,23 @@ const PLACEHOLDER = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q
 
 function AccordionItem({ project, isActive, onHover }: { project: any, isActive: boolean, onHover: () => void }) {
   const title = project.projectTitle || project.title || 'Untitled';
-  const rawImage = project.projectGallery?.find((u: unknown) => typeof u === 'string' && u.trim() !== '') || project.image || '';
+  const firstGalleryItem = project.projectGallery?.[0];
+  const rawImage = typeof firstGalleryItem === 'string'
+    ? firstGalleryItem
+    : firstGalleryItem?.url || project.image || '';
   const image = rawImage || PLACEHOLDER;
   const tags: string[] = project.techStack || project.tags || [];
   const year = project.endDate ? new Date(project.endDate).getFullYear().toString() : (project.year || '');
   const slug = project._id || project.slug;
 
+  console.log("Images:", rawImage,)
+
   return (
     <motion.div
       layout
       onMouseEnter={onHover}
-      className={`relative rounded-[2rem] overflow-hidden cursor-pointer transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] ${
-        isActive ? 'flex-[3]' : 'flex-[1] grayscale hover:grayscale-0'
-      }`}
+      className={`relative rounded-[2rem] overflow-hidden cursor-pointer transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] ${isActive ? 'flex-[3]' : 'flex-[1] grayscale hover:grayscale-0'
+        }`}
     >
       <Link to={`/portfolio/${slug}`} className="absolute inset-0 z-10" aria-label={title} />
       {/* Fallback gradient background when no image */}
