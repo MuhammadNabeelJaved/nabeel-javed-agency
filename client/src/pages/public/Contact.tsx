@@ -147,6 +147,29 @@ export default function Contact() {
         </motion.div>
       </div>
 
+      {/* ── Map ── */}
+      {contactInfo.mapEmbedUrl && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="rounded-2xl overflow-hidden border border-border/50 shadow-sm w-full"
+          style={{ height: '400px' }}
+        >
+          <iframe
+            src={contactInfo.mapEmbedUrl}
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title="Our Location"
+          />
+        </motion.div>
+      )}
+
       <FAQSection title="Common Questions" description="Quick answers before you reach out." items={faqItems} />
     </div>
   );

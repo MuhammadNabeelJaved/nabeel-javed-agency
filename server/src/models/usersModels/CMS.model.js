@@ -114,6 +114,7 @@ const cmsSchema = new mongoose.Schema(
             email: { type: String, trim: true, default: "" },
             phone: { type: String, trim: true, default: "" },
             businessHours: { type: String, trim: true, default: "" },
+            mapEmbedUrl: { type: String, trim: true, default: "" },
         },
 
         // ── Social Links ──
