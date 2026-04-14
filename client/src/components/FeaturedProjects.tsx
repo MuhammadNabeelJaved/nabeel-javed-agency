@@ -18,13 +18,9 @@ export function FeaturedProjects() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const loadFeatured = useCallback(() => {
-    adminProjectsApi.getPortfolio()
+    adminProjectsApi.getHomeFeatured()
       .then(res => {
-        const data = res.data.data.projects;
-        const all = Array.isArray(data) ? data : [];
-        // Show projects pinned to home page; if none pinned yet, fall back to first 3
-        const featured = all.filter((p: any) => p.featuredOnHome);
-        const list = featured.length > 0 ? featured : all.slice(0, 3);
+        const list = Array.isArray(res.data.data.projects) ? res.data.data.projects : [];
         setProjects(list);
         if (list.length > 0) setActiveId(prev => prev && list.find((p: any) => p._id === prev) ? prev : list[0]._id);
       })
