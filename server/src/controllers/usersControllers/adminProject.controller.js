@@ -281,7 +281,7 @@ export const getHomeFeatured = asyncHandler(async (req, res) => {
     const FIELDS = 'projectTitle clientName category status techStack projectGallery projectDescription completionPercentage tags startDate endDate clientFeedback featuredOnHome';
 
     let projects = await adminProject
-        .find({ isPublic: true, isArchived: false, featuredOnHome: true })
+        .find({ isPublic: true, isArchived: { $ne: true }, featuredOnHome: true })
         .select(FIELDS)
         .sort({ createdAt: -1 })
         .lean();
@@ -289,7 +289,7 @@ export const getHomeFeatured = asyncHandler(async (req, res) => {
     // Fallback: if admin hasn't pinned any project yet, return first 3 public ones
     if (projects.length === 0) {
         projects = await adminProject
-            .find({ isPublic: true, isArchived: false })
+            .find({ isPublic: true, isArchived: { $ne: true } })
             .select(FIELDS)
             .sort({ createdAt: -1 })
             .limit(3)
@@ -357,16 +357,19 @@ export const toggleFeaturedHome = asyncHandler(async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) throw new AppError("Invalid project ID", 400);
 
-    const project = await adminProject.findById(id).select('featuredOnHome isPublic');
-    if (!project) throw new AppError("Project not found", 404);
-
-    project.featuredOnHome = !project.featuredOnHome;
-    await project.save();
+    // Use aggregation pipeline update to atomically toggle the boolean.
+    // This bypasses Mongoose validation and works even if the field never existed.
+    const updated = await adminProject.findByIdAndUpdate(
+        id,
+        [{ $set: { featuredOnHome: { $not: { $ifNull: ["$featuredOnHome", false] } } } }],
+        { new: true, select: 'featuredOnHome' }
+    );
+    if (!updated) throw new AppError("Project not found", 404);
 
     const io = req.app.get("io");
     if (io) io.of("/public").emit("cms:updated", { section: "projects" });
     invalidateCache('/admin/projects').catch(() => {});
-    successResponse(res, project.featuredOnHome ? "Added to home page" : "Removed from home page", { featuredOnHome: project.featuredOnHome });
+    successResponse(res, updated.featuredOnHome ? "Added to home page" : "Removed from home page", { featuredOnHome: updated.featuredOnHome });
 });
 
 // =========================
