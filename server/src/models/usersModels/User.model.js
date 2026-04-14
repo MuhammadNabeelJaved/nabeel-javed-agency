@@ -230,6 +230,12 @@ const userSchema = new mongoose.Schema(
                 default: false
             },
 
+            // Admin toggle: show/hide this member on the public /our-team page
+            showOnTeamPage: {
+                type: Boolean,
+                default: true
+            },
+
             status: {
                 type: String,
                 enum: ['Active', 'On Leave', 'Inactive', 'Recently Joined'],

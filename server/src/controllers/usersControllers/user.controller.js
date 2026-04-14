@@ -509,14 +509,15 @@ export const adminCreateTeamMember = asyncHandler(async (req, res) => {
 export const getPublicTeamMembers = asyncHandler(async (req, res) => {
     const members = await User.find({
         role: { $in: ["team", "admin"] },
-        isActive: true,
+        isActive: { $ne: false },
         deletedAt: null,
-        "teamProfile.status": "Active",
+        // Only exclude members explicitly hidden by admin (false); show all others
+        "teamProfile.showOnTeamPage": { $ne: false },
     })
         .select(
-            "name photo teamProfile.position teamProfile.department " +
+            "name photo email teamProfile.position teamProfile.department " +
             "teamProfile.bio teamProfile.socialLinks teamProfile.skills " +
-            "teamProfile.featured teamProfile.displayOrder"
+            "teamProfile.featured teamProfile.displayOrder teamProfile.showOnTeamPage teamProfile.status"
         )
         .sort({ "teamProfile.displayOrder": 1, createdAt: 1 });
 
