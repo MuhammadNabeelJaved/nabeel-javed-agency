@@ -15,15 +15,15 @@ import {
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 import { mutationLimiter } from "../../middlewares/rateLimiter.js";
 import { mongoIdParam, validate } from "../../middlewares/validate.js";
-import { setCacheHeaders } from "../../middlewares/cacheHeaders.js";
+import { setCacheHeaders, noCache } from "../../middlewares/cacheHeaders.js";
 import { cacheMiddleware } from "../../middlewares/redisCache.js";
 
 const router = express.Router();
 
 // Public routes – no auth required
 router.get("/portfolio", setCacheHeaders(300), cacheMiddleware(300), getPublicPortfolio);
-// Home-featured: always fresh (no cache) — used by the home page slider
-router.get("/home-featured", getHomeFeatured);
+// Home-featured: always fresh — explicit no-store prevents any browser/CDN caching
+router.get("/home-featured", noCache, getHomeFeatured);
 
 // Read routes – admin + team can access
 router.get("/", userAuthenticated, authorizeRoles("admin", "team"), getAllProjects);

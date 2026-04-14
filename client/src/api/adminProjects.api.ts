@@ -3,7 +3,8 @@ import apiClient from './apiClient';
 export const adminProjectsApi = {
   getAll: () => apiClient.get('/admin/projects'),
   getPortfolio: () => apiClient.get('/admin/projects/portfolio'),
-  getHomeFeatured: () => apiClient.get('/admin/projects/home-featured'),
+  // _nc = no-cache buster; prevents any browser-level caching on top of the no-store header
+  getHomeFeatured: () => apiClient.get(`/admin/projects/home-featured?_nc=${Date.now()}`),
   getById: (id: string) => apiClient.get(`/admin/projects/${id}`),
   create: (data: any) => apiClient.post('/admin/projects', data),
   update: (id: string, data: any) => apiClient.put(`/admin/projects/${id}`, data),
