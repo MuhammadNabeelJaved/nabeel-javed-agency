@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Cookie, Check, Info, Save, RotateCcw } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useCookieConsent } from '../../contexts/CookieConsentContext';
+import { useContent } from '../../contexts/ContentContext';
 
 // ── Toggle (unchanged from original) ─────────────────────────────────────────
 const Toggle = ({
@@ -37,50 +38,29 @@ const Toggle = ({
   </button>
 );
 
-// ── Category definitions ──────────────────────────────────────────────────────
-const cookieCategories = [
-  {
-    id: 'essential' as const,
-    title: 'Strictly Necessary Cookies',
-    description:
-      'These cookies are essential for the proper functioning of the website. Without these cookies, the website would not work properly.',
-    icon: Info,
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/10',
-  },
-  {
-    id: 'functional' as const,
-    title: 'Functional Cookies',
-    description:
-      'These cookies allow the website to remember choices you make (such as your user name, language or the region you are in) and provide enhanced, more personal features.',
-    icon: RotateCcw,
-    color: 'text-purple-500',
-    bg: 'bg-purple-500/10',
-  },
-  {
-    id: 'analytics' as const,
-    title: 'Performance & Analytics',
-    description:
-      'These cookies help us understand how visitors interact with the website by collecting and reporting information anonymously.',
-    icon: Info,
-    color: 'text-green-500',
-    bg: 'bg-green-500/10',
-  },
-  {
-    id: 'marketing' as const,
-    title: 'Marketing & Targeting',
-    description:
-      'These cookies are used to track visitors across websites. The intention is to display ads that are relevant and engaging for the individual user.',
-    icon: Cookie,
-    color: 'text-orange-500',
-    bg: 'bg-orange-500/10',
-  },
-];
+// ── Static icon/color map per category key ────────────────────────────────────
+const CATEGORY_META: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  essential:  { icon: Info,      color: 'text-blue-500',   bg: 'bg-blue-500/10'   },
+  functional: { icon: RotateCcw, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+  analytics:  { icon: Info,      color: 'text-green-500',  bg: 'bg-green-500/10'  },
+  marketing:  { icon: Cookie,    color: 'text-orange-500', bg: 'bg-orange-500/10' },
+};
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function CookiesSettings() {
   const { consent, updateConsent, saveConsent, resetConsent, acceptAll } =
     useCookieConsent();
+  const { cookiesPolicy } = useContent();
+
+  // Merge CMS content with static icon/color meta, sorted by order
+  const cookieCategories = [...cookiesPolicy.categories]
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map(cat => ({
+      id: cat.key as 'essential' | 'functional' | 'analytics' | 'marketing',
+      title: cat.title,
+      description: cat.description,
+      ...(CATEGORY_META[cat.key] ?? { icon: Cookie, color: 'text-primary', bg: 'bg-primary/10' }),
+    }));
   const [saved, setSaved] = useState(false);
 
   const handleToggle = (key: 'functional' | 'analytics' | 'marketing') => {
@@ -128,7 +108,7 @@ export default function CookiesSettings() {
             Cookies Settings
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Manage your cookie preferences to control how we use your data.
+            {cookiesPolicy.subtitle || 'Manage your cookie preferences to control how we use your data.'}
           </p>
         </motion.div>
 

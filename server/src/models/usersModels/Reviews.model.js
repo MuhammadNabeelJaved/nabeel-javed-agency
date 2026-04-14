@@ -5,22 +5,24 @@
  *  - `rating` is validated as a whole integer (1–5); fractional stars are rejected
  *  - `status` workflow: pending → approved / rejected
  *    (only approved reviews are visible on the public endpoint)
- *  - Both `client` (User ref) and `project` (Project ref) are required,
- *    tying each review to a specific person and piece of work
+ *  - `client` and `project` are optional for admin-created reviews (isAdminCreated: true)
+ *  - `editableUntil` allows users to edit their review within a time window (default: 72h)
+ *  - `showOnHome` controls whether a review appears in the homepage Testimonials widget
  *
  * Public endpoint:  GET /api/v1/reviews/all  (approved reviews only)
- * Admin endpoints:  full CRUD + status management
+ * Public endpoint:  GET /api/v1/reviews/home (approved + showOnHome reviews for widget)
+ * Admin endpoints:  full CRUD + status management + showOnHome toggle
  */
 import mongoose from 'mongoose';
 
 
 // Review Schema
 const reviewSchema = new mongoose.Schema({
-    // The User who wrote this review
+    // The User who wrote this review (optional for admin-created reviews)
     client: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true,
+        required: false,
         index: true,
     },
 
@@ -43,11 +45,12 @@ const reviewSchema = new mongoose.Schema({
         maxlength: [1000, 'Review cannot exceed 1000 characters']
     },
 
-    // Project this review is about (must exist in the Project collection)
+    // Project this review is about (optional for admin-created standalone reviews)
     project: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Project',
-        required: [true, 'Project reference is required']
+        required: false,
+        default: null,
     },
 
     // Moderation status – only "approved" reviews are shown publicly
@@ -55,7 +58,47 @@ const reviewSchema = new mongoose.Schema({
         type: String,
         enum: ['pending', 'approved', 'rejected'],
         default: 'pending'
-    }
+    },
+
+    // Show this review in the homepage Testimonials widget
+    showOnHome: {
+        type: Boolean,
+        default: false,
+        index: true,
+    },
+
+    // Time window during which the user can edit their review (72h after creation)
+    editableUntil: {
+        type: Date,
+        default: null,
+    },
+
+    // Flag for reviews created directly by admin (no user account required)
+    isAdminCreated: {
+        type: Boolean,
+        default: false,
+    },
+
+    // Author info for admin-created reviews (or override display name)
+    authorName: {
+        type: String,
+        trim: true,
+        maxlength: [100, 'Author name cannot exceed 100 characters'],
+    },
+    authorRole: {
+        type: String,
+        trim: true,
+        maxlength: [150, 'Author role cannot exceed 150 characters'],
+    },
+    authorCompany: {
+        type: String,
+        trim: true,
+        maxlength: [100, 'Author company cannot exceed 100 characters'],
+    },
+    authorAvatar: {
+        type: String,
+        trim: true,
+    },
 }, {
     timestamps: true
 });

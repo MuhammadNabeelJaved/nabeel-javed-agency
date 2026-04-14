@@ -83,6 +83,73 @@ export interface Testimonial {
   rating: number;
 }
 
+export interface AboutStat {
+  _id?: string;
+  value: string;   // e.g. "50+"
+  label: string;   // e.g. "Projects Delivered"
+  order?: number;
+}
+
+export interface AboutMilestone {
+  _id?: string;
+  year: string;
+  title: string;
+  desc: string;
+  order?: number;
+}
+
+export interface AboutValue {
+  _id?: string;
+  title: string;
+  description: string;
+  iconName: string;
+  order?: number;
+}
+
+export interface AboutContent {
+  heroSubtitle: string;
+  stats: AboutStat[];
+  storyTitle: string;
+  storyParagraphs: string[];
+  storyPoints: string[];
+  milestones: AboutMilestone[];
+  values: AboutValue[];
+}
+
+export interface LegalSection {
+  _id?: string;
+  title: string;
+  content: string;
+  order?: number;
+}
+
+export interface PrivacyPolicyContent {
+  lastUpdated: string;
+  subtitle: string;
+  contactEmail: string;
+  sections: LegalSection[];
+}
+
+export interface TermsContent {
+  lastUpdated: string;
+  subtitle: string;
+  contactEmail: string;
+  sections: LegalSection[];
+}
+
+export interface CookieCategory {
+  _id?: string;
+  key: string;        // essential | functional | analytics | marketing
+  title: string;
+  description: string;
+  order?: number;
+}
+
+export interface CookiesPolicyContent {
+  subtitle: string;
+  categories: CookieCategory[];
+}
+
 export interface NavLinkItem {
   _id?: string;
   label: string;
@@ -161,6 +228,16 @@ export interface ContentContextType {
   updateContactInfo: (info: ContactInfo) => Promise<void>;
   updateSocialLinks: (links: SocialLinks) => Promise<void>;
   updateTestimonials: (items: Testimonial[]) => Promise<void>;
+  // About page CMS
+  about: AboutContent;
+  updateAbout: (content: AboutContent) => Promise<void>;
+  // Legal pages CMS
+  privacyPolicy: PrivacyPolicyContent;
+  updatePrivacyPolicy: (content: PrivacyPolicyContent) => Promise<void>;
+  termsOfService: TermsContent;
+  updateTermsOfService: (content: TermsContent) => Promise<void>;
+  cookiesPolicy: CookiesPolicyContent;
+  updateCookiesPolicy: (content: CookiesPolicyContent) => Promise<void>;
   // Multi-bar announcements (new source of truth)
   announcementBars: AnnouncementBarGroup[];
   setAnnouncementBars: React.Dispatch<React.SetStateAction<AnnouncementBarGroup[]>>;
@@ -249,6 +326,78 @@ const defaultWhyChooseUs: WhyChooseUsContent = {
 const defaultContactInfo: ContactInfo = { address: "", email: "", phone: "", businessHours: "" };
 const defaultSocialLinks: SocialLinks = { twitter: "", linkedin: "", instagram: "", github: "", customSocialLinks: [] };
 
+const defaultAbout: AboutContent = {
+  heroSubtitle: "We are a full-service digital agency passionate about crafting exceptional web experiences, scalable applications, and AI-powered solutions for businesses around the world.",
+  stats: [
+    { value: '50+', label: 'Projects Delivered', order: 0 },
+    { value: '30+', label: 'Happy Clients',       order: 1 },
+    { value: '5+',  label: 'Years Experience',    order: 2 },
+    { value: '10+', label: 'Team Members',         order: 3 },
+  ],
+  storyTitle: "From Freelance Roots to a Full-Service Agency",
+  storyParagraphs: [
+    "What started as two passionate developers working from a small apartment has grown into a team of designers, engineers, and strategists delivering world-class digital products.",
+    "We believe that great software is more than code — it's a conversation between technology and the people who use it. That belief drives everything we build.",
+    "Today, we partner with startups, scale-ups, and enterprises to transform their ideas into real, impactful digital products.",
+  ],
+  storyPoints: [
+    "Client-first approach in every project",
+    "Transparent communication throughout",
+    "On-time, on-budget delivery",
+    "Post-launch support included",
+  ],
+  milestones: [
+    { year: '2019', title: 'Founded',         desc: 'Started as a two-person freelance team with a vision to build premium digital products.', order: 0 },
+    { year: '2020', title: 'First Major Client', desc: 'Landed our first enterprise client and grew the team to five specialists.',         order: 1 },
+    { year: '2021', title: 'Agency Launch',   desc: 'Officially registered as a full-service digital agency offering design, development, and strategy.', order: 2 },
+    { year: '2022', title: 'AI Integration',  desc: 'Expanded into AI-powered products, helping clients automate and scale their operations.', order: 3 },
+    { year: '2023', title: '30+ Projects',    desc: 'Hit a milestone of 30 completed projects with a 100% client satisfaction rate.',         order: 4 },
+    { year: '2024', title: 'Going Global',    desc: 'Serving clients across 10+ countries with a remote-first, globally distributed team.',   order: 5 },
+  ],
+  values: [
+    { title: 'Results-Driven',           description: "Every decision we make is rooted in measurable outcomes. We don't just build beautiful products — we build products that work.", iconName: 'Target',  order: 0 },
+    { title: 'Client-Centric',           description: "Your success is our success. We treat every project as our own and stay invested long after launch.",                            iconName: 'Heart',   order: 1 },
+    { title: 'Innovation First',         description: "We stay ahead of the curve, bringing modern tech and fresh thinking to every challenge we tackle.",                              iconName: 'Lightbulb', order: 2 },
+    { title: 'Quality & Security',       description: "We build with best practices from day one — secure, scalable, and maintainable code that stands the test of time.",             iconName: 'Shield',  order: 3 },
+    { title: 'Speed Without Compromise', description: "Fast delivery doesn't mean cutting corners. Our process is built for efficiency without sacrificing craft.",                    iconName: 'Zap',     order: 4 },
+    { title: 'Global Perspective',       description: "We've worked with clients across the globe and bring an international mindset to every engagement.",                            iconName: 'Globe',   order: 5 },
+  ],
+};
+
+const defaultPrivacyPolicy: PrivacyPolicyContent = {
+  lastUpdated: 'October 24, 2023',
+  subtitle: 'We value your privacy and are committed to protecting your personal data.',
+  contactEmail: 'privacy@nabeel.agency',
+  sections: [
+    { title: '1. Introduction', content: 'Welcome to Nabeel Agency. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our website (regardless of where you visit it from) and tell you about your privacy rights and how the law protects you.', order: 0 },
+    { title: '2. Data We Collect', content: 'We may collect, use, store and transfer different kinds of personal data about you which we have grouped together as follows: Identity Data (Name, username), Contact Data (Email, phone), Technical Data (IP address, browser), Usage Data (How you use our site), Marketing Data (Preferences), Profile Data (Interests, feedback).', order: 1 },
+    { title: '3. How We Use Your Data', content: 'We will only use your personal data when the law allows us to. Most commonly, we will use your personal data in the following circumstances: Where we need to perform the contract we are about to enter into or have entered into with you. Where it is necessary for our legitimate interests (or those of a third party) and your interests and fundamental rights do not override those interests. Where we need to comply with a legal or regulatory obligation.', order: 2 },
+    { title: '4. Data Security', content: 'We have put in place appropriate security measures to prevent your personal data from being accidentally lost, used or accessed in an unauthorized way, altered or disclosed. In addition, we limit access to your personal data to those employees, agents, contractors and other third parties who have a business need to know.', order: 3 },
+  ],
+};
+
+const defaultTermsOfService: TermsContent = {
+  lastUpdated: 'October 24, 2023',
+  subtitle: 'Please read these terms carefully before using our services.',
+  contactEmail: 'legal@nabeel.agency',
+  sections: [
+    { title: '1. Agreement to Terms', content: 'By accessing our website and using our services, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site.', order: 0 },
+    { title: '2. Use License', content: 'Permission is granted to temporarily download one copy of the materials on Nabeel Agency\'s website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not: modify or copy the materials; use the materials for any commercial purpose; attempt to decompile or reverse engineer any software; remove any copyright or other proprietary notations.', order: 1 },
+    { title: '3. Disclaimer', content: 'The materials on Nabeel Agency\'s website are provided on an \'as is\' basis. Nabeel Agency makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.', order: 2 },
+    { title: '4. Governing Law', content: 'These terms and conditions are governed by and construed in accordance with the laws of California and you irrevocably submit to the exclusive jurisdiction of the courts in that State or location.', order: 3 },
+  ],
+};
+
+const defaultCookiesPolicy: CookiesPolicyContent = {
+  subtitle: 'Manage your cookie preferences to control how we use your data.',
+  categories: [
+    { key: 'essential',  title: 'Strictly Necessary Cookies', description: 'These cookies are essential for the proper functioning of the website. Without these cookies, the website would not work properly.', order: 0 },
+    { key: 'functional', title: 'Functional Cookies',         description: 'These cookies allow the website to remember choices you make (such as your user name, language or the region you are in) and provide enhanced, more personal features.', order: 1 },
+    { key: 'analytics',  title: 'Performance & Analytics',    description: 'These cookies help us understand how visitors interact with the website by collecting and reporting information anonymously.', order: 2 },
+    { key: 'marketing',  title: 'Marketing & Targeting',      description: 'These cookies are used to track visitors across websites. The intention is to display ads that are relevant and engaging for the individual user.', order: 3 },
+  ],
+};
+
 // --- Map CMS API response to frontend types ---
 
 function mapCmsToState(cms: any) {
@@ -314,7 +463,40 @@ function mapCmsToState(cms: any) {
       rating: t.rating || 5,
     }));
 
-  return { techStack, processSteps, whyChooseUs, contactInfo, socialLinks, testimonials, logoUrl: cms.logoUrl || defaultLogoUrl };
+  const rawAbout = cms.about || {};
+  const about: AboutContent = {
+    heroSubtitle:    rawAbout.heroSubtitle    ?? defaultAbout.heroSubtitle,
+    stats:           rawAbout.stats?.length   ? rawAbout.stats           : defaultAbout.stats,
+    storyTitle:      rawAbout.storyTitle      ?? defaultAbout.storyTitle,
+    storyParagraphs: rawAbout.storyParagraphs?.length ? rawAbout.storyParagraphs : defaultAbout.storyParagraphs,
+    storyPoints:     rawAbout.storyPoints?.length     ? rawAbout.storyPoints     : defaultAbout.storyPoints,
+    milestones:      rawAbout.milestones?.length      ? rawAbout.milestones      : defaultAbout.milestones,
+    values:          rawAbout.values?.length          ? rawAbout.values          : defaultAbout.values,
+  };
+
+  const rawPP = cms.privacyPolicy || {};
+  const privacyPolicy: PrivacyPolicyContent = {
+    lastUpdated:  rawPP.lastUpdated  ?? defaultPrivacyPolicy.lastUpdated,
+    subtitle:     rawPP.subtitle     ?? defaultPrivacyPolicy.subtitle,
+    contactEmail: rawPP.contactEmail ?? defaultPrivacyPolicy.contactEmail,
+    sections:     rawPP.sections?.length ? rawPP.sections : defaultPrivacyPolicy.sections,
+  };
+
+  const rawToS = cms.termsOfService || {};
+  const termsOfService: TermsContent = {
+    lastUpdated:  rawToS.lastUpdated  ?? defaultTermsOfService.lastUpdated,
+    subtitle:     rawToS.subtitle     ?? defaultTermsOfService.subtitle,
+    contactEmail: rawToS.contactEmail ?? defaultTermsOfService.contactEmail,
+    sections:     rawToS.sections?.length ? rawToS.sections : defaultTermsOfService.sections,
+  };
+
+  const rawCP = cms.cookiesPolicy || {};
+  const cookiesPolicy: CookiesPolicyContent = {
+    subtitle:   rawCP.subtitle ?? defaultCookiesPolicy.subtitle,
+    categories: rawCP.categories?.length ? rawCP.categories : defaultCookiesPolicy.categories,
+  };
+
+  return { techStack, processSteps, whyChooseUs, contactInfo, socialLinks, testimonials, logoUrl: cms.logoUrl || defaultLogoUrl, about, privacyPolicy, termsOfService, cookiesPolicy };
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
@@ -328,6 +510,10 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [contactInfo, setContactInfo] = useState<ContactInfo>(defaultContactInfo);
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(defaultSocialLinks);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [about, setAbout] = useState<AboutContent>(defaultAbout);
+  const [privacyPolicy, setPrivacyPolicy] = useState<PrivacyPolicyContent>(defaultPrivacyPolicy);
+  const [termsOfService, setTermsOfService] = useState<TermsContent>(defaultTermsOfService);
+  const [cookiesPolicy, setCookiesPolicy] = useState<CookiesPolicyContent>(defaultCookiesPolicy);
   const [pageStatuses, setPageStatuses] = useState<PageStatusItem[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [announcementBars, setAnnouncementBars] = useState<AnnouncementBarGroup[]>([]);
@@ -377,6 +563,10 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       setContactInfo(mapped.contactInfo);
       setSocialLinks(mapped.socialLinks);
       setTestimonials(mapped.testimonials);
+      setAbout(mapped.about);
+      setPrivacyPolicy(mapped.privacyPolicy);
+      setTermsOfService(mapped.termsOfService);
+      setCookiesPolicy(mapped.cookiesPolicy);
       setGlobalTheme(cachedCms.globalTheme ?? null);
       setIsLoading(false);
       return;
@@ -394,6 +584,10 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       setContactInfo(mapped.contactInfo);
       setSocialLinks(mapped.socialLinks);
       setTestimonials(mapped.testimonials);
+      setAbout(mapped.about);
+      setPrivacyPolicy(mapped.privacyPolicy);
+      setTermsOfService(mapped.termsOfService);
+      setCookiesPolicy(mapped.cookiesPolicy);
       setGlobalTheme(cms.globalTheme ?? null);
     } catch {
       // Keep defaults on error
@@ -493,6 +687,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         case 'pageStatus':     fetchPageStatuses();   break;
         case 'announcements':  fetchAnnouncements(); fetchDashboardBars(); break;
         case 'globalTheme':
+        case 'about':
         case 'cms':            fetchCMS();            break;
       }
       // Always broadcast to the whole app so any page can react via useDataRealtime
@@ -504,13 +699,19 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchCMS, fetchNavLinks, fetchFooterSections, fetchFooterBottom, fetchPageStatuses, fetchAnnouncements, fetchDashboardBars]);
 
+  // Invalidate the CMS cache before every write so the socket-triggered
+  // fetchCMS() always fetches fresh server data instead of reverting to stale cache.
+  const bustCmsCache = () => apiCache.invalidate('cms:main');
+
   const updateLogoUrl = async (url: string) => {
     setLogoUrl(url);
+    bustCmsCache();
     await cmsApi.updateLogo(url);
   };
 
   const updateTechStack = async (groups: TechGroup[]) => {
     setTechStack(groups);
+    bustCmsCache();
     const payload = groups.map(g => ({
       categoryName: g.title,
       items: g.items.map(item => ({
@@ -525,6 +726,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
   const updateProcessSteps = async (steps: ProcessStep[]) => {
     setProcessSteps(steps);
+    bustCmsCache();
     const payload = steps.map((s, i) => ({
       stepTitle: s.title,
       description: s.description,
@@ -538,6 +740,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
   const updateWhyChooseUs = async (content: WhyChooseUsContent) => {
     setWhyChooseUs(content);
+    bustCmsCache();
     await cmsApi.updateWhyChooseUs({
       titleLine1: content.titleLine1,
       titleLine2Highlighted: content.titleLine2,
@@ -549,16 +752,19 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
   const updateContactInfo = async (info: ContactInfo) => {
     setContactInfo(info);
+    bustCmsCache();
     await cmsApi.updateContactInfo(info);
   };
 
   const updateSocialLinks = async (links: SocialLinks) => {
     setSocialLinks(links);
+    bustCmsCache();
     await cmsApi.updateSocialLinks(links);
   };
 
   const updateGlobalTheme = async (theme: 'dark' | 'light' | null) => {
     setGlobalTheme(theme);
+    bustCmsCache();
     await cmsApi.updateGlobalTheme(theme);
   };
 
@@ -579,7 +785,32 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
   const updateTestimonials = async (items: Testimonial[]) => {
     setTestimonials(items);
+    bustCmsCache();
     await cmsApi.updateTestimonials(items);
+  };
+
+  const updateAbout = async (content: AboutContent) => {
+    setAbout(content);
+    bustCmsCache();
+    await cmsApi.updateAbout(content);
+  };
+
+  const updatePrivacyPolicy = async (content: PrivacyPolicyContent) => {
+    setPrivacyPolicy(content);
+    bustCmsCache();
+    await cmsApi.updatePrivacyPolicy(content);
+  };
+
+  const updateTermsOfService = async (content: TermsContent) => {
+    setTermsOfService(content);
+    bustCmsCache();
+    await cmsApi.updateTermsOfService(content);
+  };
+
+  const updateCookiesPolicy = async (content: CookiesPolicyContent) => {
+    setCookiesPolicy(content);
+    bustCmsCache();
+    await cmsApi.updateCookiesPolicy(content);
   };
 
   return (
@@ -598,6 +829,10 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       separatorVisible, setSeparatorVisible,
       separatorColor, setSeparatorColor,
       itemSpacing, setItemSpacing,
+      about, updateAbout,
+      privacyPolicy, updatePrivacyPolicy,
+      termsOfService, updateTermsOfService,
+      cookiesPolicy, updateCookiesPolicy,
       updateLogoUrl, updateTechStack, updateProcessSteps, updateWhyChooseUs,
       updateContactInfo, updateSocialLinks, updateTestimonials,
       globalTheme, updateGlobalTheme,

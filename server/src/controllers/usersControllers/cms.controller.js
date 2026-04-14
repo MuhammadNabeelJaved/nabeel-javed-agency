@@ -519,3 +519,120 @@ export const deleteTestimonial = asyncHandler(async (req, res) => {
     emitCmsUpdate(req, 'cms');
     successResponse(res, "Testimonial deleted", { testimonials: cms.testimonials });
 });
+
+// =========================
+// ABOUT PAGE CMS
+// =========================
+
+/** Replace the entire about section (PUT /api/v1/cms/about) */
+export const updateAbout = asyncHandler(async (req, res) => {
+    const { heroSubtitle, stats, storyTitle, storyParagraphs, storyPoints, milestones, values } = req.body;
+
+    const cms = await CMS.getOrCreate();
+    if (!cms.about) cms.about = {};
+
+    if (heroSubtitle !== undefined) cms.about.heroSubtitle = heroSubtitle;
+    if (storyTitle !== undefined) cms.about.storyTitle = storyTitle;
+    if (storyParagraphs !== undefined) {
+        if (!Array.isArray(storyParagraphs)) throw new AppError("storyParagraphs must be an array", 400);
+        cms.about.storyParagraphs = storyParagraphs;
+    }
+    if (storyPoints !== undefined) {
+        if (!Array.isArray(storyPoints)) throw new AppError("storyPoints must be an array", 400);
+        cms.about.storyPoints = storyPoints;
+    }
+    if (stats !== undefined) {
+        if (!Array.isArray(stats)) throw new AppError("stats must be an array", 400);
+        cms.about.stats = stats;
+    }
+    if (milestones !== undefined) {
+        if (!Array.isArray(milestones)) throw new AppError("milestones must be an array", 400);
+        cms.about.milestones = milestones;
+    }
+    if (values !== undefined) {
+        if (!Array.isArray(values)) throw new AppError("values must be an array", 400);
+        cms.about.values = values;
+    }
+
+    cms.markModified('about');
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+    emitCmsUpdate(req, 'about');
+    successResponse(res, "About page updated", { about: cms.about });
+});
+
+// =========================
+// PRIVACY POLICY CMS
+// =========================
+
+/** Replace the entire privacyPolicy section (PUT /api/v1/cms/privacy-policy) */
+export const updatePrivacyPolicy = asyncHandler(async (req, res) => {
+    const { lastUpdated, subtitle, contactEmail, sections } = req.body;
+
+    const cms = await CMS.getOrCreate();
+    if (!cms.privacyPolicy) cms.privacyPolicy = {};
+
+    if (lastUpdated  !== undefined) cms.privacyPolicy.lastUpdated  = lastUpdated;
+    if (subtitle     !== undefined) cms.privacyPolicy.subtitle     = subtitle;
+    if (contactEmail !== undefined) cms.privacyPolicy.contactEmail = contactEmail;
+    if (sections !== undefined) {
+        if (!Array.isArray(sections)) throw new AppError("sections must be an array", 400);
+        cms.privacyPolicy.sections = sections;
+    }
+
+    cms.markModified('privacyPolicy');
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+    emitCmsUpdate(req, 'cms');
+    successResponse(res, "Privacy policy updated", { privacyPolicy: cms.privacyPolicy });
+});
+
+// =========================
+// TERMS OF SERVICE CMS
+// =========================
+
+/** Replace the entire termsOfService section (PUT /api/v1/cms/terms-of-service) */
+export const updateTermsOfService = asyncHandler(async (req, res) => {
+    const { lastUpdated, subtitle, contactEmail, sections } = req.body;
+
+    const cms = await CMS.getOrCreate();
+    if (!cms.termsOfService) cms.termsOfService = {};
+
+    if (lastUpdated  !== undefined) cms.termsOfService.lastUpdated  = lastUpdated;
+    if (subtitle     !== undefined) cms.termsOfService.subtitle     = subtitle;
+    if (contactEmail !== undefined) cms.termsOfService.contactEmail = contactEmail;
+    if (sections !== undefined) {
+        if (!Array.isArray(sections)) throw new AppError("sections must be an array", 400);
+        cms.termsOfService.sections = sections;
+    }
+
+    cms.markModified('termsOfService');
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+    emitCmsUpdate(req, 'cms');
+    successResponse(res, "Terms of service updated", { termsOfService: cms.termsOfService });
+});
+
+// =========================
+// COOKIES POLICY CMS
+// =========================
+
+/** Replace the entire cookiesPolicy section (PUT /api/v1/cms/cookies-policy) */
+export const updateCookiesPolicy = asyncHandler(async (req, res) => {
+    const { subtitle, categories } = req.body;
+
+    const cms = await CMS.getOrCreate();
+    if (!cms.cookiesPolicy) cms.cookiesPolicy = {};
+
+    if (subtitle !== undefined) cms.cookiesPolicy.subtitle = subtitle;
+    if (categories !== undefined) {
+        if (!Array.isArray(categories)) throw new AppError("categories must be an array", 400);
+        cms.cookiesPolicy.categories = categories;
+    }
+
+    cms.markModified('cookiesPolicy');
+    cms.lastUpdatedBy = req.user._id;
+    await cms.save();
+    emitCmsUpdate(req, 'cms');
+    successResponse(res, "Cookies policy updated", { cookiesPolicy: cms.cookiesPolicy });
+});

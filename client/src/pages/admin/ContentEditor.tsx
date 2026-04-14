@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useContent, TechItem, ProcessStep, WhyChooseUsFeature, ContactInfo, SocialLinks, CustomSocialLink, Testimonial } from '../../contexts/ContentContext';
+import { useContent, TechItem, ProcessStep, WhyChooseUsFeature, ContactInfo, SocialLinks, CustomSocialLink, Testimonial, AboutContent, AboutStat, AboutMilestone, AboutValue, PrivacyPolicyContent, TermsContent, CookiesPolicyContent, LegalSection, CookieCategory } from '../../contexts/ContentContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -37,6 +37,10 @@ export default function ContentEditor() {
     contactInfo, updateContactInfo,
     socialLinks, updateSocialLinks,
     testimonials, updateTestimonials,
+    about, updateAbout,
+    privacyPolicy, updatePrivacyPolicy,
+    termsOfService, updateTermsOfService,
+    cookiesPolicy, updateCookiesPolicy,
   } = useContent();
 
   const location = useLocation();
@@ -51,6 +55,20 @@ export default function ContentEditor() {
     const tab = new URLSearchParams(location.search).get('tab');
     if (tab) setActiveTab(tab);
   }, [location.search]);
+
+  // About draft state — local edits accumulate here; only saved on explicit button click
+  const [aboutDraft, setAboutDraft] = useState<AboutContent>(about);
+  useEffect(() => { setAboutDraft(about); }, [about]);
+
+  // Legal pages draft states
+  const [privacyDraft, setPrivacyDraft] = useState<PrivacyPolicyContent>(privacyPolicy);
+  useEffect(() => { setPrivacyDraft(privacyPolicy); }, [privacyPolicy]);
+
+  const [termsDraft, setTermsDraft] = useState<TermsContent>(termsOfService);
+  useEffect(() => { setTermsDraft(termsOfService); }, [termsOfService]);
+
+  const [cookiesDraft, setCookiesDraft] = useState<CookiesPolicyContent>(cookiesPolicy);
+  useEffect(() => { setCookiesDraft(cookiesPolicy); }, [cookiesPolicy]);
 
   // Hero state (HomePageHero API)
   const [hero, setHero] = useState({ statusBadge: '', titleLine1: '', titleLine2: '', subtitle: '' });
@@ -168,6 +186,10 @@ export default function ContentEditor() {
           <TabsTrigger value="testimonials" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Testimonials</TabsTrigger>
           <TabsTrigger value="contact" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Contact Info</TabsTrigger>
           <TabsTrigger value="social" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Social Links</TabsTrigger>
+          <TabsTrigger value="about" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">About Page</TabsTrigger>
+          <TabsTrigger value="privacy" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Privacy Policy</TabsTrigger>
+          <TabsTrigger value="terms" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Terms</TabsTrigger>
+          <TabsTrigger value="cookies-policy" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Cookies Policy</TabsTrigger>
           <TabsTrigger value="nav-footer" className="px-4 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Nav & Footer</TabsTrigger>
         </TabsList>
 
@@ -501,6 +523,466 @@ export default function ContentEditor() {
             </Card>
           </div>
         </TabsContent>
+        {/* --- About Page Tab --- */}
+        <TabsContent value="about">
+          <div className="space-y-8">
+
+            {/* Hero subtitle + Save All */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>About Page Hero</CardTitle>
+                  <CardDescription>The subtitle shown below the main heading on the About page.</CardDescription>
+                </div>
+                <Button onClick={() => saveWithFeedback(() => updateAbout(aboutDraft))} isLoading={isSaving} className="gap-2">
+                  <Save className="h-4 w-4" /> Save All
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={aboutDraft.heroSubtitle}
+                  onChange={e => setAboutDraft(d => ({ ...d, heroSubtitle: e.target.value }))}
+                  rows={3}
+                  placeholder="Describe what your agency does…"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Stats */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Stats Bar</CardTitle><CardDescription>Number stats shown in the banner row (e.g. 50+ Projects).</CardDescription></div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setAboutDraft(d => ({ ...d, stats: [...d.stats, { value: '0+', label: 'New Stat', order: d.stats.length }] }))}>
+                    <Plus className="w-4 h-4 mr-2" /> Add Stat
+                  </Button>
+                  <Button size="sm" onClick={() => saveWithFeedback(() => updateAbout(aboutDraft))} isLoading={isSaving}>
+                    <Save className="w-4 h-4 mr-2" /> Save
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {aboutDraft.stats
+                  .slice()
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .map((stat, i) => (
+                    <div key={i} className="flex gap-3 items-center">
+                      <Input
+                        className="w-28 font-bold text-center"
+                        value={stat.value}
+                        onChange={e => {
+                          const s = [...aboutDraft.stats]; s[i] = { ...s[i], value: e.target.value };
+                          setAboutDraft(d => ({ ...d, stats: s }));
+                        }}
+                        placeholder="50+"
+                      />
+                      <Input
+                        className="flex-1"
+                        value={stat.label}
+                        onChange={e => {
+                          const s = [...aboutDraft.stats]; s[i] = { ...s[i], label: e.target.value };
+                          setAboutDraft(d => ({ ...d, stats: s }));
+                        }}
+                        placeholder="Projects Delivered"
+                      />
+                      <Button size="icon" variant="ghost" onClick={() => {
+                        const s = [...aboutDraft.stats]; s.splice(i, 1);
+                        setAboutDraft(d => ({ ...d, stats: s }));
+                      }}><Trash2 className="w-4 h-4 text-muted-foreground" /></Button>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+
+            {/* Our Story */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Our Story</CardTitle><CardDescription>Title, paragraphs, and bullet checkpoints for the story section.</CardDescription></div>
+                <Button size="sm" onClick={() => saveWithFeedback(() => updateAbout(aboutDraft))} isLoading={isSaving}>
+                  <Save className="w-4 h-4 mr-2" /> Save
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Section Title</Label>
+                  <Input
+                    value={aboutDraft.storyTitle}
+                    onChange={e => setAboutDraft(d => ({ ...d, storyTitle: e.target.value }))}
+                    placeholder="From Freelance Roots to a Full-Service Agency"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Story Paragraphs</Label>
+                    <Button size="sm" variant="ghost" onClick={() => setAboutDraft(d => ({ ...d, storyParagraphs: [...d.storyParagraphs, ''] }))}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {aboutDraft.storyParagraphs.map((para, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Textarea
+                        value={para}
+                        onChange={e => {
+                          const p = [...aboutDraft.storyParagraphs]; p[i] = e.target.value;
+                          setAboutDraft(d => ({ ...d, storyParagraphs: p }));
+                        }}
+                        rows={2}
+                        className="flex-1"
+                        placeholder={`Paragraph ${i + 1}`}
+                      />
+                      <Button size="icon" variant="ghost" onClick={() => {
+                        const p = [...aboutDraft.storyParagraphs]; p.splice(i, 1);
+                        setAboutDraft(d => ({ ...d, storyParagraphs: p }));
+                      }}><Trash2 className="w-4 h-4 text-muted-foreground" /></Button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Bullet Checkpoints</Label>
+                    <Button size="sm" variant="ghost" onClick={() => setAboutDraft(d => ({ ...d, storyPoints: [...d.storyPoints, ''] }))}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {aboutDraft.storyPoints.map((point, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Input
+                        value={point}
+                        onChange={e => {
+                          const p = [...aboutDraft.storyPoints]; p[i] = e.target.value;
+                          setAboutDraft(d => ({ ...d, storyPoints: p }));
+                        }}
+                        className="flex-1"
+                        placeholder="Client-first approach in every project"
+                      />
+                      <Button size="icon" variant="ghost" onClick={() => {
+                        const p = [...aboutDraft.storyPoints]; p.splice(i, 1);
+                        setAboutDraft(d => ({ ...d, storyPoints: p }));
+                      }}><Trash2 className="w-4 h-4 text-muted-foreground" /></Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Milestones */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Company Timeline</CardTitle><CardDescription>Milestone entries shown in the timeline on the story section.</CardDescription></div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setAboutDraft(d => ({
+                    ...d,
+                    milestones: [...d.milestones, { year: String(new Date().getFullYear()), title: 'New Milestone', desc: '', order: d.milestones.length }]
+                  }))}>
+                    <Plus className="w-4 h-4 mr-2" /> Add Milestone
+                  </Button>
+                  <Button size="sm" onClick={() => saveWithFeedback(() => updateAbout(aboutDraft))} isLoading={isSaving}>
+                    <Save className="w-4 h-4 mr-2" /> Save
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {aboutDraft.milestones
+                  .slice()
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .map((m, i) => (
+                    <div key={i} className="p-4 rounded-xl border border-border bg-muted/20 space-y-3 relative">
+                      <Button size="icon" variant="ghost" className="absolute top-2 right-2 h-7 w-7"
+                        onClick={() => {
+                          const ms = [...aboutDraft.milestones]; ms.splice(i, 1);
+                          setAboutDraft(d => ({ ...d, milestones: ms }));
+                        }}>
+                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      </Button>
+                      <div className="grid grid-cols-[80px_1fr] gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Year</Label>
+                          <Input value={m.year} onChange={e => {
+                            const ms = [...aboutDraft.milestones]; ms[i] = { ...ms[i], year: e.target.value };
+                            setAboutDraft(d => ({ ...d, milestones: ms }));
+                          }} className="h-8 font-mono text-sm" placeholder="2024" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Title</Label>
+                          <Input value={m.title} onChange={e => {
+                            const ms = [...aboutDraft.milestones]; ms[i] = { ...ms[i], title: e.target.value };
+                            setAboutDraft(d => ({ ...d, milestones: ms }));
+                          }} className="h-8" placeholder="Going Global" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Description</Label>
+                        <Textarea value={m.desc} onChange={e => {
+                          const ms = [...aboutDraft.milestones]; ms[i] = { ...ms[i], desc: e.target.value };
+                          setAboutDraft(d => ({ ...d, milestones: ms }));
+                        }} rows={2} placeholder="What happened in this year…" />
+                      </div>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+
+            {/* Core Values */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Core Values</CardTitle><CardDescription>Value cards shown in the grid section. Icon names are Lucide icon keys (e.g. Target, Shield, Zap).</CardDescription></div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setAboutDraft(d => ({
+                    ...d,
+                    values: [...d.values, { title: 'New Value', description: '', iconName: 'Star', order: d.values.length }]
+                  }))}>
+                    <Plus className="w-4 h-4 mr-2" /> Add Value
+                  </Button>
+                  <Button size="sm" onClick={() => saveWithFeedback(() => updateAbout(aboutDraft))} isLoading={isSaving}>
+                    <Save className="w-4 h-4 mr-2" /> Save
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {aboutDraft.values
+                  .slice()
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .map((v, i) => (
+                    <div key={i} className="p-4 rounded-xl border border-border bg-muted/20 space-y-3 relative">
+                      <Button size="icon" variant="ghost" className="absolute top-2 right-2 h-7 w-7"
+                        onClick={() => {
+                          const vs = [...aboutDraft.values]; vs.splice(i, 1);
+                          setAboutDraft(d => ({ ...d, values: vs }));
+                        }}>
+                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      </Button>
+                      <div className="grid grid-cols-[1fr_auto] gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Title</Label>
+                          <Input value={v.title} onChange={e => {
+                            const vs = [...aboutDraft.values]; vs[i] = { ...vs[i], title: e.target.value };
+                            setAboutDraft(d => ({ ...d, values: vs }));
+                          }} className="h-8" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Icon (Lucide)</Label>
+                          <Input value={v.iconName} onChange={e => {
+                            const vs = [...aboutDraft.values]; vs[i] = { ...vs[i], iconName: e.target.value };
+                            setAboutDraft(d => ({ ...d, values: vs }));
+                          }} className="h-8 font-mono text-xs w-24" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Description</Label>
+                        <Textarea value={v.description} onChange={e => {
+                          const vs = [...aboutDraft.values]; vs[i] = { ...vs[i], description: e.target.value };
+                          setAboutDraft(d => ({ ...d, values: vs }));
+                        }} rows={2} />
+                      </div>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+
+          </div>
+        </TabsContent>
+
+        {/* --- Privacy Policy Tab --- */}
+        <TabsContent value="privacy">
+          <div className="space-y-6">
+            {/* Meta */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Privacy Policy</CardTitle><CardDescription>Page header info and contact email shown in the footer of the page.</CardDescription></div>
+                <Button onClick={() => saveWithFeedback(() => updatePrivacyPolicy(privacyDraft))} isLoading={isSaving} className="gap-2">
+                  <Save className="h-4 w-4" /> Save All
+                </Button>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Last Updated</Label>
+                  <Input value={privacyDraft.lastUpdated} onChange={e => setPrivacyDraft(d => ({ ...d, lastUpdated: e.target.value }))} placeholder="October 24, 2023" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Contact Email</Label>
+                  <Input value={privacyDraft.contactEmail} onChange={e => setPrivacyDraft(d => ({ ...d, contactEmail: e.target.value }))} placeholder="privacy@yoursite.com" />
+                </div>
+                <div className="space-y-2 md:col-span-3">
+                  <Label>Page Subtitle</Label>
+                  <Textarea value={privacyDraft.subtitle} onChange={e => setPrivacyDraft(d => ({ ...d, subtitle: e.target.value }))} rows={2} placeholder="We value your privacy…" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sections */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Sections</CardTitle><CardDescription>Add, edit, or remove policy sections. Each section appears as a card on the page.</CardDescription></div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setPrivacyDraft(d => ({ ...d, sections: [...d.sections, { title: 'New Section', content: '', order: d.sections.length }] }))}>
+                    <Plus className="w-4 h-4 mr-2" /> Add Section
+                  </Button>
+                  <Button size="sm" onClick={() => saveWithFeedback(() => updatePrivacyPolicy(privacyDraft))} isLoading={isSaving}>
+                    <Save className="w-4 h-4 mr-2" /> Save
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[...privacyDraft.sections]
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .map((section, i) => (
+                    <div key={i} className="p-4 rounded-xl border border-border bg-muted/20 space-y-3 relative">
+                      <Button size="icon" variant="ghost" className="absolute top-2 right-2 h-7 w-7"
+                        onClick={() => { const s = [...privacyDraft.sections]; s.splice(i, 1); setPrivacyDraft(d => ({ ...d, sections: s })); }}>
+                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      </Button>
+                      <div className="space-y-1 pr-10">
+                        <Label className="text-xs">Section Title</Label>
+                        <Input value={section.title} onChange={e => {
+                          const s = [...privacyDraft.sections]; s[i] = { ...s[i], title: e.target.value };
+                          setPrivacyDraft(d => ({ ...d, sections: s }));
+                        }} placeholder="1. Introduction" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Content</Label>
+                        <Textarea value={section.content} onChange={e => {
+                          const s = [...privacyDraft.sections]; s[i] = { ...s[i], content: e.target.value };
+                          setPrivacyDraft(d => ({ ...d, sections: s }));
+                        }} rows={4} placeholder="Section body text…" />
+                      </div>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* --- Terms of Service Tab --- */}
+        <TabsContent value="terms">
+          <div className="space-y-6">
+            {/* Meta */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Terms of Service</CardTitle><CardDescription>Page header info and contact email shown in the footer of the page.</CardDescription></div>
+                <Button onClick={() => saveWithFeedback(() => updateTermsOfService(termsDraft))} isLoading={isSaving} className="gap-2">
+                  <Save className="h-4 w-4" /> Save All
+                </Button>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Last Updated</Label>
+                  <Input value={termsDraft.lastUpdated} onChange={e => setTermsDraft(d => ({ ...d, lastUpdated: e.target.value }))} placeholder="October 24, 2023" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Contact Email</Label>
+                  <Input value={termsDraft.contactEmail} onChange={e => setTermsDraft(d => ({ ...d, contactEmail: e.target.value }))} placeholder="legal@yoursite.com" />
+                </div>
+                <div className="space-y-2 md:col-span-3">
+                  <Label>Page Subtitle</Label>
+                  <Textarea value={termsDraft.subtitle} onChange={e => setTermsDraft(d => ({ ...d, subtitle: e.target.value }))} rows={2} placeholder="Please read these terms carefully…" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sections */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Sections</CardTitle><CardDescription>Add, edit, or remove terms sections. Each section appears as a card on the page.</CardDescription></div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setTermsDraft(d => ({ ...d, sections: [...d.sections, { title: 'New Section', content: '', order: d.sections.length }] }))}>
+                    <Plus className="w-4 h-4 mr-2" /> Add Section
+                  </Button>
+                  <Button size="sm" onClick={() => saveWithFeedback(() => updateTermsOfService(termsDraft))} isLoading={isSaving}>
+                    <Save className="w-4 h-4 mr-2" /> Save
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[...termsDraft.sections]
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .map((section, i) => (
+                    <div key={i} className="p-4 rounded-xl border border-border bg-muted/20 space-y-3 relative">
+                      <Button size="icon" variant="ghost" className="absolute top-2 right-2 h-7 w-7"
+                        onClick={() => { const s = [...termsDraft.sections]; s.splice(i, 1); setTermsDraft(d => ({ ...d, sections: s })); }}>
+                        <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      </Button>
+                      <div className="space-y-1 pr-10">
+                        <Label className="text-xs">Section Title</Label>
+                        <Input value={section.title} onChange={e => {
+                          const s = [...termsDraft.sections]; s[i] = { ...s[i], title: e.target.value };
+                          setTermsDraft(d => ({ ...d, sections: s }));
+                        }} placeholder="1. Agreement to Terms" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Content</Label>
+                        <Textarea value={section.content} onChange={e => {
+                          const s = [...termsDraft.sections]; s[i] = { ...s[i], content: e.target.value };
+                          setTermsDraft(d => ({ ...d, sections: s }));
+                        }} rows={4} placeholder="Section body text…" />
+                      </div>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* --- Cookies Policy Tab --- */}
+        <TabsContent value="cookies-policy">
+          <div className="space-y-6">
+            {/* Page subtitle */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Cookies Policy</CardTitle><CardDescription>The subtitle shown at the top of the Cookies Settings page.</CardDescription></div>
+                <Button onClick={() => saveWithFeedback(() => updateCookiesPolicy(cookiesDraft))} isLoading={isSaving} className="gap-2">
+                  <Save className="h-4 w-4" /> Save All
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label>Page Subtitle</Label>
+                  <Textarea value={cookiesDraft.subtitle} onChange={e => setCookiesDraft(d => ({ ...d, subtitle: e.target.value }))} rows={2} placeholder="Manage your cookie preferences…" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Categories */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div><CardTitle>Cookie Categories</CardTitle><CardDescription>Edit the title and description for each consent category. The four keys (essential, functional, analytics, marketing) are fixed.</CardDescription></div>
+                <Button size="sm" onClick={() => saveWithFeedback(() => updateCookiesPolicy(cookiesDraft))} isLoading={isSaving}>
+                  <Save className="w-4 h-4 mr-2" /> Save
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[...cookiesDraft.categories]
+                  .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                  .map((cat, i) => (
+                    <div key={i} className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">{cat.key}</span>
+                        <span className="text-xs text-muted-foreground">(key is fixed)</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Title</Label>
+                          <Input value={cat.title} onChange={e => {
+                            const c = [...cookiesDraft.categories]; c[i] = { ...c[i], title: e.target.value };
+                            setCookiesDraft(d => ({ ...d, categories: c }));
+                          }} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Description</Label>
+                          <Textarea value={cat.description} onChange={e => {
+                            const c = [...cookiesDraft.categories]; c[i] = { ...c[i], description: e.target.value };
+                            setCookiesDraft(d => ({ ...d, categories: c }));
+                          }} rows={3} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         {/* --- Nav & Footer Tab --- */}
         <TabsContent value="nav-footer">
           <NavFooterManager />

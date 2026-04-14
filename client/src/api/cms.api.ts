@@ -35,4 +35,10 @@ export const cmsApi = {
   addTestimonial: (testimonial: any) => apiClient.post('/cms/testimonials', testimonial),
   updateTestimonial: (id: string, testimonial: any) => apiClient.put(`/cms/testimonials/${id}`, testimonial),
   deleteTestimonial: (id: string) => apiClient.delete(`/cms/testimonials/${id}`),
+
+  updateAbout: (data: any) => apiClient.put('/cms/about', data),
+
+  updatePrivacyPolicy: (data: any) => apiClient.put('/cms/privacy-policy', data),
+  updateTermsOfService: (data: any) => apiClient.put('/cms/terms-of-service', data),
+  updateCookiesPolicy: (data: any) => apiClient.put('/cms/cookies-policy', data),
 };

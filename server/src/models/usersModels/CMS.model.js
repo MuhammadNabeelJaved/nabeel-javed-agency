@@ -181,6 +181,75 @@ const cmsSchema = new mongoose.Schema(
             taglineVisible: { type: Boolean, default: true },
         },
 
+        // ── About Page ──
+        about: {
+            // Hero sub-heading
+            heroSubtitle: { type: String, trim: true, maxlength: 500, default: "" },
+
+            // Stats bar (e.g. "50+ Projects Delivered")
+            stats: [{
+                value: { type: String, trim: true, maxlength: 20, required: true },  // "50+"
+                label: { type: String, trim: true, maxlength: 80, required: true },  // "Projects Delivered"
+                order: { type: Number, default: 0 },
+            }],
+
+            // Our Story section
+            storyTitle: { type: String, trim: true, maxlength: 200, default: "" },
+            storyParagraphs: [{ type: String, trim: true, maxlength: 800 }],
+            storyPoints: [{ type: String, trim: true, maxlength: 200 }],  // bullet-list checkmarks
+
+            // Company milestone timeline
+            milestones: [{
+                year:  { type: String, trim: true, maxlength: 10, required: true },
+                title: { type: String, trim: true, maxlength: 100, required: true },
+                desc:  { type: String, trim: true, maxlength: 400, required: true },
+                order: { type: Number, default: 0 },
+            }],
+
+            // Core values grid
+            values: [{
+                title:       { type: String, trim: true, maxlength: 100, required: true },
+                description: { type: String, trim: true, maxlength: 400, required: true },
+                iconName:    { type: String, trim: true, maxlength: 50, default: "Star" },
+                order:       { type: Number, default: 0 },
+            }],
+        },
+
+        // ── Privacy Policy Page ──
+        privacyPolicy: {
+            lastUpdated:  { type: String, trim: true, default: '' },
+            subtitle:     { type: String, trim: true, maxlength: 500, default: '' },
+            contactEmail: { type: String, trim: true, default: '' },
+            sections: [{
+                title:   { type: String, trim: true, maxlength: 200, required: true },
+                content: { type: String, trim: true, maxlength: 5000, default: '' },
+                order:   { type: Number, default: 0 },
+            }],
+        },
+
+        // ── Terms of Service Page ──
+        termsOfService: {
+            lastUpdated:  { type: String, trim: true, default: '' },
+            subtitle:     { type: String, trim: true, maxlength: 500, default: '' },
+            contactEmail: { type: String, trim: true, default: '' },
+            sections: [{
+                title:   { type: String, trim: true, maxlength: 200, required: true },
+                content: { type: String, trim: true, maxlength: 5000, default: '' },
+                order:   { type: Number, default: 0 },
+            }],
+        },
+
+        // ── Cookies Policy Page ──
+        cookiesPolicy: {
+            subtitle: { type: String, trim: true, maxlength: 500, default: '' },
+            categories: [{
+                key:         { type: String, trim: true, maxlength: 50, required: true }, // essential/functional/analytics/marketing
+                title:       { type: String, trim: true, maxlength: 200, required: true },
+                description: { type: String, trim: true, maxlength: 1000, default: '' },
+                order:       { type: Number, default: 0 },
+            }],
+        },
+
         // ── Global Site Theme ──
         // When set, overrides all visitor theme preferences site-wide
         globalTheme: {
