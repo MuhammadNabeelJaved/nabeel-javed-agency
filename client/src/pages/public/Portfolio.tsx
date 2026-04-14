@@ -51,7 +51,7 @@ export default function Portfolio() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4">Our <span className="text-primary">Masterpieces</span></h1>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">Our <span className="text-primary">Masterpieces</span></h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               A curated selection of our most impactful projects across web, mobile, and AI technologies.
             </p>

@@ -46,13 +46,13 @@ export default function About() {
             <div className="h-1 w-10 bg-primary rounded-full" />
             <span className="text-primary text-sm font-bold tracking-widest uppercase">About Us</span>
           </motion.div>
-          <motion.h1 {...fadeUp(0.1)} className="text-4xl sm:text-5xl lg:text-7xl font-bold text-foreground leading-tight mb-6 max-w-4xl">
+          <motion.h1 {...fadeUp(0.1)} className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6 max-w-4xl">
             We Build Digital Products{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-blue-600 dark:from-white dark:via-white dark:to-white/50">
               That Matter
             </span>
           </motion.h1>
-          <motion.p {...fadeUp(0.2)} className="text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed mb-10">
+          <motion.p {...fadeUp(0.2)} className="text-xl text-muted-foreground max-w-2xl leading-relaxed mb-10">
             {about.heroSubtitle}
           </motion.p>
           <motion.div {...fadeUp(0.3)} className="flex flex-wrap gap-4">

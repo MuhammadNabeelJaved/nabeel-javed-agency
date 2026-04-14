@@ -38,7 +38,7 @@ export default function Team() {
             <Badge variant="outline" className="mb-6 px-4 py-1 text-sm border-primary/20 bg-primary/5 text-primary">
               The Dream Team
             </Badge>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
               Meet the minds behind <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-secondary">the magic.</span>
             </h1>
