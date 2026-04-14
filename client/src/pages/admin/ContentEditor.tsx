@@ -423,6 +423,31 @@ export default function ContentEditor() {
                 <div className="space-y-2"><Label>Phone</Label><Input value={contactInfo.phone} onChange={e => updateContactInfo({ ...contactInfo, phone: e.target.value })} placeholder="+1 (555) 123-4567" /></div>
               </div>
               <div className="space-y-2"><Label>Business Hours</Label><Textarea value={contactInfo.businessHours} onChange={e => updateContactInfo({ ...contactInfo, businessHours: e.target.value })} placeholder="Monday - Friday&#10;9:00 AM - 6:00 PM PST" rows={2} /></div>
+              <div className="space-y-2">
+                <Label>Google Maps Embed URL</Label>
+                <Input
+                  value={contactInfo.mapEmbedUrl}
+                  onChange={e => updateContactInfo({ ...contactInfo, mapEmbedUrl: e.target.value })}
+                  placeholder="https://www.google.com/maps/embed?pb=..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Go to Google Maps → share your location → Embed a map → copy only the <code>src="..."</code> URL from the iframe code. Leave blank to hide the map.
+                </p>
+                {contactInfo.mapEmbedUrl && (
+                  <div className="mt-3 rounded-xl overflow-hidden border border-border/50 aspect-video">
+                    <iframe
+                      src={contactInfo.mapEmbedUrl}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title="Map preview"
+                    />
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

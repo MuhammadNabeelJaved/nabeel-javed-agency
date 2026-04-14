@@ -58,6 +58,7 @@ export interface ContactInfo {
   email: string;
   phone: string;
   businessHours: string;
+  mapEmbedUrl: string;
 }
 
 export interface CustomSocialLink {
@@ -323,7 +324,7 @@ const defaultWhyChooseUs: WhyChooseUsContent = {
   ]
 };
 
-const defaultContactInfo: ContactInfo = { address: "", email: "", phone: "", businessHours: "" };
+const defaultContactInfo: ContactInfo = { address: "", email: "", phone: "", businessHours: "", mapEmbedUrl: "" };
 const defaultSocialLinks: SocialLinks = { twitter: "", linkedin: "", instagram: "", github: "", customSocialLinks: [] };
 
 const defaultAbout: AboutContent = {
@@ -443,6 +444,7 @@ function mapCmsToState(cms: any) {
     email: cms.contactInfo?.email || '',
     phone: cms.contactInfo?.phone || '',
     businessHours: cms.contactInfo?.businessHours || '',
+    mapEmbedUrl: cms.contactInfo?.mapEmbedUrl || '',
   };
 
   const socialLinks: SocialLinks = {

@@ -426,13 +426,14 @@ export const deleteScrollingCard = asyncHandler(async (req, res) => {
 // UPDATE CONTACT INFO
 // =========================
 export const updateContactInfo = asyncHandler(async (req, res) => {
-    const { address, email, phone, businessHours } = req.body;
+    const { address, email, phone, businessHours, mapEmbedUrl } = req.body;
 
     const cms = await CMS.getOrCreate();
     if (address !== undefined) cms.contactInfo.address = address;
     if (email !== undefined) cms.contactInfo.email = email;
     if (phone !== undefined) cms.contactInfo.phone = phone;
     if (businessHours !== undefined) cms.contactInfo.businessHours = businessHours;
+    if (mapEmbedUrl !== undefined) cms.contactInfo.mapEmbedUrl = mapEmbedUrl;
     cms.lastUpdatedBy = req.user._id;
     await cms.save();
     emitCmsUpdate(req, 'cms');
