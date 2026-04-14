@@ -20,7 +20,7 @@ import { CookieConsent } from './components/CookieConsent';
 import { CookieConsentProvider } from './contexts/CookieConsentContext';
 import { useContent } from './contexts/ContentContext';
 import { ErrorBoundary, RouteWithBoundary } from './components/ErrorBoundary';
-import PageLoaderFallback from './pages/public/PageLoader';
+import PageLoaderFallback from './components/PageLoaderFallback';
 
 // Dashboard layouts (lazy — only needed for authenticated users)
 const DashboardLayout      = lazy(() => import('./layouts/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
