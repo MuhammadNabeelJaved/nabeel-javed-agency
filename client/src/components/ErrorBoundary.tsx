@@ -1,5 +1,5 @@
 import React, { Component, ReactNode, Suspense } from 'react';
-import PageLoaderFallback from '../pages/public/PageLoader';
+import PageLoaderFallback from './PageLoaderFallback';
 
 interface Props {
   children: ReactNode;
