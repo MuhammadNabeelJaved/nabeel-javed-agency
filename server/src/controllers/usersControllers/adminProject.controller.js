@@ -274,6 +274,32 @@ export const getPublicPortfolio = asyncHandler(async (req, res) => {
 
 
 // =========================
+// GET HOME FEATURED (no auth, no cache)
+// Returns featuredOnHome projects; falls back to 3 newest public if none set.
+// =========================
+export const getHomeFeatured = asyncHandler(async (req, res) => {
+    const FIELDS = 'projectTitle clientName category status techStack projectGallery projectDescription completionPercentage tags startDate endDate clientFeedback featuredOnHome';
+
+    let projects = await adminProject
+        .find({ isPublic: true, isArchived: false, featuredOnHome: true })
+        .select(FIELDS)
+        .sort({ createdAt: -1 })
+        .lean();
+
+    // Fallback: if admin hasn't pinned any project yet, return first 3 public ones
+    if (projects.length === 0) {
+        projects = await adminProject
+            .find({ isPublic: true, isArchived: false })
+            .select(FIELDS)
+            .sort({ createdAt: -1 })
+            .limit(3)
+            .lean();
+    }
+
+    successResponse(res, "Home featured projects fetched", { projects, total: projects.length });
+});
+
+// =========================
 // UPDATE PROJECT STATUS
 // =========================
 export const updateProjectStatus = asyncHandler(async (req, res, next) => {

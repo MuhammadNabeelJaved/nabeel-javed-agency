@@ -7,6 +7,7 @@ import {
     deleteProject,
     updateProjectStatus,
     getPublicPortfolio,
+    getHomeFeatured,
     bulkDeleteProjects,
     bulkToggleVisibility,
     toggleFeaturedHome,
@@ -19,8 +20,10 @@ import { cacheMiddleware } from "../../middlewares/redisCache.js";
 
 const router = express.Router();
 
-// Public route – portfolio page
+// Public routes – no auth required
 router.get("/portfolio", setCacheHeaders(300), cacheMiddleware(300), getPublicPortfolio);
+// Home-featured: always fresh (no cache) — used by the home page slider
+router.get("/home-featured", getHomeFeatured);
 
 // Read routes – admin + team can access
 router.get("/", userAuthenticated, authorizeRoles("admin", "team"), getAllProjects);
