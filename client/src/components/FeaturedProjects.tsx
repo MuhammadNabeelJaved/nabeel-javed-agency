@@ -3,7 +3,7 @@
  * Implements a "Creative Glossy" Accordion Slider for desktop
  * and a stacked layout for mobile.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -11,24 +11,46 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ProjectCard } from './ProjectCard';
 import { adminProjectsApi } from '../api/adminProjects.api';
-import { useDataRealtime } from '../hooks/useDataRealtime';
 
 export function FeaturedProjects() {
   const [projects, setProjects] = useState<any[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const lastFetchRef = useRef(0);
 
   const loadFeatured = useCallback(() => {
+    const now = Date.now();
+    // Debounce: skip if already fetched within the last 2 seconds
+    if (now - lastFetchRef.current < 2000) return;
+    lastFetchRef.current = now;
+
     adminProjectsApi.getHomeFeatured()
       .then(res => {
-        const list = Array.isArray(res.data.data.projects) ? res.data.data.projects : [];
+        const list = Array.isArray(res.data?.data?.projects) ? res.data.data.projects : [];
         setProjects(list);
-        if (list.length > 0) setActiveId(prev => prev && list.find((p: any) => p._id === prev) ? prev : list[0]._id);
+        setActiveId(prev => (prev && list.find((p: any) => p._id === prev) ? prev : list[0]?._id ?? null));
       })
       .catch(() => {});
   }, []);
 
-  useDataRealtime('projects', loadFeatured);
+  // Initial load
   useEffect(() => { loadFeatured(); }, [loadFeatured]);
+
+  // Re-fetch whenever user returns to this tab (handles admin changes in another tab)
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') loadFeatured(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [loadFeatured]);
+
+  // Re-fetch on CMS realtime event (same-tab admin changes)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const section = (e as CustomEvent<{ section: string }>).detail?.section;
+      if (section === 'projects' || section === '*') loadFeatured();
+    };
+    window.addEventListener('cms:updated', handler);
+    return () => window.removeEventListener('cms:updated', handler);
+  }, [loadFeatured]);
 
   return (
     <section className="relative py-16 sm:py-24 md:py-32 overflow-hidden bg-background">
