@@ -3,7 +3,7 @@
  * Implements a "Creative Glossy" Accordion Slider for desktop
  * and a stacked layout for mobile.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -11,12 +11,13 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ProjectCard } from './ProjectCard';
 import { adminProjectsApi } from '../api/adminProjects.api';
+import { useDataRealtime } from '../hooks/useDataRealtime';
 
 export function FeaturedProjects() {
   const [projects, setProjects] = useState<any[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadFeatured = useCallback(() => {
     adminProjectsApi.getPortfolio()
       .then(res => {
         const data = res.data.data.projects;
@@ -25,10 +26,13 @@ export function FeaturedProjects() {
         const featured = all.filter((p: any) => p.featuredOnHome);
         const list = featured.length > 0 ? featured : all.slice(0, 3);
         setProjects(list);
-        if (list.length > 0) setActiveId(list[0]._id);
+        if (list.length > 0) setActiveId(prev => prev && list.find((p: any) => p._id === prev) ? prev : list[0]._id);
       })
       .catch(() => {});
   }, []);
+
+  useDataRealtime('projects', loadFeatured);
+  useEffect(() => { loadFeatured(); }, [loadFeatured]);
 
   return (
     <section className="relative py-16 sm:py-24 md:py-32 overflow-hidden bg-background">
