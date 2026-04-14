@@ -19,7 +19,10 @@ export default function Team() {
     apiClient.get('/users/team')
       .then(res => {
         const data = res.data.data;
-        setTeam(Array.isArray(data) ? data : []);
+        // Controller returns { members: [...], total: n }
+        const list = Array.isArray(data?.members) ? data.members
+          : Array.isArray(data) ? data : [];
+        setTeam(list);
       })
       .catch(() => setTeam([]))
       .finally(() => setIsLoading(false));
@@ -58,10 +61,10 @@ export default function Team() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {team.map((member, index) => {
               const profile = member.teamProfile || {};
-              const name = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.name || 'Team Member';
-              const role = profile.position || member.role || '';
+              const name = member.name || `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Team Member';
+              const role = profile.position || '';
               const bio = profile.bio || '';
-              const avatar = member.avatar || '';
+              const avatar = member.photo || member.avatar || '';
               const skills: string[] = profile.skills || [];
               const socials = profile.socialLinks || {};
 

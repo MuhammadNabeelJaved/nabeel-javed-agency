@@ -31,6 +31,8 @@ import {
   MessageSquare,
   CheckSquare,
   Square,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../../components/ui/button';
@@ -70,6 +72,7 @@ interface TeamMember {
     status?: 'Active' | 'On Leave' | 'Inactive' | 'Recently Joined';
     memberRole?: string;
     featured?: boolean;
+    showOnTeamPage?: boolean;
     displayOrder?: number;
     joinedDate?: string;
     socialLinks?: {
@@ -290,6 +293,24 @@ export default function TeamManagement() {
     }
   };
 
+  const handleToggleTeamPage = async (member: TeamMember) => {
+    const current = member.teamProfile?.showOnTeamPage !== false; // default true
+    const newVal = !current;
+    try {
+      await usersApi.update(member._id, {
+        teamProfile: { ...member.teamProfile, showOnTeamPage: newVal },
+      });
+      setMembers(prev => prev.map(m =>
+        m._id === member._id
+          ? { ...m, teamProfile: { ...m.teamProfile, showOnTeamPage: newVal } }
+          : m
+      ));
+      toast.success(newVal ? 'Shown on public team page' : 'Hidden from public team page');
+    } catch {
+      toast.error('Failed to update visibility');
+    }
+  };
+
   const handleCandidateStatus = (status: CandidateStatus) => {
     if (!selectedCandidate) return;
     setCandidates(prev => prev.map(c => c.id === selectedCandidate.id ? { ...c, status } : c));
@@ -427,6 +448,7 @@ export default function TeamManagement() {
                       <TableHead>Status</TableHead>
                       <TableHead>Skills</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead className="text-center">Public</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -472,6 +494,22 @@ export default function TeamManagement() {
                             {member.role}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <button
+                            onClick={() => handleToggleTeamPage(member)}
+                            title={member.teamProfile?.showOnTeamPage !== false ? 'Visible on team page — click to hide' : 'Hidden from team page — click to show'}
+                            className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-colors ${
+                              member.teamProfile?.showOnTeamPage !== false
+                                ? 'text-green-500 bg-green-500/10 hover:bg-green-500/20'
+                                : 'text-muted-foreground/40 hover:text-primary hover:bg-primary/10'
+                            }`}
+                          >
+                            {member.teamProfile?.showOnTeamPage !== false
+                              ? <Eye className="h-4 w-4" />
+                              : <EyeOff className="h-4 w-4" />
+                            }
+                          </button>
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="icon" onClick={() => setViewMember(member)} title="View Profile">
@@ -494,7 +532,7 @@ export default function TeamManagement() {
                     ))}
                     {filteredMembers.length === 0 && !isLoading && (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                           {searchTerm ? 'No members match your search.' : 'No team members found. Add your first member!'}
                         </TableCell>
                       </TableRow>
