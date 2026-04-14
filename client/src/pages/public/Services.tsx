@@ -94,11 +94,11 @@ export default function Services() {
               <span className="text-sm font-medium text-foreground">Accepting New Projects</span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold mb-8 tracking-tight leading-tight">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-8 tracking-tight leading-tight">
               We Craft <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-400 to-secondary">Digital Excellence</span>
             </h1>
 
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-12 leading-relaxed">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-12 leading-relaxed">
               Transforming businesses through innovative design, cutting-edge development, and strategic AI integration.
             </p>
           </motion.div>

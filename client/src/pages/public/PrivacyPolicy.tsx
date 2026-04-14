@@ -36,7 +36,7 @@ export default function PrivacyPolicy() {
           <div className="inline-flex items-center justify-center p-3 mb-6 bg-primary/10 rounded-full">
             <Shield className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">Privacy Policy</h1>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">Privacy Policy</h1>
           {subtitle && (
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">{subtitle}</p>
           )}
