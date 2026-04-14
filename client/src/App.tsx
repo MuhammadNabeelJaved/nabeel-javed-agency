@@ -118,6 +118,7 @@ const UserNotifications  = lazy(() => import('./pages/user/UserNotifications'));
 const UserAppliedJobs    = lazy(() => import('./pages/user/UserAppliedJobs'));
 const UserBilling        = lazy(() => import('./pages/user/UserBilling'));
 const UserSupport        = lazy(() => import('./pages/user/UserSupport'));
+const UserReviews        = lazy(() => import('./pages/user/UserReviews'));
 
 // Configure Tailwind Theme Extension
 // This must run before rendering
@@ -340,6 +341,7 @@ export default function App() {
                 <Route path="profile" element={<RouteWithBoundary component={UserProfile} />} />
                 <Route path="notifications" element={<RouteWithBoundary component={UserNotifications} />} />
                 <Route path="support" element={<RouteWithBoundary component={UserSupport} />} />
+                <Route path="reviews" element={<RouteWithBoundary component={UserReviews} />} />
               </Route>
             </Routes>
           </BrowserRouter>

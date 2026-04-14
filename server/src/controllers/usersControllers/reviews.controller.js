@@ -5,16 +5,20 @@
  *  1. Client submits a review for their own approved project → status: "pending"
  *  2. Admin reviews and sets status to "approved" or "rejected"
  *  3. Only approved reviews are returned on the public `GET /all` endpoint
+ *  4. Admin can create standalone reviews (no user/project required)
+ *  5. Admin toggles showOnHome per review → drives the Testimonials widget
  *
  * Business rules enforced:
  *  - Users can only review their own projects
- *  - The project must be in "approved" status
+ *  - The project must be in "approved" or "completed" status
  *  - One review per user per project
- *  - Users can only edit/delete their own pending reviews
+ *  - Users can edit/delete their review within editableUntil window (72h)
  *  - Admins can manage all reviews regardless of status
  *
  * Exported functions:
  *  - createReview         POST   /api/v1/reviews             (authenticated)
+ *  - createAdminReview    POST   /api/v1/reviews/admin       (admin)
+ *  - getHomeReviews       GET    /api/v1/reviews/home        (public, approved+showOnHome)
  *  - getAllReviews         GET    /api/v1/reviews/all         (public, approved only)
  *  - getAllReviewsAdmin    GET    /api/v1/reviews             (admin, all statuses)
  *  - getReviewById        GET    /api/v1/reviews/:id
@@ -22,6 +26,7 @@
  *  - getMyReviews         GET    /api/v1/reviews/my-reviews
  *  - updateReview         PUT    /api/v1/reviews/:id
  *  - updateReviewStatus   PUT    /api/v1/reviews/:id/status  (admin)
+ *  - toggleShowOnHome     PATCH  /api/v1/reviews/:id/toggle-home (admin)
  *  - deleteReview         DELETE /api/v1/reviews/:id
  *  - getReviewsByRating   GET    /api/v1/reviews/rating/:rating
  *  - getReviewStatistics  GET    /api/v1/reviews/statistics  (admin)
@@ -74,13 +79,17 @@ export const createReview = asyncHandler(async (req, res) => {
             throw new AppError("You have already reviewed this project", 400);
         }
 
+        // Set editableUntil to 72 hours from now
+        const editableUntil = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
         // Create review
         const review = await Review.create({
             client: userId,
             rating,
             reviewText,
             project,
-            status: "pending", // Admin will approve
+            status: "pending",
+            editableUntil,
         });
 
         await review.populate([
@@ -93,6 +102,80 @@ export const createReview = asyncHandler(async (req, res) => {
         console.error("Error creating review:", error.message);
         if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to create review: ${error.message}`, 500);
+    }
+});
+
+// =========================
+// CREATE ADMIN REVIEW (Admin creates standalone review — no user account needed)
+// =========================
+export const createAdminReview = asyncHandler(async (req, res) => {
+    try {
+        const { rating, reviewText, authorName, authorRole, authorCompany, authorAvatar, project, showOnHome } = req.body;
+
+        if (!rating || !reviewText || !authorName) {
+            throw new AppError("Rating, review text, and author name are required", 400);
+        }
+
+        // If a project is provided, verify it exists
+        if (project) {
+            const projectExists = await Project.findById(project);
+            if (!projectExists) throw new AppError("Project not found", 404);
+        }
+
+        const review = await Review.create({
+            rating,
+            reviewText,
+            authorName,
+            authorRole,
+            authorCompany,
+            authorAvatar,
+            project: project || null,
+            status: "approved", // Admin-created reviews are immediately approved
+            showOnHome: showOnHome === true || showOnHome === 'true',
+            isAdminCreated: true,
+        });
+
+        if (project) {
+            await review.populate("project", "projectName projectType");
+        }
+
+        successResponse(res, "Review created successfully", review, 201);
+    } catch (error) {
+        console.error("Error creating admin review:", error.message);
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
+        throw new AppError(`Failed to create review: ${error.message}`, 500);
+    }
+});
+
+// =========================
+// GET HOME REVIEWS (Public - approved + showOnHome)
+// =========================
+export const getHomeReviews = asyncHandler(async (req, res) => {
+    try {
+        const reviews = await Review.find({ status: "approved", showOnHome: true })
+            .populate("client", "name email photo")
+            .populate("project", "projectName projectType")
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Normalise each review so the Testimonials widget gets consistent shape
+        const normalised = reviews.map(r => ({
+            _id: r._id,
+            content: r.reviewText,
+            rating: r.rating,
+            author: r.isAdminCreated ? r.authorName : (r.client?.name || r.authorName || 'Anonymous'),
+            role: r.isAdminCreated ? r.authorRole : (r.authorRole || ''),
+            company: r.authorCompany || '',
+            avatar: r.isAdminCreated ? (r.authorAvatar || '') : (r.client?.photo || ''),
+            projectName: r.project?.projectName || '',
+            showOnHome: r.showOnHome,
+            isAdminCreated: r.isAdminCreated,
+        }));
+
+        successResponse(res, "Home reviews retrieved successfully", normalised);
+    } catch (error) {
+        console.error("Error retrieving home reviews:", error.message);
+        throw new AppError(`Failed to retrieve home reviews: ${error.message}`, 500);
     }
 });
 
@@ -407,9 +490,11 @@ export const updateReview = asyncHandler(async (req, res) => {
             throw new AppError("You are not authorized to update this review", 403);
         }
 
-        // Users can only update pending reviews
-        if (req?.user?.role !== "admin" && review.status !== "pending") {
-            throw new AppError("You can only update pending reviews", 400);
+        // Users can only update their review within the editableUntil window
+        if (req?.user?.role !== "admin") {
+            if (review.editableUntil && new Date() > review.editableUntil) {
+                throw new AppError("The editing window for this review has expired (72 hours)", 400);
+            }
         }
 
         // Update fields
@@ -466,6 +551,62 @@ export const updateReviewStatus = asyncHandler(async (req, res) => {
         console.error("Error updating review status:", error.message);
         if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
         throw new AppError(`Failed to update review status: ${error.message}`, 500);
+    }
+});
+
+// =========================
+// TOGGLE SHOW ON HOME (Admin only)
+// =========================
+export const toggleShowOnHome = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const review = await Review.findById(id);
+        if (!review) throw new AppError("Review not found", 404);
+
+        review.showOnHome = !review.showOnHome;
+        await review.save();
+
+        successResponse(res, `Review ${review.showOnHome ? 'added to' : 'removed from'} home page`, { showOnHome: review.showOnHome });
+    } catch (error) {
+        console.error("Error toggling showOnHome:", error.message);
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
+        throw new AppError(`Failed to toggle home visibility: ${error.message}`, 500);
+    }
+});
+
+// =========================
+// UPDATE ADMIN REVIEW (Admin updates their manually-created review)
+// =========================
+export const updateAdminReview = asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { rating, reviewText, authorName, authorRole, authorCompany, authorAvatar, showOnHome, status } = req.body;
+
+        const review = await Review.findById(id);
+        if (!review) throw new AppError("Review not found", 404);
+
+        if (rating !== undefined) review.rating = rating;
+        if (reviewText !== undefined) review.reviewText = reviewText;
+        if (authorName !== undefined) review.authorName = authorName;
+        if (authorRole !== undefined) review.authorRole = authorRole;
+        if (authorCompany !== undefined) review.authorCompany = authorCompany;
+        if (authorAvatar !== undefined) review.authorAvatar = authorAvatar;
+        if (showOnHome !== undefined) review.showOnHome = showOnHome === true || showOnHome === 'true';
+        if (status !== undefined) review.status = status;
+
+        await review.save();
+
+        await review.populate([
+            { path: "client", select: "name email photo" },
+            { path: "project", select: "projectName projectType" },
+        ]);
+
+        successResponse(res, "Review updated successfully", review);
+    } catch (error) {
+        console.error("Error updating admin review:", error.message);
+        if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
+        throw new AppError(`Failed to update review: ${error.message}`, 500);
     }
 });
 

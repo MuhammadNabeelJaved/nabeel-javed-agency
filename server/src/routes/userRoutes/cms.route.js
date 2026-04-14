@@ -27,6 +27,10 @@ import {
     addTestimonial,
     updateTestimonial,
     deleteTestimonial,
+    updateAbout,
+    updatePrivacyPolicy,
+    updateTermsOfService,
+    updateCookiesPolicy,
 } from "../../controllers/usersControllers/cms.controller.js";
 import { userAuthenticated, authorizeRoles } from "../../middlewares/Auth.js";
 import { setCacheHeaders } from "../../middlewares/cacheHeaders.js";
@@ -83,5 +87,13 @@ router.put("/testimonials", updateTestimonials);
 router.post("/testimonials", addTestimonial);
 router.put("/testimonials/:testimonialId", updateTestimonial);
 router.delete("/testimonials/:testimonialId", deleteTestimonial);
+
+// About Page
+router.put("/about", updateAbout);
+
+// Legal Pages
+router.put("/privacy-policy", updatePrivacyPolicy);
+router.put("/terms-of-service", updateTermsOfService);
+router.put("/cookies-policy", updateCookiesPolicy);
 
 export default router;

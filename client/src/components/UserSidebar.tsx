@@ -8,7 +8,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, FolderKanban, User, LogOut, Bell,
   ChevronRight, PlusCircle, Sparkles, Briefcase, HelpCircle, CreditCard, X,
-  PanelLeftClose, PanelLeftOpen, GripVertical, Star,
+  PanelLeftClose, PanelLeftOpen, GripVertical, Star, ThumbsUp,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,6 +29,7 @@ interface UserSidebarProps {
 const DEFAULT_LINKS = [
   { name: 'Overview',           path: '/user-dashboard',               icon: LayoutDashboard },
   { name: 'My Projects',        path: '/user-dashboard/projects',       icon: FolderKanban },
+  { name: 'My Reviews',         path: '/user-dashboard/reviews',        icon: ThumbsUp },
   { name: 'Messages',           path: '/user-dashboard/messages',       icon: MessageSquare },
   { name: 'AI Assistant',       path: '/user-dashboard/ai-assistant',   icon: Sparkles },
   { name: 'Applied Jobs',       path: '/user-dashboard/applied-jobs',   icon: Briefcase },

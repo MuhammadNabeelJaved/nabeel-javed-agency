@@ -1,11 +1,13 @@
 /**
  * Testimonials Component
- * Premium glass cards with infinite scroll - data from CMS
+ * Premium glass cards with infinite scroll – data from approved+showOnHome reviews DB.
+ * Falls back to CMS testimonials if no DB reviews are available.
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Star, Quote } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useContent } from '../contexts/ContentContext';
+import apiClient from '../api/apiClient';
 
 const fallbackTestimonials = [
   { content: "Nova Agency transformed our digital presence. Their attention to detail is unmatched.", author: "Sarah Johnson", role: "CTO, TechFlow", rating: 5 },
@@ -33,20 +35,46 @@ const ReviewCard = ({ data, className }: { data: any; className?: string }) => (
       </p>
     </div>
     <div className="flex items-center gap-4 border-t border-border/50 dark:border-white/10 pt-6 group-hover:border-primary/20 transition-colors">
-      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center font-bold text-white shadow-lg text-lg ring-2 ring-transparent group-hover:ring-primary/50 transition-all">
-        {(data.author || 'A').charAt(0).toUpperCase()}
-      </div>
+      {data.avatar ? (
+        <img
+          src={data.avatar}
+          alt={data.author}
+          className="h-12 w-12 rounded-full object-cover ring-2 ring-transparent group-hover:ring-primary/50 transition-all"
+        />
+      ) : (
+        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center font-bold text-white shadow-lg text-lg ring-2 ring-transparent group-hover:ring-primary/50 transition-all">
+          {(data.author || 'A').charAt(0).toUpperCase()}
+        </div>
+      )}
       <div>
         <div className="font-bold text-foreground dark:text-white text-base">{data.author}</div>
-        <div className="text-sm text-primary/80 font-medium group-hover:text-primary transition-colors">{data.role}</div>
+        <div className="text-sm text-primary/80 font-medium group-hover:text-primary transition-colors">
+          {data.role}{data.company && data.role ? `, ${data.company}` : data.company}
+        </div>
       </div>
     </div>
   </div>
 );
 
 export function Testimonials() {
-  const { testimonials } = useContent();
-  const displayTestimonials = testimonials.length > 0 ? testimonials : fallbackTestimonials;
+  const { testimonials: cmsTestimonials } = useContent();
+  const [dbReviews, setDbReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    apiClient.get('/reviews/home')
+      .then(res => {
+        const data = res.data?.data;
+        if (Array.isArray(data) && data.length > 0) setDbReviews(data);
+      })
+      .catch(() => {/* silent fallback */});
+  }, []);
+
+  // Priority: DB reviews → CMS testimonials → hardcoded fallback
+  const displayTestimonials = dbReviews.length > 0
+    ? dbReviews
+    : cmsTestimonials.length > 0
+      ? cmsTestimonials
+      : fallbackTestimonials;
 
   return (
     <section className="py-16 sm:py-24 md:py-32 bg-background relative overflow-hidden">
