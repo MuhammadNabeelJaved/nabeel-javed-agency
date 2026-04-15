@@ -977,8 +977,8 @@ export default function Messages() {
                                                                     const otherId = activeParticipant?._id;
                                                                     const seen = otherId && msg.readBy.includes(otherId);
                                                                     return seen
-                                                                        ? <CheckCheck className="h-3 w-3 text-blue-400" title="Seen" />
-                                                                        : <Check className="h-3 w-3 opacity-60" title="Sent" />;
+                                                                        ? <CheckCheck className="h-3 w-3 text-blue-400" />
+                                                                        : <Check className="h-3 w-3 opacity-60" />;
                                                                 })()}
                                                             </div>
                                                         </div>
@@ -998,22 +998,22 @@ export default function Messages() {
                                 {isTyping && (
                                     <motion.div
                                         key="typing-indicator"
-                                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                                        transition={{ duration: 0.18 }}
-                                        className="flex items-end gap-2 mt-2"
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 6 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="flex items-end gap-2 mt-3"
                                     >
-                                        <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                                        <div className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-[10px] font-bold">
                                             {activeParticipant?.name?.charAt(0) ?? 'U'}
                                         </div>
-                                        <div className="bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-                                            <div className="flex gap-1 items-center h-4">
-                                                <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce [animation-delay:0ms]" />
-                                                <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce [animation-delay:160ms]" />
-                                                <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce [animation-delay:320ms]" />
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-[10px] text-muted-foreground/70 pl-1">{typingUser} is typing</span>
+                                            <div className="bg-muted/60 border border-border/40 rounded-2xl rounded-tl-sm px-3.5 py-2.5 flex items-center gap-1.5">
+                                                <span className="w-2 h-2 bg-foreground/35 rounded-full animate-bounce [animation-delay:0ms]" />
+                                                <span className="w-2 h-2 bg-foreground/35 rounded-full animate-bounce [animation-delay:160ms]" />
+                                                <span className="w-2 h-2 bg-foreground/35 rounded-full animate-bounce [animation-delay:320ms]" />
                                             </div>
-                                            <span className="text-[10px] text-muted-foreground mt-1 block">{typingUser} is typing…</span>
                                         </div>
                                     </motion.div>
                                 )}
