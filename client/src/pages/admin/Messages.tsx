@@ -414,18 +414,31 @@ export default function Messages() {
         };
     }, [socket, selectedConvo?._id]);
 
-    // ── Auto-scroll (only when no specific message target) ───────────────────
+    // ── Auto-scroll to newest message ────────────────────────────────────────
     useEffect(() => {
         const targetId = searchParams.get('messageId');
-        if (targetId && messages.find(m => m._id === targetId)) return; // let scroll-to-msg handle it
-        const isInitialLoad = prevMsgCountRef.current === 0 && messages.length > 0;
-        const wasAtBottom = isAtBottomRef.current;
+        if (targetId && messages.find(m => m._id === targetId)) return;
+
+        const isNewMsg = messages.length > prevMsgCountRef.current && prevMsgCountRef.current > 0;
         prevMsgCountRef.current = messages.length;
-        if (isInitialLoad || wasAtBottom) {
-            const el = messagesContainerRef.current;
-            if (el) el.scrollTop = el.scrollHeight;
+
+        const el = messagesContainerRef.current;
+        if (!el) return;
+
+        if (!isNewMsg) {
+            el.scrollTop = el.scrollHeight;
+        } else {
+            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+            setNewBelowCount(0);
         }
     }, [messages]);
+
+    // ── Auto-scroll when typing indicator appears ─────────────────────────────
+    useEffect(() => {
+        if (!isTyping) return;
+        const el = messagesContainerRef.current;
+        if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }, [isTyping]);
 
     // ── Scroll to + highlight a specific message from notification ────────────
     useEffect(() => {

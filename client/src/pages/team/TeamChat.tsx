@@ -310,7 +310,7 @@ export default function TeamChat() {
         };
     }, [socket, selectedConvo?._id]);
 
-    // ── Auto-scroll (skip when navigating to specific message) ───────────────
+    // ── Auto-scroll to newest message ────────────────────────────────────────
     useEffect(() => {
         const targetId = searchParams.get('messageId');
         if (targetId && messages.find((m) => m._id === targetId)) return;
@@ -321,12 +321,20 @@ export default function TeamChat() {
         const el = messagesContainerRef.current;
         if (!el) return;
 
-        if (isAtBottomRef.current || !isNewMsg) {
+        if (!isNewMsg) {
             el.scrollTop = el.scrollHeight;
         } else {
-            setNewBelowCount(prev => prev + 1);
+            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+            setNewBelowCount(0);
         }
     }, [messages]);
+
+    // ── Auto-scroll when typing indicator appears ─────────────────────────────
+    useEffect(() => {
+        if (!isTyping) return;
+        const el = messagesContainerRef.current;
+        if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }, [isTyping]);
 
     // ── Scroll to + highlight a specific message from notification ────────────
     useEffect(() => {
