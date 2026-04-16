@@ -52,6 +52,8 @@ const notificationSchema = new mongoose.Schema(
                 "resource_added",
                 // Users
                 "user_registered",
+                // Live chat
+                "live_chat_request",
             ],
             required: true,
         },
