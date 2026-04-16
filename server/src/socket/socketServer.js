@@ -21,6 +21,9 @@ import User from "../models/usersModels/User.model.js";
 import Conversation from "../models/usersModels/Conversation.model.js";
 import Message from "../models/usersModels/Message.model.js";
 import Notification from "../models/usersModels/Notification.model.js";
+import LiveChatSession from '../models/usersModels/LiveChatSession.model.js';
+import LiveChatMessage from '../models/usersModels/LiveChatMessage.model.js';
+import { notifyAdmins } from '../utils/notificationService.js';
 
 // ─── Cookie helper ────────────────────────────────────────────────────────────
 // Parse the raw "Cookie" header string without any external dependency.
@@ -441,6 +444,211 @@ export async function initSocket(httpServer, corsOptions) {
         // ── Disconnect cleanup ────────────────────────────────────────────────
         socket.on("disconnect", () => {
             // Socket.IO automatically removes the socket from all rooms on disconnect
+        });
+    });
+
+    // ── /livechat namespace — live chat handoff ────────────────────────────────
+    // Visitors connect WITHOUT a token. Agents connect WITH a JWT in socket.handshake.auth.token.
+    const liveChatNs = io.of('/livechat');
+
+    liveChatNs.on('connection', async (socket) => {
+        const token = socket.handshake.auth?.token;
+        let agentUser = null;
+
+        // ── Authenticate agent if token present ──────────────────────────────────
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+                agentUser = await User.findById(decoded.id).select('-password');
+                if (!agentUser || !agentUser.isVerified || !['admin', 'team'].includes(agentUser.role)) {
+                    socket.disconnect();
+                    return;
+                }
+                socket.agentUser = agentUser;
+                socket.join('lc:agents');
+                // Immediately send current waiting + active sessions
+                const sessions = await LiveChatSession.find({ status: { $in: ['waiting', 'active'] } })
+                    .populate('agentId', 'name photo')
+                    .sort({ startedAt: -1 })
+                    .lean();
+                socket.emit('lc:queue_update', { sessions });
+            } catch {
+                socket.disconnect();
+                return;
+            }
+        }
+
+        // ── lc:visitor_join ───────────────────────────────────────────────────────
+        socket.on('lc:visitor_join', async ({ sessionId, visitorName, visitorEmail, pageUrl, userAgent: ua }) => {
+            try {
+                if (!sessionId) return;
+                // Upsert session
+                let session = await LiveChatSession.findOne({ sessionId });
+                if (!session) {
+                    session = await LiveChatSession.create({
+                        sessionId,
+                        visitorName: (visitorName || 'Anonymous').trim(),
+                        visitorEmail: visitorEmail?.trim() || null,
+                        status: 'waiting',
+                        startedAt: new Date(),
+                        pageUrl: pageUrl || null,
+                        userAgent: ua ? String(ua).slice(0, 300) : null,
+                    });
+                }
+                socket.join(`lc:session:${sessionId}`);
+                socket.visitorSessionId = sessionId;
+
+                // Notify waiting agents
+                const sessions = await LiveChatSession.find({ status: { $in: ['waiting', 'active'] } })
+                    .populate('agentId', 'name photo')
+                    .sort({ startedAt: -1 })
+                    .lean();
+                liveChatNs.to('lc:agents').emit('lc:queue_update', { sessions });
+                liveChatNs.to('lc:agents').emit('lc:new_session', { session });
+
+                // Notify all admins via notification bell
+                await notifyAdmins(io, {
+                    type: 'live_chat_request',
+                    title: 'New live chat request',
+                    message: `${session.visitorName} is waiting for an agent`,
+                    payload: { sessionId: session.sessionId },
+                });
+
+                // System message back to visitor
+                liveChatNs.to(`lc:session:${sessionId}`).emit('lc:new_message', {
+                    sessionId,
+                    sender: 'system',
+                    content: 'Connecting you to an available agent. Please hold on…',
+                    timestamp: new Date(),
+                });
+            } catch (err) {
+                console.error('lc:visitor_join error:', err);
+            }
+        });
+
+        // ── lc:agent_accept ───────────────────────────────────────────────────────
+        socket.on('lc:agent_accept', async ({ sessionId }) => {
+            if (!socket.agentUser) return;
+            try {
+                const session = await LiveChatSession.findOneAndUpdate(
+                    { sessionId, status: 'waiting' },
+                    { status: 'active', agentId: socket.agentUser._id, acceptedAt: new Date() },
+                    { new: true }
+                ).populate('agentId', 'name photo');
+                if (!session) return; // Already accepted by another agent
+
+                socket.join(`lc:session:${sessionId}`);
+
+                // Tell visitor + any other listeners the agent has arrived
+                liveChatNs.to(`lc:session:${sessionId}`).emit('lc:session_update', {
+                    sessionId,
+                    status: 'active',
+                    agentId: socket.agentUser._id,
+                    agentName: socket.agentUser.name,
+                    agentPhoto: socket.agentUser.photo || null,
+                });
+
+                const systemContent = `${socket.agentUser.name} has joined the chat.`;
+                const systemMsg = await LiveChatMessage.create({
+                    sessionId,
+                    sender: 'system',
+                    content: systemContent,
+                });
+                liveChatNs.to(`lc:session:${sessionId}`).emit('lc:new_message', {
+                    _id: systemMsg._id,
+                    sessionId,
+                    sender: 'system',
+                    content: systemContent,
+                    timestamp: systemMsg.timestamp,
+                });
+
+                // Refresh agent queue
+                const sessions = await LiveChatSession.find({ status: { $in: ['waiting', 'active'] } })
+                    .populate('agentId', 'name photo')
+                    .sort({ startedAt: -1 })
+                    .lean();
+                liveChatNs.to('lc:agents').emit('lc:queue_update', { sessions });
+            } catch (err) {
+                console.error('lc:agent_accept error:', err);
+            }
+        });
+
+        // ── lc:message ────────────────────────────────────────────────────────────
+        socket.on('lc:message', async ({ sessionId: sid, content }) => {
+            const sId = sid || socket.visitorSessionId;
+            if (!sId || !content?.trim()) return;
+            try {
+                const sender = socket.agentUser ? 'agent' : 'visitor';
+                const msg = await LiveChatMessage.create({
+                    sessionId: sId,
+                    sender,
+                    senderId: socket.agentUser?._id || null,
+                    content: content.trim(),
+                });
+                liveChatNs.to(`lc:session:${sId}`).emit('lc:new_message', {
+                    _id: msg._id,
+                    sessionId: sId,
+                    sender,
+                    senderId: socket.agentUser?._id || null,
+                    senderName: socket.agentUser?.name || null,
+                    senderPhoto: socket.agentUser?.photo || null,
+                    content: content.trim(),
+                    timestamp: msg.timestamp,
+                });
+            } catch (err) {
+                console.error('lc:message error:', err);
+            }
+        });
+
+        // ── lc:typing ─────────────────────────────────────────────────────────────
+        socket.on('lc:typing', ({ sessionId: sid, isTyping }) => {
+            const sId = sid || socket.visitorSessionId;
+            if (!sId) return;
+            const sender = socket.agentUser ? 'agent' : 'visitor';
+            socket.to(`lc:session:${sId}`).emit('lc:typing_indicator', { sessionId: sId, sender, isTyping });
+        });
+
+        // ── lc:close ──────────────────────────────────────────────────────────────
+        socket.on('lc:close', async ({ sessionId: sid }) => {
+            const sId = sid || socket.visitorSessionId;
+            if (!sId) return;
+            try {
+                const closedBy = socket.agentUser ? 'agent' : 'visitor';
+                await LiveChatSession.findOneAndUpdate(
+                    { sessionId: sId, status: { $ne: 'closed' } },
+                    { status: 'closed', closedAt: new Date(), closedBy }
+                );
+                const closeContent = closedBy === 'agent' ? 'Agent ended the chat.' : 'Visitor has left the chat.';
+                const closeMsg = await LiveChatMessage.create({ sessionId: sId, sender: 'system', content: closeContent });
+                liveChatNs.to(`lc:session:${sId}`).emit('lc:session_update', { sessionId: sId, status: 'closed', closedBy });
+                liveChatNs.to(`lc:session:${sId}`).emit('lc:new_message', {
+                    _id: closeMsg._id, sessionId: sId, sender: 'system', content: closeContent, timestamp: closeMsg.timestamp,
+                });
+                const sessions = await LiveChatSession.find({ status: { $in: ['waiting', 'active'] } })
+                    .populate('agentId', 'name photo').sort({ startedAt: -1 }).lean();
+                liveChatNs.to('lc:agents').emit('lc:queue_update', { sessions });
+                liveChatNs.to('lc:agents').emit('lc:session_closed', { sessionId: sId });
+            } catch (err) {
+                console.error('lc:close error:', err);
+            }
+        });
+
+        // ── disconnect — mark as missed if visitor leaves while waiting ───────────
+        socket.on('disconnect', async () => {
+            if (!socket.agentUser && socket.visitorSessionId) {
+                try {
+                    const updated = await LiveChatSession.findOneAndUpdate(
+                        { sessionId: socket.visitorSessionId, status: 'waiting' },
+                        { status: 'missed', closedAt: new Date(), closedBy: 'system' }
+                    );
+                    if (updated) {
+                        const sessions = await LiveChatSession.find({ status: { $in: ['waiting', 'active'] } })
+                            .populate('agentId', 'name photo').sort({ startedAt: -1 }).lean();
+                        liveChatNs.to('lc:agents').emit('lc:queue_update', { sessions });
+                        liveChatNs.to('lc:agents').emit('lc:session_closed', { sessionId: socket.visitorSessionId });
+                    }
+                } catch { /* non-critical */ }
+            }
         });
     });
 
