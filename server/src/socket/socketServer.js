@@ -55,6 +55,22 @@ export async function initSocket(httpServer, corsOptions) {
         transports: ["polling", "websocket"],
     });
 
+    // ── Per-IP connection rate limit for /livechat namespace ─────────────────
+    const _lcIpConnections = new Map(); // ip → { count, resetAt }
+    const LC_MAX_CONNECTIONS = 10;
+    const LC_WINDOW_MS = 60 * 1000; // 1 minute
+
+    function _isLcRateLimited(ip) {
+        const now = Date.now();
+        const entry = _lcIpConnections.get(ip);
+        if (!entry || now > entry.resetAt) {
+            _lcIpConnections.set(ip, { count: 1, resetAt: now + LC_WINDOW_MS });
+            return false;
+        }
+        entry.count++;
+        return entry.count > LC_MAX_CONNECTIONS;
+    }
+
     // ── Optional Redis adapter (horizontal scaling) ───────────────────────────
     if (process.env.REDIS_URL) {
         try {
@@ -452,6 +468,13 @@ export async function initSocket(httpServer, corsOptions) {
     const liveChatNs = io.of('/livechat');
 
     liveChatNs.on('connection', async (socket) => {
+        // Rate-limit unauthenticated visitor connections
+        const clientIp = socket.handshake.address || '0.0.0.0';
+        if (_isLcRateLimited(clientIp)) {
+            socket.disconnect();
+            return;
+        }
+
         const token = socket.handshake.auth?.token;
         let agentUser = null;
 
@@ -482,10 +505,10 @@ export async function initSocket(httpServer, corsOptions) {
         socket.on('lc:visitor_join', async ({ sessionId, visitorName, visitorEmail, pageUrl, userAgent: ua }) => {
             try {
                 if (!sessionId) return;
-                // Upsert session
-                let session = await LiveChatSession.findOne({ sessionId });
-                if (!session) {
-                    session = await LiveChatSession.create({
+                // Atomic upsert — prevents duplicate-key race on concurrent joins
+                const session = await LiveChatSession.findOneAndUpdate(
+                    { sessionId },
+                    { $setOnInsert: {
                         sessionId,
                         visitorName: (visitorName || 'Anonymous').trim(),
                         visitorEmail: visitorEmail?.trim() || null,
@@ -493,8 +516,9 @@ export async function initSocket(httpServer, corsOptions) {
                         startedAt: new Date(),
                         pageUrl: pageUrl || null,
                         userAgent: ua ? String(ua).slice(0, 300) : null,
-                    });
-                }
+                    }},
+                    { upsert: true, new: true }
+                );
                 socket.join(`lc:session:${sessionId}`);
                 socket.visitorSessionId = sessionId;
 
@@ -577,6 +601,7 @@ export async function initSocket(httpServer, corsOptions) {
         socket.on('lc:message', async ({ sessionId: sid, content }) => {
             const sId = sid || socket.visitorSessionId;
             if (!sId || !content?.trim()) return;
+            if (!socket.rooms.has(`lc:session:${sId}`)) return;
             try {
                 const sender = socket.agentUser ? 'agent' : 'visitor';
                 const msg = await LiveChatMessage.create({
@@ -604,6 +629,7 @@ export async function initSocket(httpServer, corsOptions) {
         socket.on('lc:typing', ({ sessionId: sid, isTyping }) => {
             const sId = sid || socket.visitorSessionId;
             if (!sId) return;
+            if (!socket.rooms.has(`lc:session:${sId}`)) return;
             const sender = socket.agentUser ? 'agent' : 'visitor';
             socket.to(`lc:session:${sId}`).emit('lc:typing_indicator', { sessionId: sId, sender, isTyping });
         });
@@ -612,6 +638,7 @@ export async function initSocket(httpServer, corsOptions) {
         socket.on('lc:close', async ({ sessionId: sid }) => {
             const sId = sid || socket.visitorSessionId;
             if (!sId) return;
+            if (!socket.rooms.has(`lc:session:${sId}`)) return;
             try {
                 const closedBy = socket.agentUser ? 'agent' : 'visitor';
                 await LiveChatSession.findOneAndUpdate(
