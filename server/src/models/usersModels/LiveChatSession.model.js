@@ -18,7 +18,6 @@ const liveChatSessionSchema = new mongoose.Schema(
             type: String,
             required: true,
             unique: true,
-            index: true,
         },
 
         visitorName: {
@@ -37,7 +36,6 @@ const liveChatSessionSchema = new mongoose.Schema(
             type: String,
             enum: ["waiting", "active", "closed", "missed"],
             default: "waiting",
-            index: true,
         },
 
         agentId: {
