@@ -28,7 +28,7 @@ export const getStats = asyncHandler(async (req, res) => {
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
   const todayTotal = await LiveChatSession.countDocuments({ startedAt: { $gte: todayStart } });
 
-  successResponse(res, 200, 'Stats fetched', { total, waiting, active, closed, missed, avgWaitSec, todayTotal });
+  successResponse(res, 'Stats fetched', { total, waiting, active, closed, missed, avgWaitSec, todayTotal });
 });
 
 // GET /api/v1/live-chat/sessions
@@ -53,7 +53,7 @@ export const getSessions = asyncHandler(async (req, res) => {
       .lean(),
     LiveChatSession.countDocuments(filter),
   ]);
-  successResponse(res, 200, 'Sessions fetched', { sessions, total, page: Number(page), limit: Number(limit) });
+  successResponse(res, 'Sessions fetched', { sessions, total, page: Number(page), limit: Number(limit) });
 });
 
 // GET /api/v1/live-chat/sessions/:id
@@ -65,7 +65,7 @@ export const getSessionById = asyncHandler(async (req, res) => {
   const messages = await LiveChatMessage.find({ sessionId: session.sessionId })
     .sort({ timestamp: 1 })
     .lean();
-  successResponse(res, 200, 'Session fetched', { session, messages });
+  successResponse(res, 'Session fetched', { session, messages });
 });
 
 // PATCH /api/v1/live-chat/sessions/:id
@@ -74,10 +74,18 @@ export const updateSession = asyncHandler(async (req, res) => {
   const update = {};
   if (tags !== undefined) update.tags = tags;
   if (agentNotes !== undefined) update.agentNotes = agentNotes;
-  if (status) update.status = status;
+  if (status) {
+    const allowedStatuses = ['closed', 'missed'];
+    if (!allowedStatuses.includes(status)) throw new AppError('Invalid status transition via REST', 400);
+    update.status = status;
+    if (status === 'closed') {
+      update.closedAt = new Date();
+      update.closedBy = 'agent';
+    }
+  }
   const session = await LiveChatSession.findByIdAndUpdate(req.params.id, update, { new: true });
   if (!session) throw new AppError('Session not found', 404);
-  successResponse(res, 200, 'Session updated', { session });
+  successResponse(res, 'Session updated', { session });
 });
 
 // DELETE /api/v1/live-chat/sessions/:id
@@ -85,13 +93,15 @@ export const deleteSession = asyncHandler(async (req, res) => {
   const session = await LiveChatSession.findByIdAndDelete(req.params.id);
   if (!session) throw new AppError('Session not found', 404);
   await LiveChatMessage.deleteMany({ sessionId: session.sessionId });
-  successResponse(res, 200, 'Session deleted', null);
+  successResponse(res, 'Session deleted', null);
 });
 
 // GET /api/v1/live-chat/messages/:sessionId
 export const getMessages = asyncHandler(async (req, res) => {
+  const session = await LiveChatSession.findOne({ sessionId: req.params.sessionId }).lean();
+  if (!session) throw new AppError('Session not found', 404);
   const messages = await LiveChatMessage.find({ sessionId: req.params.sessionId })
     .sort({ timestamp: 1 })
     .lean();
-  successResponse(res, 200, 'Messages fetched', { messages });
+  successResponse(res, 'Messages fetched', { messages });
 });
