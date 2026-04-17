@@ -73,14 +73,7 @@ export default function LiveChat() {
 
   // ── Connect to /livechat namespace as agent ──────────────────────────────
   useEffect(() => {
-    const token = document.cookie
-      .split(';')
-      .map(c => c.trim())
-      .find(c => c.startsWith('accessToken='))
-      ?.split('=')[1];
-
     const sock = io(`${SOCKET_URL}/livechat`, {
-      auth: { token: token || '' },
       withCredentials: true,
       transports: ['websocket', 'polling'],
     });

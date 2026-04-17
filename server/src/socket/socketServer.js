@@ -475,7 +475,9 @@ export async function initSocket(httpServer, corsOptions) {
             return;
         }
 
-        const token = socket.handshake.auth?.token;
+        // Accept token from HTTP-only cookie (withCredentials) OR auth.token fallback
+        const cookies = parseCookies(socket.handshake.headers.cookie);
+        const token = cookies.accessToken || socket.handshake.auth?.token;
         let agentUser = null;
 
         // ── Authenticate agent if token present ──────────────────────────────────
