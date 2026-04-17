@@ -468,13 +468,6 @@ export async function initSocket(httpServer, corsOptions) {
     const liveChatNs = io.of('/livechat');
 
     liveChatNs.on('connection', async (socket) => {
-        // Rate-limit unauthenticated visitor connections
-        const clientIp = socket.handshake.address || '0.0.0.0';
-        if (_isLcRateLimited(clientIp)) {
-            socket.disconnect();
-            return;
-        }
-
         // Accept token from HTTP-only cookie (withCredentials) OR auth.token fallback
         const cookies = parseCookies(socket.handshake.headers.cookie);
         const token = cookies.accessToken || socket.handshake.auth?.token;
@@ -498,6 +491,13 @@ export async function initSocket(httpServer, corsOptions) {
                     .lean();
                 socket.emit('lc:queue_update', { sessions });
             } catch {
+                socket.disconnect();
+                return;
+            }
+        } else {
+            // Rate-limit only unauthenticated (visitor) connections
+            const clientIp = socket.handshake.address || '0.0.0.0';
+            if (_isLcRateLimited(clientIp)) {
                 socket.disconnect();
                 return;
             }
@@ -532,13 +532,13 @@ export async function initSocket(httpServer, corsOptions) {
                 liveChatNs.to('lc:agents').emit('lc:queue_update', { sessions });
                 liveChatNs.to('lc:agents').emit('lc:new_session', { session });
 
-                // Notify all admins via notification bell
-                await notifyAdmins(io, {
+                // Notify all admins via notification bell (non-blocking)
+                notifyAdmins(io, {
                     type: 'live_chat_request',
                     title: 'New live chat request',
                     message: `${session.visitorName} is waiting for an agent`,
                     payload: { sessionId: session.sessionId },
-                });
+                }).catch(err => console.error('lc notifyAdmins error:', err));
 
                 // System message back to visitor
                 liveChatNs.to(`lc:session:${sessionId}`).emit('lc:new_message', {
