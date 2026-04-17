@@ -44,6 +44,12 @@ const liveChatSessionSchema = new mongoose.Schema(
             default: null,
         },
 
+        assignedTo: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+
         startedAt: {
             type: Date,
             default: Date.now,
