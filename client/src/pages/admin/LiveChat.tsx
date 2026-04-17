@@ -75,15 +75,20 @@ export default function LiveChat() {
   useEffect(() => {
     const sock = io(`${SOCKET_URL}/livechat`, {
       withCredentials: true,
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'], // polling first so HTTP-only cookie is sent on handshake
     });
     socketRef.current = sock;
 
     sock.on('connect', () => setSocketConnected(true));
     sock.on('disconnect', () => setSocketConnected(false));
+    sock.on('connect_error', (err) => console.warn('[livechat socket]', err.message));
 
     sock.on('lc:queue_update', ({ sessions: list }: { sessions: LiveChatSessionDoc[] }) => {
-      setSessions(list);
+      // Socket sends waiting+active only — merge into full sessions state
+      setSessions(prev => {
+        const closedAndMissed = prev.filter(s => s.status === 'closed' || s.status === 'missed');
+        return [...list, ...closedAndMissed.filter(c => !list.find(l => l._id === c._id))];
+      });
       setStats(prev => ({
         ...prev,
         waiting: list.filter(s => s.status === 'waiting').length,
@@ -94,6 +99,15 @@ export default function LiveChat() {
     sock.on('lc:new_session', ({ session }: { session: LiveChatSessionDoc }) => {
       setSessions(prev => prev.find(s => s.sessionId === session.sessionId) ? prev : [session, ...prev]);
       toast.info(`New chat request from ${session.visitorName}`);
+      // Also refresh via REST in case socket auth was still settling
+      liveChatApi.getSessions({ status: 'waiting' })
+        .then(({ sessions: list }) => setSessions(prev => {
+          const merged = [...prev];
+          list.forEach(s => { if (!merged.find(x => x._id === s._id)) merged.unshift(s); });
+          return merged;
+        }))
+        .catch(() => {});
+      liveChatApi.getStats().then(setStats).catch(() => {});
     });
 
     sock.on('lc:session_update', (update: { sessionId: string; status: string }) => {
