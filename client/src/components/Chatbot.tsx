@@ -35,6 +35,15 @@ interface Message {
   error?: boolean;
 }
 
+interface LcMsg {
+  id: string;
+  sender: 'visitor' | 'agent' | 'system';
+  senderName?: string;
+  content: string;
+  timestamp: Date;
+  isJoin?: boolean; // highlights the "X has joined" message
+}
+
 // ─── Markdown + CTA renderer ──────────────────────────────────────────────────
 
 // CTA marker pattern: [CTA:/path|Button Label]
@@ -232,7 +241,7 @@ export function Chatbot() {
   // ── Live chat state ──────────────────────────────────────────────────────────
   const [liveChatMode, setLiveChatMode] = useState<'none' | 'connecting' | 'waiting' | 'active' | 'closed'>('none');
   const [lcAgent, setLcAgent] = useState<{ name: string; photo?: string } | null>(null);
-  const [lcMessages, setLcMessages] = useState<Message[]>([]);
+  const [lcMessages, setLcMessages] = useState<LcMsg[]>([]);
   const [showHandoffForm, setShowHandoffForm] = useState(false);
   const [handoffName, setHandoffName] = useState('');
   const [handoffEmail, setHandoffEmail] = useState('');
@@ -333,9 +342,9 @@ export function Chatbot() {
     // ── Live chat message routing ────────────────────────────────────────────
     if (liveChatMode === 'active') {
       lcSocketRef.current?.emit('lc:message', { sessionId: sessionId.current, content: text });
-      const userMsg: Message = {
+      const userMsg: LcMsg = {
         id: crypto.randomUUID(),
-        role: 'user',
+        sender: 'visitor',
         content: text,
         timestamp: new Date(),
       };
@@ -524,11 +533,14 @@ export function Chatbot() {
     });
 
     sock.on('lc:new_message', (msg: { sender: string; content: string; senderName?: string; timestamp: string; _id?: string }) => {
-      const newMsg: Message = {
+      const isJoin = msg.sender === 'system' && msg.content.includes('has joined the chat');
+      const newMsg: LcMsg = {
         id: msg._id || crypto.randomUUID(),
-        role: msg.sender === 'agent' ? 'assistant' : 'user',
-        content: msg.sender === 'system' ? `_${msg.content}_` : msg.content,
+        sender: msg.sender as LcMsg['sender'],
+        senderName: msg.senderName,
+        content: msg.content,
         timestamp: new Date(msg.timestamp),
+        isJoin,
       };
       setLcMessages(prev => [...prev, newMsg]);
       setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 50);
@@ -687,27 +699,34 @@ export function Chatbot() {
               </div>
             </div>
 
-            {/* Live chat status indicator */}
+            {/* Live chat status bar */}
             {liveChatMode !== 'none' && (
               <div className={cn(
-                'flex-shrink-0 px-3 py-2 text-xs flex items-center gap-2 border-b border-white/10',
-                liveChatMode === 'waiting' && 'text-yellow-400',
-                liveChatMode === 'active' && 'text-green-400',
-                (liveChatMode === 'closed' || liveChatMode === 'connecting') && 'text-muted-foreground',
+                'flex-shrink-0 px-4 py-2 text-xs flex items-center gap-2 border-b',
+                liveChatMode === 'waiting' && 'bg-yellow-500/5 border-yellow-500/20 text-yellow-400',
+                liveChatMode === 'connecting' && 'bg-white/5 border-white/10 text-muted-foreground',
+                liveChatMode === 'active' && 'bg-green-500/5 border-green-500/20 text-green-400',
+                liveChatMode === 'closed' && 'bg-white/5 border-white/10 text-muted-foreground',
               )}>
                 {liveChatMode === 'connecting' && (
-                  <><Loader2 className="w-3 h-3 animate-spin" /> Connecting…</>
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Connecting to support…</>
                 )}
                 {liveChatMode === 'waiting' && (
-                  <><Loader2 className="w-3 h-3 animate-spin" /> Waiting for an agent…</>
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Waiting for an agent to join…</>
                 )}
-                {liveChatMode === 'active' && lcAgent && (
-                  <><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" /> Connected with {lcAgent.name}</>
+                {liveChatMode === 'active' && (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+                    Live chat · {lcAgent?.name ?? 'Agent'}
+                  </>
                 )}
                 {liveChatMode === 'closed' && (
                   <>
-                    <span>Chat session ended.</span>
-                    <button onClick={disconnectLiveChat} className="underline ml-auto">Back to Nova</button>
+                    <span className="flex-1">Session ended</span>
+                    <button onClick={disconnectLiveChat}
+                      className="text-primary hover:text-primary/80 font-medium transition-colors">
+                      Back to Nova AI →
+                    </button>
                   </>
                 )}
               </div>
@@ -826,31 +845,74 @@ export function Chatbot() {
               )}
 
               {/* Live chat messages */}
-              {lcMessages.map(msg => (
-                <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                  <div className={cn(
-                    'max-w-[80%] rounded-2xl px-3 py-2 text-sm',
-                    msg.role === 'user'
-                      ? 'bg-primary/80 text-white rounded-br-sm'
-                      : 'bg-white/10 text-foreground rounded-bl-sm'
-                  )}>
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                    <p className="text-xs opacity-60 mt-1 text-right">{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                  </div>
-                </div>
-              ))}
+              {lcMessages.map(msg => {
+                // ── Agent joined highlight ───────────────────────────────────
+                if (msg.isJoin) return (
+                  <motion.div key={msg.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                    className="flex justify-center">
+                    <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full px-4 py-1.5 text-xs font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+                      {msg.content}
+                    </div>
+                  </motion.div>
+                );
+                // ── Other system messages ────────────────────────────────────
+                if (msg.sender === 'system') return (
+                  <motion.div key={msg.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="flex justify-center">
+                    <span className="text-xs text-muted-foreground/60 italic px-3 py-0.5">
+                      {msg.content}
+                    </span>
+                  </motion.div>
+                );
+                // ── Agent message ────────────────────────────────────────────
+                if (msg.sender === 'agent') return (
+                  <motion.div key={msg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    className="flex justify-start gap-2">
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-md mt-1">
+                      <span className="text-white text-[10px] font-bold">{(msg.senderName || 'A')[0].toUpperCase()}</span>
+                    </div>
+                    <div className="space-y-0.5 max-w-[78%]">
+                      <p className="text-[10px] text-green-400 font-medium px-1">{msg.senderName || 'Agent'}</p>
+                      <div className="bg-card/60 border border-border/40 rounded-2xl rounded-tl-none px-4 py-2.5 text-sm text-foreground shadow-sm">
+                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/50 px-1">
+                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+                // ── Visitor message ──────────────────────────────────────────
+                return (
+                  <motion.div key={msg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    className="flex justify-end">
+                    <div className="space-y-0.5 max-w-[78%]">
+                      <div className="bg-primary/90 text-primary-foreground rounded-2xl rounded-tr-none px-4 py-2.5 text-sm shadow-sm border border-primary/20">
+                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/50 text-right px-1">
+                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
 
               {/* Live chat agent typing indicator */}
               {lcAgentTyping && liveChatMode === 'active' && (
-                <div className="flex justify-start">
-                  <div className="bg-white/10 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center space-x-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
-                    </span>
-                    <span className="text-xs text-muted-foreground font-medium">{lcAgent?.name ?? 'Agent'} is typing…</span>
+                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }} className="flex justify-start gap-2 items-end">
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-md">
+                    <span className="text-white text-[10px] font-bold">{(lcAgent?.name || 'A')[0].toUpperCase()}</span>
                   </div>
-                </div>
+                  <div className="bg-card/60 border border-border/40 rounded-2xl rounded-tl-none px-4 py-2.5 flex items-center gap-1.5">
+                    {[0, 1, 2].map(i => (
+                      <span key={i} className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce"
+                        style={{ animationDelay: `${i * 0.15}s` }} />
+                    ))}
+                  </div>
+                </motion.div>
               )}
             </div>
 
