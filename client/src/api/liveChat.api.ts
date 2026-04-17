@@ -7,6 +7,7 @@ export interface LiveChatSessionDoc {
   visitorEmail: string | null;
   status: 'waiting' | 'active' | 'closed' | 'missed';
   agentId: { _id: string; name: string; photo: string } | null;
+  assignedTo: { _id: string; name: string; photo: string; role: string } | null;
   startedAt: string;
   acceptedAt: string | null;
   closedAt: string | null;
@@ -38,6 +39,16 @@ export interface LiveChatStats {
   todayTotal: number;
 }
 
+export interface CannedResponseDoc {
+  _id: string;
+  title: string;
+  shortcut: string;
+  content: string;
+  category: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(path, { credentials: 'include', ...options });
   const json = await res.json();
@@ -46,6 +57,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const liveChatApi = {
+  // Sessions
   getStats: () =>
     apiFetch<LiveChatStats>(`${BASE}/stats`),
 
@@ -73,4 +85,44 @@ export const liveChatApi = {
 
   getMessages: (sessionId: string) =>
     apiFetch<{ messages: LiveChatMessageDoc[] }>(`${BASE}/messages/${sessionId}`),
+
+  assignSession: (id: string, assignedTo: string | null) =>
+    apiFetch<{ session: LiveChatSessionDoc }>(`${BASE}/sessions/${id}/assign`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignedTo }),
+    }),
+
+  // Canned responses
+  getCannedResponses: (params?: { search?: string; category?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.search)   q.set('search', params.search);
+    if (params?.category) q.set('category', params.category);
+    return apiFetch<{ responses: CannedResponseDoc[] }>(`${BASE}/canned?${q}`);
+  },
+
+  createCannedResponse: (payload: Omit<CannedResponseDoc, '_id' | 'isActive' | 'createdAt'>) =>
+    apiFetch<{ response: CannedResponseDoc }>(`${BASE}/canned`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+
+  updateCannedResponse: (id: string, payload: Partial<CannedResponseDoc>) =>
+    apiFetch<{ response: CannedResponseDoc }>(`${BASE}/canned/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+
+  deleteCannedResponse: (id: string) =>
+    apiFetch<null>(`${BASE}/canned/${id}`, { method: 'DELETE' }),
+
+  // AI suggestion
+  suggestReply: (sessionId: string) =>
+    apiFetch<{ suggestion: string }>(`${BASE}/suggest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    }),
 };
