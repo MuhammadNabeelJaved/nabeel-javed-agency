@@ -15,9 +15,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   MessageCircle, X, Send, Bot, Loader2,
   Paperclip, FileText, Sparkles, Minimize2, Maximize2,
-  Trash2, Mic, AlertCircle, ExternalLink, ArrowRight,
+  Trash2, Mic, AlertCircle, ExternalLink, ArrowRight, PhoneCall,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { io, Socket } from 'socket.io-client';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import { streamChat, getPublicConfig, getChatHistory } from '../api/chatbot.api';
@@ -228,6 +229,17 @@ export function Chatbot() {
   const twBufferRef  = useRef<Map<string, { buffer: string; done: boolean; displayed: number }>>(new Map());
   const twTimerRef   = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
+  // ── Live chat state ──────────────────────────────────────────────────────────
+  const [liveChatMode, setLiveChatMode] = useState<'none' | 'connecting' | 'waiting' | 'active' | 'closed'>('none');
+  const [lcAgent, setLcAgent] = useState<{ name: string; photo?: string } | null>(null);
+  const [lcMessages, setLcMessages] = useState<Message[]>([]);
+  const [showHandoffForm, setShowHandoffForm] = useState(false);
+  const [handoffName, setHandoffName] = useState('');
+  const [handoffEmail, setHandoffEmail] = useState('');
+  const [lcAgentTyping, setLcAgentTyping] = useState(false);
+  const lcSocketRef = useRef<Socket | null>(null);
+  const lcTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── Resize mouse handlers ────────────────────────────────────────────────
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -317,6 +329,35 @@ export function Chatbot() {
   const handleSend = async () => {
     const text = input.trim();
     if (!text || isLoading) return;
+
+    // ── Live chat message routing ────────────────────────────────────────────
+    if (liveChatMode === 'active') {
+      lcSocketRef.current?.emit('lc:message', { sessionId: sessionId.current, content: text });
+      const userMsg: Message = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: text,
+        timestamp: new Date(),
+      };
+      setLcMessages(prev => [...prev, userMsg]);
+      setInput('');
+      return;
+    }
+
+    // ── Handoff phrase detection ─────────────────────────────────────────────
+    const HANDOFF_PATTERNS = /\b(live agent|real person|human|talk to someone|speak with|connect me|support team|real support)\b/i;
+    if (liveChatMode === 'none' && HANDOFF_PATTERNS.test(text)) {
+      setShowHandoffForm(true);
+      const aiHandoffMsg: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Of course! I can connect you with a live agent. Please fill in your details below to get started.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, aiHandoffMsg]);
+      setInput('');
+      return;
+    }
 
     // Abort any previous request
     abortRef.current?.abort();
@@ -427,6 +468,18 @@ export function Chatbot() {
     };
   }, []);
 
+  // ── Cleanup live chat socket and typing timer on unmount ──────────────────
+  useEffect(() => {
+    return () => {
+      if (lcSocketRef.current) {
+        lcSocketRef.current.disconnect();
+      }
+      if (lcTypingTimeoutRef.current) {
+        clearTimeout(lcTypingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // ── Clear conversation ────────────────────────────────────────────────────
   const handleClear = () => {
     twTimerRef.current.forEach(timer => clearInterval(timer));
@@ -445,6 +498,74 @@ export function Chatbot() {
       content: welcome,
       timestamp: new Date(),
     }]);
+  };
+
+  // ── Live chat connect / disconnect ───────────────────────────────────────
+  const SOCKET_URL_LC = (import.meta.env.VITE_SOCKET_URL as string) || window.location.origin;
+
+  const connectLiveChat = (name: string, email: string) => {
+    setLiveChatMode('connecting');
+    setShowHandoffForm(false);
+
+    const sock = io(`${SOCKET_URL_LC}/livechat`, {
+      transports: ['websocket', 'polling'],
+    });
+    lcSocketRef.current = sock;
+
+    sock.on('connect', () => {
+      sock.emit('lc:visitor_join', {
+        sessionId: sessionId.current,
+        visitorName: name || 'Anonymous',
+        visitorEmail: email || null,
+        pageUrl: window.location.href,
+        userAgent: navigator.userAgent,
+      });
+      setLiveChatMode('waiting');
+    });
+
+    sock.on('lc:new_message', (msg: { sender: string; content: string; senderName?: string; timestamp: string; _id?: string }) => {
+      const newMsg: Message = {
+        id: msg._id || crypto.randomUUID(),
+        role: msg.sender === 'agent' ? 'assistant' : 'user',
+        content: msg.sender === 'system' ? `_${msg.content}_` : msg.content,
+        timestamp: new Date(msg.timestamp),
+      };
+      setLcMessages(prev => [...prev, newMsg]);
+      setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 50);
+    });
+
+    sock.on('lc:session_update', (update: { status: string; agentName?: string; agentPhoto?: string }) => {
+      if (update.status === 'active') {
+        setLiveChatMode('active');
+        setLcAgent({ name: update.agentName || 'Agent', photo: update.agentPhoto });
+      }
+      if (update.status === 'closed' || update.status === 'missed') {
+        setLiveChatMode('closed');
+      }
+    });
+
+    sock.on('lc:typing_indicator', ({ sender, isTyping: t }: { sender: string; isTyping: boolean }) => {
+      if (sender === 'agent') {
+        setLcAgentTyping(t);
+      }
+    });
+
+    sock.on('disconnect', () => {
+      if (lcSocketRef.current) {
+        setLiveChatMode('closed');
+      }
+    });
+  };
+
+  const disconnectLiveChat = () => {
+    if (lcSocketRef.current) {
+      lcSocketRef.current.emit('lc:close', { sessionId: sessionId.current });
+      lcSocketRef.current.disconnect();
+      lcSocketRef.current = null;
+    }
+    setLiveChatMode('none');
+    setLcAgent(null);
+    setLcMessages([]);
   };
 
   // ── Don't render if disabled or config failed ─────────────────────────────
@@ -524,6 +645,15 @@ export function Chatbot() {
               </div>
 
               <div className="flex items-center gap-1">
+                {liveChatMode === 'none' && !showHandoffForm && (
+                  <button
+                    onClick={() => setShowHandoffForm(true)}
+                    title="Talk to a real person"
+                    className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <Button
                   variant="ghost" size="icon"
                   className="h-8 w-8 hover:bg-white/10 rounded-full"
@@ -556,6 +686,32 @@ export function Chatbot() {
                 </Button>
               </div>
             </div>
+
+            {/* Live chat status indicator */}
+            {liveChatMode !== 'none' && (
+              <div className={cn(
+                'flex-shrink-0 px-3 py-2 text-xs flex items-center gap-2 border-b border-white/10',
+                liveChatMode === 'waiting' && 'text-yellow-400',
+                liveChatMode === 'active' && 'text-green-400',
+                (liveChatMode === 'closed' || liveChatMode === 'connecting') && 'text-muted-foreground',
+              )}>
+                {liveChatMode === 'connecting' && (
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Connecting…</>
+                )}
+                {liveChatMode === 'waiting' && (
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Waiting for an agent…</>
+                )}
+                {liveChatMode === 'active' && lcAgent && (
+                  <><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block" /> Connected with {lcAgent.name}</>
+                )}
+                {liveChatMode === 'closed' && (
+                  <>
+                    <span>Chat session ended.</span>
+                    <button onClick={disconnectLiveChat} className="underline ml-auto">Back to Nova</button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Messages */}
             <div className="flex-grow overflow-y-auto p-4 space-y-6 relative z-0" ref={scrollRef}>
@@ -633,6 +789,69 @@ export function Chatbot() {
                   </div>
                 </motion.div>
               )}
+
+              {/* Handoff connect form */}
+              {showHandoffForm && liveChatMode === 'none' && (
+                <div className="mx-3 my-2 p-3 bg-white/5 border border-white/10 rounded-2xl space-y-2">
+                  <p className="text-xs font-medium text-foreground">Connect with a live agent</p>
+                  <input
+                    value={handoffName}
+                    onChange={e => setHandoffName(e.target.value)}
+                    placeholder="Your name *"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary/50"
+                  />
+                  <input
+                    value={handoffEmail}
+                    onChange={e => setHandoffEmail(e.target.value)}
+                    placeholder="Email (optional)"
+                    type="email"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary/50"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { if (handoffName.trim()) connectLiveChat(handoffName, handoffEmail); }}
+                      disabled={!handoffName.trim()}
+                      className="flex-1 bg-primary text-white rounded-lg py-1.5 text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                    >
+                      Connect →
+                    </button>
+                    <button
+                      onClick={() => setShowHandoffForm(false)}
+                      className="px-3 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Live chat messages */}
+              {lcMessages.map(msg => (
+                <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                  <div className={cn(
+                    'max-w-[80%] rounded-2xl px-3 py-2 text-sm',
+                    msg.role === 'user'
+                      ? 'bg-primary/80 text-white rounded-br-sm'
+                      : 'bg-white/10 text-foreground rounded-bl-sm'
+                  )}>
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <p className="text-xs opacity-60 mt-1 text-right">{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+              ))}
+
+              {/* Live chat agent typing indicator */}
+              {lcAgentTyping && liveChatMode === 'active' && (
+                <div className="flex justify-start">
+                  <div className="bg-white/10 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center space-x-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                    </span>
+                    <span className="text-xs text-muted-foreground font-medium">{lcAgent?.name ?? 'Agent'} is typing…</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Input */}
@@ -643,7 +862,17 @@ export function Chatbot() {
               >
                 <input
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    // emit typing when in live chat
+                    if (liveChatMode === 'active' && lcSocketRef.current) {
+                      lcSocketRef.current.emit('lc:typing', { sessionId: sessionId.current, isTyping: true });
+                      if (lcTypingTimeoutRef.current) clearTimeout(lcTypingTimeoutRef.current);
+                      lcTypingTimeoutRef.current = setTimeout(() => {
+                        lcSocketRef.current?.emit('lc:typing', { sessionId: sessionId.current, isTyping: false });
+                      }, 1500);
+                    }
+                  }}
                   placeholder={`Ask ${botName} about our services…`}
                   disabled={isLoading}
                   className="flex-grow bg-transparent border-none outline-none px-2 h-10 text-sm placeholder:text-muted-foreground disabled:opacity-50"
