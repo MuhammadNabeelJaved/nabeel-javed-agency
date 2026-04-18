@@ -231,6 +231,14 @@ const projectSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
         index: true
+    },
+
+    // Reference to the originating client Project request (auto-populated on completion)
+    sourceProjectId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Project',
+        index: true,
+        sparse: true
     }
 }, {
     timestamps: true, // Automatically adds createdAt and updatedAt

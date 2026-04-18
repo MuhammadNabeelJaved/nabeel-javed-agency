@@ -2,7 +2,7 @@
  * Portfolio Page
  * Premium masonry grid of projects
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { ProjectCard } from '../../components/ProjectCard';
@@ -17,22 +17,44 @@ export default function Portfolio() {
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const lastFetchRef = useRef(0);
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      setIsLoading(true);
-      try {
-        const response = await adminProjectsApi.getPortfolio();
-        const data = response.data.data.projects;
-        setProjects(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setHasError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchProjects();
+  const fetchProjects = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastFetchRef.current < 2000) return;
+    lastFetchRef.current = now;
+    setIsLoading(true);
+    try {
+      const response = await adminProjectsApi.getPortfolio(now - lastFetchRef.current < 60000);
+      const data = response.data.data.projects;
+      setProjects(Array.isArray(data) ? data : []);
+      setHasError(false);
+    } catch (err) {
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Initial load
+  useEffect(() => { fetchProjects(); }, [fetchProjects]);
+
+  // Re-fetch when user returns to this tab (admin published from another tab)
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchProjects(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchProjects]);
+
+  // Re-fetch on CMS realtime event (same-tab admin changes)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const section = (e as CustomEvent<{ section: string }>).detail?.section;
+      if (section === 'projects' || section === '*') fetchProjects();
+    };
+    window.addEventListener('cms:updated', handler);
+    return () => window.removeEventListener('cms:updated', handler);
+  }, [fetchProjects]);
 
   // Derive unique categories from API data
   const categories = ["All", ...Array.from(new Set(projects.map((p: any) => p.category).filter(Boolean)))];

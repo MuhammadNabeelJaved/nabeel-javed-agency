@@ -40,6 +40,7 @@ import { Select, SelectItem } from '../../components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { projectsApi } from '../../api/projects.api';
+import { reviewsApi } from '../../api/reviews.api';
 import ConfirmDeleteDialog from '../../components/ui/ConfirmDeleteDialog';
 import { useDataRealtime } from '../../hooks/useDataRealtime';
 import { exportToCsv } from '../../lib/exportCsv';
@@ -100,6 +101,12 @@ export default function UserProjects() {
   const [deleteTargetId, setDeleteTargetId]    = useState<string | null>(null);
   const [deleting, setDeleting]             = useState(false);
   const [submitting, setSubmitting]         = useState(false);
+
+  // Review form state
+  const [reviewRating, setReviewRating]       = useState(5);
+  const [reviewHover, setReviewHover]         = useState(0);
+  const [reviewText, setReviewText]           = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [files, setFiles]                   = useState<File[]>([]);
 
   // Form fields
@@ -197,6 +204,32 @@ export default function UserProjects() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) setFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+  };
+
+  // ── Review ───────────────────────────────────────────────────────────────
+
+  const handleSubmitReview = async () => {
+    if (!selectedProject) return;
+    if (reviewText.trim().length < 10) {
+      toast.error('Review must be at least 10 characters');
+      return;
+    }
+    setReviewSubmitting(true);
+    try {
+      await reviewsApi.submit({
+        rating: reviewRating,
+        reviewText: reviewText.trim(),
+        project: selectedProject._id,
+      });
+      toast.success('Review submitted! It will appear after admin approval.');
+      setShowReviewModal(false);
+      setReviewRating(5);
+      setReviewText('');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to submit review');
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
 
   // ── Filter ────────────────────────────────────────────────────────────────
@@ -493,27 +526,65 @@ export default function UserProjects() {
       </Dialog>
 
       {/* Review Modal */}
-      <Dialog open={showReviewModal} onOpenChange={setShowReviewModal}>
+      <Dialog
+        open={showReviewModal}
+        onOpenChange={open => {
+          if (!open && !reviewSubmitting) {
+            setShowReviewModal(false);
+            setReviewRating(5);
+            setReviewHover(0);
+            setReviewText('');
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Write a Review</DialogTitle>
             <DialogDescription>How was your experience with "{selectedProject?.projectName}"?</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="flex justify-center gap-2 py-4">
+            {/* Star rating */}
+            <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map(star => (
-                <Star key={star} className="h-8 w-8 text-amber-400 fill-amber-400 cursor-pointer hover:scale-110 transition-transform" />
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setReviewRating(star)}
+                  onMouseEnter={() => setReviewHover(star)}
+                  onMouseLeave={() => setReviewHover(0)}
+                  className="p-0.5 focus:outline-none"
+                >
+                  <Star
+                    className={`h-8 w-8 transition-all hover:scale-110 ${
+                      star <= (reviewHover || reviewRating)
+                        ? 'text-amber-400 fill-amber-400'
+                        : 'text-muted-foreground'
+                    }`}
+                  />
+                </button>
               ))}
             </div>
-            <textarea
-              className="w-full p-3 rounded-lg bg-background border border-input min-h-[100px] focus:ring-1 focus:ring-primary outline-none text-sm"
-              placeholder="Share your feedback..."
-            />
+            <p className="text-center text-sm text-muted-foreground">
+              {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][reviewHover || reviewRating]}
+            </p>
+            {/* Review text */}
+            <div className="space-y-1">
+              <Textarea
+                value={reviewText}
+                onChange={e => setReviewText(e.target.value)}
+                placeholder="Share your feedback... (min 10 characters)"
+                className="min-h-[100px] resize-none"
+                maxLength={1000}
+              />
+              <p className="text-xs text-muted-foreground text-right">{reviewText.length}/1000</p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowReviewModal(false)}>Cancel</Button>
-            <Button onClick={() => { setShowReviewModal(false); toast.success('Review submitted!'); }}>
-              Submit Review
+            <Button variant="ghost" onClick={() => setShowReviewModal(false)} disabled={reviewSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitReview} disabled={reviewSubmitting || reviewText.trim().length < 10}>
+              {reviewSubmitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Submitting…</> : 'Submit Review'}
             </Button>
           </DialogFooter>
         </DialogContent>

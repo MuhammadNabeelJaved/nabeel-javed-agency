@@ -194,3 +194,95 @@ export const sendJobApplicationAdminNotification = async ({
         text: `New application from ${applicantName} (${applicantEmail}) for ${jobTitle} (${department}). View at: ${adminUrl}`,
     });
 };
+
+/**
+ * Sends a welcome/signup confirmation email after the user verifies their account.
+ */
+export const sendSignupConfirmation = async ({ to, name }) => {
+    const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+
+    const html = renderTemplate('5-signup-confirmation.html', {
+        NAME: name,
+        EMAIL: to,
+        DASHBOARD_URL: `${clientUrl}/user-dashboard`,
+        CLIENT_URL: clientUrl,
+    });
+
+    return sendEmail({
+        to,
+        subject: 'Welcome to Nabeel Agency — Account Verified!',
+        html,
+        text: `Hi ${name}, welcome to Nabeel Agency! Your account has been verified. Visit your dashboard: ${clientUrl}/user-dashboard`,
+    });
+};
+
+/**
+ * Sends a confirmation email when a user submits a new project request.
+ */
+export const sendProjectCreated = async ({ to, name, projectName, projectType, budgetRange, deadline }) => {
+    const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+
+    const deadlineStr = deadline
+        ? new Date(deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : 'Not set';
+
+    const html = renderTemplate('6-project-created.html', {
+        NAME: name,
+        PROJECT_NAME: projectName,
+        PROJECT_INITIAL: (projectName || 'P')[0].toUpperCase(),
+        PROJECT_TYPE: projectType || 'Web Development',
+        BUDGET_RANGE: budgetRange || 'To be discussed',
+        DEADLINE: deadlineStr,
+        DASHBOARD_URL: `${clientUrl}/user-dashboard`,
+    });
+
+    return sendEmail({
+        to,
+        subject: `Project "${projectName}" received — Nabeel Agency`,
+        html,
+        text: `Hi ${name}, your project "${projectName}" has been received and is under review. We'll be in touch within 1–2 business days.`,
+    });
+};
+
+/**
+ * Sends a project-completed notification + prompts for feedback.
+ */
+export const sendProjectCompleted = async ({ to, name, projectName }) => {
+    const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+    const completedDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const html = renderTemplate('7-project-completed.html', {
+        NAME: name,
+        PROJECT_NAME: projectName,
+        COMPLETED_DATE: completedDate,
+        FEEDBACK_URL: `${clientUrl}/user-dashboard/reviews`,
+        DASHBOARD_URL: `${clientUrl}/user-dashboard`,
+    });
+
+    return sendEmail({
+        to,
+        subject: `🎉 Project "${projectName}" is complete! — Nabeel Agency`,
+        html,
+        text: `Hi ${name}, your project "${projectName}" has been completed! Leave feedback at: ${clientUrl}/user-dashboard/reviews`,
+    });
+};
+
+/**
+ * Sends a standalone feedback request email.
+ */
+export const sendFeedbackRequest = async ({ to, name, projectName }) => {
+    const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+
+    const html = renderTemplate('8-feedback-request.html', {
+        NAME: name,
+        PROJECT_NAME: projectName,
+        FEEDBACK_URL: `${clientUrl}/user-dashboard/reviews`,
+    });
+
+    return sendEmail({
+        to,
+        subject: `How did we do on "${projectName}"? — Nabeel Agency`,
+        html,
+        text: `Hi ${name}, we'd love your feedback on the "${projectName}" project. Share your review: ${clientUrl}/user-dashboard/reviews`,
+    });
+};

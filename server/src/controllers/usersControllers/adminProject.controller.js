@@ -21,6 +21,7 @@ import { autoSyncSection } from "../../utils/chatbotAutoSync.js";
 import { invalidateCache } from "../../middlewares/redisCache.js";
 import mongoose from "mongoose";
 import { escapeRegex } from "../../middlewares/sanitize.js";
+import { uploadFile, deleteImage } from "../../middlewares/Cloudinary.js";
 
 
 // =========================
@@ -385,4 +386,68 @@ export const bulkToggleVisibility = asyncHandler(async (req, res) => {
     if (io) io.of("/public").emit("cms:updated", { section: "projects" });
     invalidateCache('/admin/projects').catch(() => {});
     successResponse(res, `${ids.length} project(s) updated`, { count: ids.length });
+});
+
+
+// =========================
+// UPLOAD GALLERY IMAGES
+// POST /api/v1/admin/projects/:id/images
+// =========================
+export const uploadGalleryImages = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return next(new AppError('Invalid project ID', 400));
+
+    const project = await adminProject.findById(id);
+    if (!project) return next(new AppError('Project not found', 404));
+
+    const files = req.files;
+    if (!files || files.length === 0) return next(new AppError('No images provided', 400));
+
+    const uploaded = [];
+    for (const file of files) {
+        const result = await uploadFile(file.path, 'admin-projects');
+        if (result) {
+            const entry = {
+                url: result.secure_url || result.url,
+                filename: file.originalname,
+                uploadedBy: req.user._id,
+            };
+            project.projectGallery.push(entry);
+            uploaded.push(entry);
+        }
+    }
+
+    await project.save();
+
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+    invalidateCache('/admin/projects').catch(() => {});
+    successResponse(res, `${uploaded.length} image(s) uploaded`, project.projectGallery);
+});
+
+
+// =========================
+// DELETE GALLERY IMAGE
+// DELETE /api/v1/admin/projects/:id/images/:imageId
+// =========================
+export const deleteGalleryImage = asyncHandler(async (req, res, next) => {
+    const { id, imageId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return next(new AppError('Invalid project ID', 400));
+
+    const project = await adminProject.findById(id);
+    if (!project) return next(new AppError('Project not found', 404));
+
+    const image = project.projectGallery.id(imageId);
+    if (!image) return next(new AppError('Image not found', 404));
+
+    // Try to remove from Cloudinary (non-blocking if it fails)
+    deleteImage(image.url, 'admin-projects').catch(() => {});
+
+    project.projectGallery.pull(imageId);
+    await project.save();
+
+    const io = req.app.get("io");
+    if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+    invalidateCache('/admin/projects').catch(() => {});
+    successResponse(res, 'Image deleted', project.projectGallery);
 });

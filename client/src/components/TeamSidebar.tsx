@@ -3,11 +3,11 @@
  * Supports collapse/expand toggle (persisted in localStorage).
  * Supports drag-to-reorder and pin-to-top per item (persisted in localStorage).
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, BarChart2, Settings, LogOut, Bell,
-  ChevronRight, Calendar, MessageSquare, Files, HelpCircle, X, Sparkles, Briefcase,
+  ChevronRight, Calendar, MessageSquare, MessageCircle, Files, HelpCircle, X, Sparkles, Briefcase,
   PanelLeftClose, PanelLeftOpen, GripVertical, Star,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
 import { useSidebarPreferences } from '../hooks/useSidebarPreferences';
+import { liveChatApi } from '../api/liveChat.api';
 
 interface TeamSidebarProps {
   isOpen?: boolean;
@@ -37,6 +38,7 @@ const DEFAULT_LINKS = [
   { name: 'Reports',       path: '/team/reports',        icon: BarChart2 },
   { name: 'Notifications', path: '/team/notifications',  icon: Bell },
   { name: 'Settings',      path: '/team/settings',       icon: Settings },
+  { name: 'Live Chat',     path: '/team/live-chat',       icon: MessageCircle },
   { name: 'Applied Jobs',  path: '/team/applied-jobs',   icon: Briefcase },
   { name: 'Support',      path: '/team/support',        icon: HelpCircle },
 ];
@@ -47,7 +49,16 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
   const { logout } = useAuth();
   const navigate = useNavigate();
   const { chatUnreadCount } = useNotifications({ enableToast: false });
+  const [lcWaiting, setLcWaiting] = useState(0);
   const { getOrderedLinks, isPinned, togglePin, handleDragStart, handleDrop } = useSidebarPreferences('team', DEFAULT_LINKS);
+
+  useEffect(() => {
+    liveChatApi.getStats().then(s => setLcWaiting(s.waiting)).catch(() => {});
+    const id = setInterval(() => {
+      liveChatApi.getStats().then(s => setLcWaiting(s.waiting)).catch(() => {});
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
 
   const handleLogout = async () => {
@@ -117,6 +128,11 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
                   {link.path === '/team/chat' && chatUnreadCount > 0 && (
                     <span className="ml-auto h-5 min-w-[20px] px-1 rounded-full bg-primary text-[10px] text-primary-foreground font-bold flex items-center justify-center">
                       {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                    </span>
+                  )}
+                  {link.path === '/team/live-chat' && lcWaiting > 0 && (
+                    <span className="ml-auto h-5 min-w-[20px] px-1 rounded-full bg-yellow-500 text-[10px] text-white font-bold flex items-center justify-center">
+                      {lcWaiting > 99 ? '99+' : lcWaiting}
                     </span>
                   )}
                   {isActive && !pinned_ && <ChevronRight className="h-4 w-4 opacity-40 ml-auto" />}

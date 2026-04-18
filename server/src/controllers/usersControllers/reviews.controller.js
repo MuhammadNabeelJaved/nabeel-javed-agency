@@ -39,6 +39,8 @@ import asyncHandler from "../../middlewares/asyncHandler.js";
 import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import mongoose from "mongoose";
+import { emitDataUpdate } from "../../utils/dataUpdateService.js";
+import { notifyAdmins } from "../../utils/notificationService.js";
 
 // =========================
 // CREATE REVIEW (User only - for their completed projects)
@@ -98,6 +100,19 @@ export const createReview = asyncHandler(async (req, res) => {
         ]);
 
         successResponse(res, "Review submitted successfully. Waiting for admin approval.", review, 201);
+
+        // Realtime: push data update + notify all admins (non-blocking)
+        const io = req.app.get('io');
+        if (io) {
+            emitDataUpdate(io, 'reviews', ['admin:global']);
+            notifyAdmins(io, {
+                type: 'status_updated',
+                title: 'New Review Submitted',
+                message: `${review.client?.name || 'A user'} submitted a review for "${review.project?.projectName || 'a project'}" — pending approval`,
+                payload: { reviewId: review._id },
+                createdBy: userId,
+            }).catch(() => {});
+        }
     } catch (error) {
         console.error("Error creating review:", error.message);
         if (error.isOperational || error.name === 'ValidationError' || error.name === 'CastError' || error.code === 11000) throw error;
