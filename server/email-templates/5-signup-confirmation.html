@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Nabeel Agency</title>
+  <style>
+    body { margin:0; padding:0; background-color:#f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; }
+    @media only screen and (max-width:600px) {
+      .card { width:100%!important; border-radius:0!important; }
+      .pad { padding:32px 20px!important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f5f5f5;padding:40px 16px;">
+    <tr><td align="center">
+      <table class="card" width="560" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border:1px solid #e5e5e5;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background-color:#fafafa;padding:20px 32px;border-bottom:1px solid #f0f0f0;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td><img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png" alt="Nabeel Agency" height="30" style="height:30px;width:auto;display:block;"></td>
+                <td align="right" style="font-family:monospace;font-size:11px;color:#999999;letter-spacing:0.08em;">WELCOME</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td class="pad" style="padding:48px 40px;">
+            <!-- Icon -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="left">
+                  <div style="width:60px;height:60px;background-color:#dcfce7;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:28px;">
+                    <img src="https://img.icons8.com/fluency/48/000000/checked-checkbox.png" width="28" height="28" alt="✓" style="width:28px;height:28px;">
+                  </div>
+                  <!-- fallback for icon -->
+                  <div style="display:none;"></div>
+                </td>
+              </tr>
+            </table>
+
+            <h1 style="margin:0 0 16px 0;font-size:28px;font-weight:700;color:#111111;letter-spacing:-0.02em;">Welcome to the Agency</h1>
+            <p style="margin:0 0 28px 0;font-size:16px;color:#555555;line-height:1.7;">
+              Hi <strong style="color:#111111;">{{NAME}}</strong>,<br><br>
+              We're thrilled to have you on board. Your account has been successfully created and verified. You now have full access to our client portal where you can submit projects, track progress, and manage everything in one place.
+            </p>
+
+            <!-- Account Details Card -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fafafa;border:1px solid #eeeeee;border-radius:12px;margin-bottom:28px;">
+              <tr><td style="padding:20px 24px;">
+                <p style="margin:0 0 14px 0;font-size:11px;font-weight:700;color:#111111;text-transform:uppercase;letter-spacing:0.1em;">Account Details</p>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="font-size:14px;color:#666666;padding:4px 0;">Email</td>
+                    <td align="right" style="font-size:14px;font-family:monospace;color:#111111;padding:4px 0;">{{EMAIL}}</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:14px;color:#666666;padding:4px 0;">Role</td>
+                    <td align="right" style="font-size:14px;font-family:monospace;color:#111111;padding:4px 0;">Client</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:14px;color:#666666;padding:4px 0;">Status</td>
+                    <td align="right" style="padding:4px 0;"><span style="background-color:#dcfce7;color:#16a34a;font-size:12px;font-weight:600;padding:2px 8px;border-radius:20px;">Active</span></td>
+                  </tr>
+                </table>
+              </td></tr>
+            </table>
+
+            <!-- CTA Button -->
+            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td>
+                  <a href="{{DASHBOARD_URL}}" style="display:block;background-color:#111111;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:16px 32px;border-radius:10px;text-align:center;letter-spacing:0.01em;">Go to Dashboard &rarr;</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background-color:#fafafa;padding:20px 32px;border-top:1px solid #f0f0f0;text-align:center;">
+            <p style="margin:0 0 8px 0;font-size:12px;color:#aaaaaa;">&copy; 2025 Nabeel Agency. All rights reserved.</p>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center">
+                  <a href="{{CLIENT_URL}}/privacy" style="font-size:12px;color:#aaaaaa;text-decoration:none;margin:0 8px;">Privacy Policy</a>
+                  <a href="{{CLIENT_URL}}/terms" style="font-size:12px;color:#aaaaaa;text-decoration:none;margin:0 8px;">Terms of Service</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

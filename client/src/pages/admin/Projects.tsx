@@ -3,7 +3,7 @@
  * Full CRUD for portfolio projects with real API integration.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, EyeOff, Globe, Lock, Loader2, X, Save, Image as ImageIcon, CheckSquare, Square, Star } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, EyeOff, Globe, Lock, Loader2, X, Save, Image as ImageIcon, CheckSquare, Square, Star, Upload } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -35,7 +35,6 @@ interface ProjectForm {
   projectDescription: string;
   techStack: string;       // comma-separated input
   tags: string;            // comma-separated input
-  galleryUrls: string;     // newline-separated image URLs
   isPublic: boolean;
   startDate: string;
   endDate: string;
@@ -53,7 +52,6 @@ const emptyForm: ProjectForm = {
   projectDescription: '',
   techStack: '',
   tags: '',
-  galleryUrls: '',
   isPublic: true,
   startDate: '',
   endDate: '',
@@ -62,12 +60,6 @@ const emptyForm: ProjectForm = {
 };
 
 function formToPayload(form: ProjectForm, userId: string) {
-  const galleryUrls = form.galleryUrls
-    .split('\n')
-    .map(u => u.trim())
-    .filter(Boolean)
-    .map(url => ({ url }));
-
   return {
     projectTitle: form.projectTitle.trim(),
     clientName: form.clientName.trim(),
@@ -78,7 +70,6 @@ function formToPayload(form: ProjectForm, userId: string) {
     projectDescription: form.projectDescription.trim(),
     techStack: form.techStack.split(',').map(t => t.trim()).filter(Boolean),
     tags: form.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
-    projectGallery: galleryUrls,
     isPublic: form.isPublic,
     startDate: form.startDate || new Date().toISOString(),
     endDate: form.endDate || undefined,
@@ -100,7 +91,6 @@ function projectToForm(p: any): ProjectForm {
     projectDescription: p.projectDescription || '',
     techStack: (p.techStack || []).join(', '),
     tags: (p.tags || []).join(', '),
-    galleryUrls: (p.projectGallery || []).map((g: any) => g.url || g).join('\n'),
     isPublic: p.isPublic ?? true,
     startDate: p.startDate ? p.startDate.substring(0, 10) : '',
     endDate: p.endDate ? p.endDate.substring(0, 10) : '',
@@ -136,6 +126,9 @@ export default function Projects() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const [viewProject, setViewProject] = useState<any | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isDeletingImageId, setIsDeletingImageId] = useState<string | null>(null);
 
   const showNotif = (type: 'success' | 'error', title: string, message?: string) => {
     if (type === 'success') toast.success(title, message ? { description: message } : undefined);
@@ -261,6 +254,38 @@ export default function Projects() {
       loadProjects();
     } catch (err: any) {
       toast.error('Failed to update visibility', { description: err?.response?.data?.message });
+    }
+  };
+
+  const handleUploadImages = async (projectId: string) => {
+    if (galleryFiles.length === 0) return;
+    setIsUploadingImages(true);
+    try {
+      const res = await adminProjectsApi.uploadImages(projectId, galleryFiles);
+      const updatedGallery = res.data.data;
+      setGalleryFiles([]);
+      setViewProject((prev: any) => prev ? { ...prev, projectGallery: updatedGallery } : prev);
+      setProjects(ps => ps.map(p => p._id === projectId ? { ...p, projectGallery: updatedGallery } : p));
+      showNotif('success', `${galleryFiles.length} image(s) uploaded`);
+    } catch (err: any) {
+      showNotif('error', 'Upload failed', err?.response?.data?.message);
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const handleDeleteGalleryImage = async (projectId: string, imageId: string) => {
+    setIsDeletingImageId(imageId);
+    try {
+      const res = await adminProjectsApi.deleteGalleryImage(projectId, imageId);
+      const updatedGallery = res.data.data;
+      setViewProject((prev: any) => prev ? { ...prev, projectGallery: updatedGallery } : prev);
+      setProjects(ps => ps.map(p => p._id === projectId ? { ...p, projectGallery: updatedGallery } : p));
+      showNotif('success', 'Image deleted');
+    } catch (err: any) {
+      showNotif('error', 'Delete failed', err?.response?.data?.message);
+    } finally {
+      setIsDeletingImageId(null);
     }
   };
 
@@ -403,7 +428,7 @@ export default function Projects() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center gap-2 justify-end">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setViewProject(project)}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setViewProject(project); setGalleryFiles([]); }}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(project)}>
@@ -503,19 +528,12 @@ export default function Projects() {
                 <Input value={form.tags} onChange={e => setField('tags', e.target.value)} placeholder="fintech, dashboard, analytics" />
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4" /> Gallery Image URLs <span className="text-muted-foreground text-xs">(one URL per line)</span>
-                </Label>
-                <Textarea value={form.galleryUrls} onChange={e => setField('galleryUrls', e.target.value)} rows={3} placeholder="https://images.unsplash.com/...&#10;https://..." className="font-mono text-xs" />
-                {form.galleryUrls.split('\n').filter(u => u.trim()).length > 0 && (
-                  <div className="flex gap-2 flex-wrap pt-1">
-                    {form.galleryUrls.split('\n').filter(u => u.trim()).map((url, i) => (
-                      <img key={i} src={url.trim()} alt="" className="h-16 w-24 object-cover rounded-md border border-border" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    ))}
-                  </div>
-                )}
-              </div>
+              {editingId && (
+                <div className="p-3 rounded-lg bg-muted/30 border border-border text-sm text-muted-foreground flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 shrink-0" />
+                  To upload or manage gallery images, save this project then open it with the <strong className="text-foreground">View (eye)</strong> button.
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Completion %</Label>
@@ -550,13 +568,63 @@ export default function Projects() {
               <Button size="icon" variant="ghost" onClick={() => setViewProject(null)}><X className="h-4 w-4" /></Button>
             </div>
             <div className="p-6 space-y-6">
-              {viewProject.projectGallery?.length > 0 && (
-                <div className="flex gap-3 flex-wrap">
-                  {viewProject.projectGallery.map((g: any, i: number) => (
-                    <img key={i} src={g.url} alt="" className="h-36 w-full object-cover rounded-xl" />
-                  ))}
+              {/* Gallery Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Gallery ({viewProject.projectGallery?.length || 0} images)</span>
                 </div>
-              )}
+
+                {viewProject.projectGallery?.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {viewProject.projectGallery.map((g: any) => (
+                      <div key={g._id} className="relative group rounded-lg overflow-hidden border border-border aspect-video bg-muted">
+                        <img src={g.url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => handleDeleteGalleryImage(viewProject._id, g._id)}
+                          disabled={isDeletingImageId === g._id}
+                          className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                          {isDeletingImageId === g._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload new images */}
+                <div className="border-2 border-dashed border-border rounded-xl p-4 space-y-3">
+                  <input
+                    type="file"
+                    id="gallery-upload"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => setGalleryFiles(Array.from(e.target.files || []))}
+                  />
+                  <label htmlFor="gallery-upload" className="flex flex-col items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                    <Upload className="h-6 w-6" />
+                    <span className="text-sm">Click to select images</span>
+                  </label>
+                  {galleryFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex gap-2 flex-wrap">
+                        {galleryFiles.map((f, i) => (
+                          <div key={i} className="relative h-14 w-20 rounded-md overflow-hidden border border-border bg-muted">
+                            <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => setGalleryFiles(fs => fs.filter((_, idx) => idx !== i))}
+                              className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/70 text-white flex items-center justify-center"
+                            ><X className="h-2.5 w-2.5" /></button>
+                          </div>
+                        ))}
+                      </div>
+                      <Button size="sm" onClick={() => handleUploadImages(viewProject._id)} isLoading={isUploadingImages} className="gap-2 w-full">
+                        <Upload className="h-3.5 w-3.5" /> Upload {galleryFiles.length} image{galleryFiles.length > 1 ? 's' : ''}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><span className="text-muted-foreground">Client</span><div className="font-medium">{viewProject.clientName}</div></div>
                 <div><span className="text-muted-foreground">Category</span><div className="font-medium">{viewProject.category}</div></div>

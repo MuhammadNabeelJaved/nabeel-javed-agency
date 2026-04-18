@@ -108,6 +108,7 @@ const TeamClientRequestDetail = lazy(() => import('./pages/team/TeamClientReques
 const TeamSupport             = lazy(() => import('./pages/team/TeamSupport'));
 const TeamAIChat              = lazy(() => import('./pages/team/TeamAIChat'));
 const TeamAppliedJobs         = lazy(() => import('./pages/team/TeamAppliedJobs'));
+const TeamLiveChat            = lazy(() => import('./pages/team/TeamLiveChat'));
 
 // ─── User Pages ───────────────────────────────────────────────────────────────
 const UserDashboardHome  = lazy(() => import('./pages/user/UserDashboardHome'));
@@ -322,6 +323,7 @@ export default function App() {
                 <Route path="ai-assistant" element={<RouteWithBoundary component={TeamAIChat} />} />
                 <Route path="support" element={<RouteWithBoundary component={TeamSupport} />} />
                 <Route path="applied-jobs" element={<RouteWithBoundary component={TeamAppliedJobs} />} />
+                <Route path="live-chat" element={<RouteWithBoundary component={TeamLiveChat} />} />
               </Route>
 
               {/* User Dashboard Routes */}

@@ -30,6 +30,7 @@ import { generateTokens } from "../../utils/generateTokens.js";
 import {
     sendVerificationEmail,
     sendPasswordResetEmail,
+    sendSignupConfirmation,
 } from "../../utils/sendEmails.js";
 import { notifyAdmins } from "../../utils/notificationService.js";
 
@@ -149,6 +150,9 @@ export const verifyUserEmail = asyncHandler(async (req, res) => {
     await user.save({ validateBeforeSave: false });
 
     successResponse(res, "Email verified successfully", null, 200);
+
+    // Send welcome email non-blocking
+    sendSignupConfirmation({ to: user.email, name: user.name }).catch(() => {});
 });
 
 /**

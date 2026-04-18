@@ -118,7 +118,7 @@ export default function UserReviews() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const res = await apiClient.get('/projects?status=completed,approved&limit=100');
+      const res = await apiClient.get('/projects?limit=100');
       const data = res.data?.data;
       const list: Project[] = Array.isArray(data?.projects) ? data.projects
         : Array.isArray(data) ? data : [];

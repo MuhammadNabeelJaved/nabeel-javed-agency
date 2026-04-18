@@ -1,11 +1,13 @@
 import AppError from "../../utils/AppError.js";
 import asyncHandler from "../../middlewares/asyncHandler.js";
 import Project from "../../models/usersModels/Project.model.js";
+import AdminProject from "../../models/usersModels/AdminProject.model.js";
 import User from "../../models/usersModels/User.model.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import { uploadFile, deleteImage } from "../../middlewares/Cloudinary.js";
 import { createAndEmitNotification } from "../../utils/notificationService.js";
 import { emitDataUpdate } from "../../utils/dataUpdateService.js";
+import { sendProjectCreated, sendProjectCompleted, sendFeedbackRequest } from "../../utils/sendEmails.js";
 
 
 // =========================
@@ -86,6 +88,16 @@ export const createProject = asyncHandler(async (req, res) => {
         await project.populate('requestedBy', 'name email');
 
         successResponse(res, "Project created successfully", project, 201);
+
+        // Send project-created confirmation email non-blocking
+        sendProjectCreated({
+            to: user.email,
+            name: user.name,
+            projectName: project.projectName,
+            projectType: project.projectType,
+            budgetRange: project.budgetRange,
+            deadline: project.deadline,
+        }).catch(() => {});
 
         // ── Real-time: notify admins + refresh admin dashboard ────────────────
         const io = req.app.get('io');
@@ -351,6 +363,43 @@ export const updateProject = asyncHandler(async (req, res) => {
                             message: `Your project "${project.projectName}" has been marked as completed.`,
                             payload: { projectId: project._id },
                             createdBy: req.user._id,
+                        }).catch(() => {});
+
+                        // Send project-completed + feedback-request emails non-blocking
+                        const ownerEmail = project.requestedBy?.email;
+                        const ownerName = project.requestedBy?.name;
+                        if (ownerEmail) {
+                            Promise.allSettled([
+                                sendProjectCompleted({ to: ownerEmail, name: ownerName, projectName: project.projectName }),
+                                sendFeedbackRequest({ to: ownerEmail, name: ownerName, projectName: project.projectName }),
+                            ]).catch(() => {});
+                        }
+
+                        // Auto-create a Portfolio Project (AdminProject) entry if one doesn't exist yet
+                        AdminProject.findOne({ sourceProjectId: project._id }).then(async (existing) => {
+                            if (!existing) {
+                                const client = await User.findById(ownerId).select('name').lean();
+                                await AdminProject.create({
+                                    projectTitle: project.projectName,
+                                    clientName: client?.name || 'Unknown Client',
+                                    category: 'Web App',
+                                    status: 'Completed',
+                                    priority: 'High',
+                                    yourRole: 'Full Stack Development',
+                                    projectDescription: project.projectDetails || `Completed project for ${client?.name || 'client'}.`,
+                                    completionPercentage: 100,
+                                    isPublic: false,
+                                    startDate: project.createdAt,
+                                    endDate: new Date(),
+                                    projectLead: req.user._id,
+                                    teamMembers: [{ memberId: req.user._id, role: 'Lead', isLead: true }],
+                                    createdBy: req.user._id,
+                                    sourceProjectId: project._id,
+                                    tags: [project.projectType?.toLowerCase()].filter(Boolean),
+                                });
+                                // Notify admins so Portfolio Projects page refreshes
+                                if (io) io.of("/public").emit("cms:updated", { section: "projects" });
+                            }
                         }).catch(() => {});
                     }
                 }

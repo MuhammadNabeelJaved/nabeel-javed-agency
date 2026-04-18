@@ -102,6 +102,7 @@ const TEAM_ITEMS: SearchItem[] = [
   { id: 't-settings',  label: 'Settings',         description: 'Profile & preferences',          path: '/team/settings',      icon: Settings,        group: 'Pages',   keywords: ['profile', 'account', 'preferences'] },
   { id: 't-ai',        label: 'AI Assistant',     description: 'Your AI-powered team assistant',  path: '/team/ai-assistant',  icon: Sparkles,        group: 'Pages',   keywords: ['gpt', 'ai', 'assistant', 'bot', 'nova'] },
   { id: 't-applied',   label: 'Applied Jobs',     description: 'Your job applications & status', path: '/team/applied-jobs',  icon: Briefcase,       group: 'Pages',   keywords: ['careers', 'applications', 'hiring', 'jobs'] },
+  { id: 't-live-chat', label: 'Live Chat',        description: 'Chat with visitors in real time', path: '/team/live-chat',     icon: MessageCircle,   group: 'Pages',   keywords: ['chat', 'visitor', 'support', 'live', 'waiting'] },
   { id: 't-support',   label: 'Support',          description: 'Internal help & tickets',        path: '/team/support',       icon: HelpCircle,      group: 'Pages',   keywords: ['help', 'hr', 'it', 'tickets'] },
   { id: 't-new-task',  label: 'Go to My Tasks',   description: 'View & manage your tasks',       path: '/team/tasks',         icon: CheckSquare,     group: 'Actions', keywords: ['add task', 'create task'] },
   { id: 't-new-msg',   label: 'Open Team Chat',   description: 'Message the admin',              path: '/team/chat',          icon: MessageSquare,   group: 'Actions', keywords: ['send message', 'dm'] },

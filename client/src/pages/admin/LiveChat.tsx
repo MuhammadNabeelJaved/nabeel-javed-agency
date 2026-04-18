@@ -175,9 +175,12 @@ export default function LiveChat() {
 
   // ── Load team members ─────────────────────────────────────────────────────
   useEffect(() => {
-    fetch('/api/v1/users?role=team&limit=50', { credentials: 'include' })
+    fetch('/api/v1/users', { credentials: 'include' })
       .then(r => r.json())
-      .then(json => setTeamMembers(json.data?.users || []))
+      .then(json => {
+        const all: TeamMember[] = Array.isArray(json.data) ? json.data : [];
+        setTeamMembers(all.filter(u => u.role === 'team'));
+      })
       .catch(() => {});
   }, []);
 
@@ -397,7 +400,7 @@ export default function LiveChat() {
             { label: 'Today',    value: stats.todayTotal, color: 'text-blue-400',  Icon: MessageCircle },
             { label: 'Avg Wait', value: stats.avgWaitSec < 60 ? `${stats.avgWaitSec}s` : `${Math.floor(stats.avgWaitSec / 60)}m`, color: 'text-purple-400', Icon: Clock },
           ].map(({ label, value, color, Icon }) => (
-            <Card key={label} className="bg-white/5 border-white/10">
+            <Card key={label} className="bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10">
               <CardContent className="p-3 flex items-center gap-2">
                 <Icon className={cn('w-4 h-4', color)} />
                 <div>
@@ -414,9 +417,9 @@ export default function LiveChat() {
       <div className="flex flex-1 overflow-hidden gap-0 px-4 pb-4">
 
         {/* ── Left panel ───────────────────────────────────────────────────── */}
-        <div className="w-72 flex-shrink-0 flex flex-col bg-white/3 border border-white/10 rounded-2xl mr-3 overflow-hidden">
+        <div className="w-72 flex-shrink-0 flex flex-col bg-muted/20 dark:bg-white/3 border border-border/50 dark:border-white/10 rounded-2xl mr-3 overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b border-white/10 overflow-x-auto">
+          <div className="flex border-b border-border/50 dark:border-white/10 overflow-x-auto">
             {(['waiting', 'active', 'closed', 'canned'] as SessionTab[]).map(t => (
               <button
                 key={t}
@@ -440,14 +443,14 @@ export default function LiveChat() {
           {/* ── Canned responses list ─────────────────────────────────────── */}
           {tab === 'canned' ? (
             <>
-              <div className="p-2 border-b border-white/10 flex items-center gap-2">
+              <div className="p-2 border-b border-border/50 dark:border-white/10 flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                   <Input
                     value={cannedSearch}
                     onChange={e => setCannedSearch(e.target.value)}
                     placeholder="Search…"
-                    className="pl-8 h-8 text-sm bg-white/5 border-white/10"
+                    className="pl-8 h-8 text-sm bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10"
                   />
                 </div>
                 <Button size="sm" className="h-8 w-8 p-0 shrink-0" onClick={openCannedCreate} title="New response">
@@ -468,8 +471,8 @@ export default function LiveChat() {
                     key={c._id}
                     onClick={() => openCannedEdit(c)}
                     className={cn(
-                      'p-3 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors',
-                      selectedCannedId === c._id && 'bg-white/10'
+                      'p-3 border-b border-border/30 dark:border-white/5 cursor-pointer hover:bg-muted/50 dark:hover:bg-white/5 transition-colors',
+                      selectedCannedId === c._id && 'bg-muted dark:bg-white/10'
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -497,14 +500,14 @@ export default function LiveChat() {
           ) : (
             /* ── Session list ─────────────────────────────────────────────── */
             <>
-              <div className="p-2 border-b border-white/10">
+              <div className="p-2 border-b border-border/50 dark:border-white/10">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Search visitors…"
-                    className="pl-8 h-8 text-sm bg-white/5 border-white/10"
+                    className="pl-8 h-8 text-sm bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10"
                   />
                 </div>
               </div>
@@ -523,8 +526,8 @@ export default function LiveChat() {
                     key={session._id}
                     onClick={() => selectSession(session)}
                     className={cn(
-                      'p-3 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors',
-                      selected?._id === session._id && 'bg-white/10'
+                      'p-3 border-b border-border/30 dark:border-white/5 cursor-pointer hover:bg-muted/50 dark:hover:bg-white/5 transition-colors',
+                      selected?._id === session._id && 'bg-muted dark:bg-white/10'
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -582,18 +585,18 @@ export default function LiveChat() {
         <div className="flex flex-1 overflow-hidden gap-3">
 
           {/* ── Center panel (chat / canned form) ─────────────────────────── */}
-          <div className="flex-1 flex flex-col bg-white/3 border border-white/10 rounded-2xl overflow-hidden">
+          <div className="flex-1 flex flex-col bg-muted/20 dark:bg-white/3 border border-border/50 dark:border-white/10 rounded-2xl overflow-hidden">
             {tab === 'canned' ? (
               /* Canned response create/edit form */
               cannedFormOpen ? (
                 <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 dark:border-white/10 flex-shrink-0">
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-primary" />
                       <h2 className="text-sm font-semibold">{editingCanned ? 'Edit Response' : 'New Canned Response'}</h2>
                     </div>
                     <button onClick={() => { setCannedFormOpen(false); setEditingCanned(null); setSelectedCannedId(null); }}
-                      className="p-1 rounded hover:bg-white/10 text-muted-foreground">
+                      className="p-1 rounded hover:bg-muted dark:hover:bg-white/10 text-muted-foreground">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -604,7 +607,7 @@ export default function LiveChat() {
                         value={cannedForm.title}
                         onChange={e => setCannedForm(f => ({ ...f, title: e.target.value }))}
                         placeholder="e.g. Greeting"
-                        className="bg-white/5 border-white/10"
+                        className="bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -614,7 +617,7 @@ export default function LiveChat() {
                           value={cannedForm.shortcut}
                           onChange={e => setCannedForm(f => ({ ...f, shortcut: e.target.value }))}
                           placeholder="e.g. /greet"
-                          className="bg-white/5 border-white/10"
+                          className="bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10"
                         />
                       </div>
                       <div>
@@ -623,7 +626,7 @@ export default function LiveChat() {
                           value={cannedForm.category}
                           onChange={e => setCannedForm(f => ({ ...f, category: e.target.value }))}
                           placeholder="e.g. Support"
-                          className="bg-white/5 border-white/10"
+                          className="bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10"
                         />
                       </div>
                     </div>
@@ -633,17 +636,17 @@ export default function LiveChat() {
                         value={cannedForm.content}
                         onChange={e => setCannedForm(f => ({ ...f, content: e.target.value }))}
                         placeholder="Type the response text…"
-                        className="bg-white/5 border-white/10 resize-none min-h-[160px]"
+                        className="bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10 resize-none min-h-[160px]"
                       />
                     </div>
                     {cannedForm.content && (
-                      <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <div className="rounded-xl border border-border/50 dark:border-white/10 bg-muted/40 dark:bg-white/5 p-3">
                         <p className="text-xs font-medium text-muted-foreground mb-1">Preview</p>
                         <p className="text-sm whitespace-pre-wrap">{cannedForm.content}</p>
                       </div>
                     )}
                   </div>
-                  <div className="flex-shrink-0 px-4 py-3 border-t border-white/10 flex items-center gap-2 justify-end">
+                  <div className="flex-shrink-0 px-4 py-3 border-t border-border/50 dark:border-white/10 flex items-center gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => { setCannedFormOpen(false); setEditingCanned(null); setSelectedCannedId(null); }}>
                       Cancel
                     </Button>
@@ -673,7 +676,7 @@ export default function LiveChat() {
               ) : (
                 <>
                   {/* Chat header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 dark:border-white/10 flex-shrink-0">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                         <User className="w-4 h-4 text-primary" />
@@ -687,7 +690,7 @@ export default function LiveChat() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setShowInfo(v => !v)}
-                        className={cn('p-1.5 rounded-lg transition-colors', showInfo ? 'bg-primary/20 text-primary' : 'hover:bg-white/10 text-muted-foreground')}
+                        className={cn('p-1.5 rounded-lg transition-colors', showInfo ? 'bg-primary/20 text-primary' : 'hover:bg-muted dark:hover:bg-white/10 text-muted-foreground')}
                         title={showInfo ? 'Hide info' : 'Show info'}
                       >
                         {showInfo ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
@@ -713,14 +716,14 @@ export default function LiveChat() {
                         msg.sender === 'agent'  ? 'justify-end'   : 'justify-start'
                       )}>
                         {msg.sender === 'system' ? (
-                          <span className="text-xs text-muted-foreground italic px-3 py-1 bg-white/5 rounded-full">
+                          <span className="text-xs text-muted-foreground italic px-3 py-1 bg-muted/40 dark:bg-white/5 rounded-full">
                             {msg.content}
                           </span>
                         ) : (
                           <div className={cn('max-w-[70%] rounded-2xl px-3 py-2 text-sm',
                             msg.sender === 'agent'
                               ? 'bg-primary/20 text-foreground rounded-br-sm'
-                              : 'bg-white/10 text-foreground rounded-bl-sm'
+                              : 'bg-muted dark:bg-white/10 text-foreground rounded-bl-sm'
                           )}>
                             {msg.sender === 'agent' && (
                               <p className="text-xs text-primary/70 mb-0.5 font-medium">{msg.senderName || 'Agent'}</p>
@@ -735,7 +738,7 @@ export default function LiveChat() {
                     ))}
                     {visitorTyping && (
                       <div className="flex justify-start">
-                        <div className="bg-white/10 rounded-2xl rounded-bl-sm px-3 py-2 flex gap-1 items-center">
+                        <div className="bg-muted dark:bg-white/10 rounded-2xl rounded-bl-sm px-3 py-2 flex gap-1 items-center">
                           {[0,1,2].map(i => (
                             <span key={i} className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
                               style={{ animationDelay: `${i * 0.15}s` }} />
@@ -748,8 +751,8 @@ export default function LiveChat() {
 
                   {/* Quick reply picker */}
                   {showCannedPicker && selected.status === 'active' && (
-                    <div className="flex-shrink-0 border-t border-white/10 bg-background/50 max-h-48 overflow-y-auto">
-                      <div className="p-2 border-b border-white/10 flex items-center gap-2">
+                    <div className="flex-shrink-0 border-t border-border/50 dark:border-white/10 bg-background dark:bg-background/50 max-h-48 overflow-y-auto">
+                      <div className="p-2 border-b border-border/50 dark:border-white/10 flex items-center gap-2">
                         <Search className="w-3.5 h-3.5 text-muted-foreground" />
                         <input
                           value={cannedSearch}
@@ -765,7 +768,7 @@ export default function LiveChat() {
                         <button
                           key={c._id}
                           onClick={() => { setInput(c.content); setShowCannedPicker(false); }}
-                          className="w-full text-left px-3 py-2 hover:bg-white/5 border-b border-white/5 transition-colors"
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 dark:hover:bg-white/5 border-b border-border/30 dark:border-white/5 transition-colors"
                         >
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="text-xs font-medium">{c.title}</span>
@@ -785,7 +788,7 @@ export default function LiveChat() {
 
                   {/* Input area */}
                   {selected.status === 'active' && (
-                    <div className="flex-shrink-0 px-4 py-3 border-t border-white/10">
+                    <div className="flex-shrink-0 px-4 py-3 border-t border-border/50 dark:border-white/10">
                       <div className="flex items-center gap-2">
                         {/* Quick replies button */}
                         <Button
@@ -802,7 +805,7 @@ export default function LiveChat() {
                           onChange={handleInputChange}
                           onKeyDown={handleKeyDown}
                           placeholder="Type a message…"
-                          className="bg-white/5 border-white/10 flex-1"
+                          className="bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10 flex-1"
                         />
 
                         {/* AI suggest */}
@@ -823,13 +826,13 @@ export default function LiveChat() {
                     </div>
                   )}
                   {selected.status === 'waiting' && (
-                    <div className="flex-shrink-0 px-4 py-3 border-t border-white/10 text-center">
+                    <div className="flex-shrink-0 px-4 py-3 border-t border-border/50 dark:border-white/10 text-center">
                       <p className="text-sm text-muted-foreground mb-2">Accept this chat to start messaging</p>
                       <Button onClick={() => handleAccept(selected.sessionId)}>Accept Chat</Button>
                     </div>
                   )}
                   {(selected.status === 'closed' || selected.status === 'missed') && (
-                    <div className={cn('flex-shrink-0 px-4 py-3 border-t border-white/10 text-center text-sm',
+                    <div className={cn('flex-shrink-0 px-4 py-3 border-t border-border/50 dark:border-white/10 text-center text-sm',
                       selected.status === 'missed' ? 'text-yellow-400' : 'text-muted-foreground'
                     )}>
                       {selected.status === 'missed' ? 'Visitor left before an agent joined' : 'This session is closed'}
@@ -851,7 +854,7 @@ export default function LiveChat() {
                   transition={{ duration: 0.2 }}
                   className="flex-shrink-0 overflow-hidden"
                 >
-                  <div className="w-64 h-full bg-white/3 border border-white/10 rounded-2xl overflow-y-auto p-4 space-y-5">
+                  <div className="w-64 h-full bg-muted/20 dark:bg-white/3 border border-border/50 dark:border-white/10 rounded-2xl overflow-y-auto p-4 space-y-5">
 
                     {/* Visitor info */}
                     <div>
@@ -883,7 +886,7 @@ export default function LiveChat() {
                             toast.success(val ? 'Session assigned' : 'Assignment removed');
                           } catch { toast.error('Failed to assign'); }
                         }}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-primary/50"
+                        className="w-full bg-muted/40 dark:bg-white/5 border border-border/50 dark:border-white/10 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-primary/50"
                       >
                         <option value="">Unassigned</option>
                         {teamMembers.map(m => (
@@ -914,7 +917,7 @@ export default function LiveChat() {
                           onChange={e => setTagInput(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && addTag()}
                           placeholder="Add tag…"
-                          className="h-7 text-xs bg-white/5 border-white/10"
+                          className="h-7 text-xs bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10"
                         />
                         <Button size="sm" variant="ghost" className="h-7 px-2" onClick={addTag}>
                           <Tag className="w-3 h-3" />
@@ -930,7 +933,7 @@ export default function LiveChat() {
                         onChange={e => setAgentNotes(e.target.value)}
                         onBlur={saveNotes}
                         placeholder="Private notes…"
-                        className="text-xs bg-white/5 border-white/10 resize-none min-h-[80px]"
+                        className="text-xs bg-muted/40 dark:bg-white/5 border-border/50 dark:border-white/10 resize-none min-h-[80px]"
                       />
                       <p className="text-xs text-muted-foreground mt-1">Auto-saved on blur</p>
                     </div>
