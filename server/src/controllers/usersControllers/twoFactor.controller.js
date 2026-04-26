@@ -152,7 +152,7 @@ export const validate2FA = asyncHandler(async (req, res) => {
         : -1;
 
     if (!totpValid && backupIndex === -1) {
-        throw new AppError('Invalid 2FA code', 401);
+        throw new AppError('Invalid code. Make sure your device clock is correct and try again.', 400);
     }
 
     if (backupIndex !== -1) {
