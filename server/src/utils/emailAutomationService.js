@@ -46,14 +46,24 @@ export async function fireAutomation(trigger, context = {}) {
         if (automations.length === 0) return;
 
         const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+        const mapped = Object.fromEntries(
+            Object.entries(context).map(([k, v]) => [toPlaceholderKey(k), v])
+        );
         const fullContext = {
-            DASHBOARD_URL: `${clientUrl}/user-dashboard`,
-            REVIEW_URL:    `${clientUrl}/user-dashboard/reviews`,
-            ADMIN_URL:     `${clientUrl}/admin`,
-            CLIENT_URL:    clientUrl,
-            ...Object.fromEntries(
-                Object.entries(context).map(([k, v]) => [toPlaceholderKey(k), v])
-            ),
+            DASHBOARD_URL:  `${clientUrl}/user-dashboard`,
+            REVIEW_URL:     `${clientUrl}/user-dashboard/reviews`,
+            ADMIN_URL:      `${clientUrl}/admin`,
+            CLIENT_URL:     clientUrl,
+            ...mapped,
+            // Aliases so HTML templates work without changes
+            NAME:           mapped.USER_NAME     ?? '',
+            EMAIL:          mapped.USER_EMAIL    ?? '',
+            FEEDBACK_URL:   mapped.FEEDBACK_URL  ?? `${clientUrl}/user-dashboard/reviews`,
+            PROJECT_INITIAL: (mapped.PROJECT_NAME ?? '').charAt(0).toUpperCase() || '',
+            COMPLETED_DATE: mapped.COMPLETED_DATE
+                ?? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            BUDGET_RANGE:   mapped.BUDGET_RANGE  ?? '',
+            DEADLINE:       mapped.DEADLINE      ?? 'Not specified',
         };
 
         for (const auto of automations) {

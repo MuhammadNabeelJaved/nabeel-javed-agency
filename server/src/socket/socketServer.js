@@ -640,7 +640,8 @@ export async function initSocket(httpServer, corsOptions) {
         socket.on('lc:close', async ({ sessionId: sid }) => {
             const sId = sid || socket.visitorSessionId;
             if (!sId) return;
-            if (!socket.rooms.has(`lc:session:${sId}`)) return;
+            // Allow agents to close any session from dashboard; only require room membership for visitors
+            if (!socket.agentUser && !socket.rooms.has(`lc:session:${sId}`)) return;
             try {
                 const closedBy = socket.agentUser ? 'agent' : 'visitor';
                 await LiveChatSession.findOneAndUpdate(
