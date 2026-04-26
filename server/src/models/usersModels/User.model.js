@@ -128,6 +128,14 @@ const userSchema = new mongoose.Schema(
             default: false,
         },
 
+        // Updated whenever a full authenticated session is established.
+        // Used by delayed inactivity-followup automations.
+        lastLoginAt: {
+            type: Date,
+            default: null,
+            index: true,
+        },
+
         // =====================
         // EMAIL VERIFICATION
         // =====================
@@ -155,6 +163,25 @@ const userSchema = new mongoose.Schema(
         },
 
         passwordChangedAt: Date, // Updated whenever the password is changed
+
+        // =====================
+        // TWO-FACTOR AUTH (TOTP)
+        // =====================
+        twoFactorSecret: {
+            type: String,
+            select: false, // Never returned in queries unless explicitly requested
+        },
+
+        twoFactorEnabled: {
+            type: Boolean,
+            default: false,
+        },
+
+        twoFactorBackupCodes: {
+            type: [String],
+            select: false,
+            default: [],
+        },
 
         // =====================
         // SOFT DELETE (PRO)

@@ -68,7 +68,8 @@ export default function JobApplication() {
     formData.append('firstName',       (form.querySelector('#firstName') as HTMLInputElement).value.trim());
     formData.append('lastName',        (form.querySelector('#lastName')  as HTMLInputElement).value.trim());
     formData.append('email',           (form.querySelector('#email')     as HTMLInputElement).value.trim());
-    formData.append('phone',           (form.querySelector('#phone')     as HTMLInputElement).value.trim());
+    const phoneVal = (form.querySelector('#phone') as HTMLInputElement).value.trim();
+    if (phoneVal) formData.append('phone', phoneVal);
     formData.append('desiredRole',     jobs.find(j => j._id === jobId)?.jobTitle || '');
     formData.append('experienceLevel', experience);
     formData.append('portfolioUrl',    (form.querySelector('#portfolio') as HTMLInputElement).value.trim());

@@ -33,11 +33,9 @@ const contactSchema = new mongoose.Schema(
             maxlength: [50, "Last name cannot exceed 50 characters"],
         },
 
-        // Unique index prevents the same person submitting multiple times
         email: {
             type: String,
             required: [true, "Email is required"],
-            unique: true,
             lowercase: true,
             trim: true,
             validate: [validator.isEmail, "Please provide a valid email"],

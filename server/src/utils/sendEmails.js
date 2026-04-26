@@ -50,19 +50,43 @@ const renderTemplate = (filename, vars = {}) => {
  * @throws {Error} If the Resend API returns an error
  */
 export const sendEmail = async ({ to, subject, html, text }) => {
-    const { data, error } = await resend.emails.send({
-        from: process.env.FROM_EMAIL,
-        to,
-        subject,
-        html,
-        text,
-    });
+    const simulateInDev = (reason) => {
+        console.warn(`[email] Simulated delivery in ${process.env.NODE_ENV || 'unknown'} mode: ${reason}`);
+        return {
+            id: `mock-email-${Date.now()}`,
+            simulated: true,
+            to,
+            subject,
+        };
+    };
 
-    if (error) {
-        throw new Error(`Failed to send email: ${error.message}`);
+    if (!process.env.FROM_EMAIL || !process.env.RESEND_API_KEY) {
+        if (process.env.NODE_ENV !== 'production') {
+            return simulateInDev('Missing FROM_EMAIL or RESEND_API_KEY');
+        }
+        throw new Error('Failed to send email: email provider is not configured');
     }
 
-    return data;
+    try {
+        const { data, error } = await resend.emails.send({
+            from: process.env.FROM_EMAIL,
+            to,
+            subject,
+            html,
+            text,
+        });
+
+        if (error) {
+            throw new Error(`Failed to send email: ${error.message}`);
+        }
+
+        return data;
+    } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+            return simulateInDev(error.message);
+        }
+        throw error;
+    }
 };
 
 /**

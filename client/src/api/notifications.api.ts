@@ -21,7 +21,8 @@ export interface ApiNotification {
         | 'application_received'
         | 'application_status_updated'
         | 'resource_added'
-        | 'user_registered';
+        | 'user_registered'
+        | 'live_chat_request';
     title: string;
     message: string;
     payload: Record<string, unknown>;

@@ -33,6 +33,7 @@ import {
     sendSignupConfirmation,
 } from "../../utils/sendEmails.js";
 import { notifyAdmins } from "../../utils/notificationService.js";
+import { fireAutomation, scheduleInactivityFollowup } from "../../utils/emailAutomationService.js";
 
 // ─── Cookie helpers ───────────────────────────────────────────────────────────
 
@@ -153,6 +154,7 @@ export const verifyUserEmail = asyncHandler(async (req, res) => {
 
     // Send welcome email non-blocking
     sendSignupConfirmation({ to: user.email, name: user.name }).catch(() => {});
+    fireAutomation('welcome_user', { userName: user.name, userEmail: user.email }).catch(() => {});
 });
 
 /**
@@ -220,9 +222,20 @@ export const loginUser = asyncHandler(async (req, res) => {
         throw new AppError("Incorrect password", 401);
     }
 
+    // If 2FA is enabled, return a pending state instead of full tokens
+    if (user.twoFactorEnabled) {
+        logAuthSuccess(req, user._id);
+        return successResponse(res, "2FA required", {
+            requiresTwoFactor: true,
+            userId: user._id.toString(),
+        }, 200);
+    }
+
+    user.lastLoginAt = new Date();
     const { accessToken, refreshToken } = await generateTokens(user);
     logAuthSuccess(req, user._id);
     setAuthCookies(res, accessToken, refreshToken);
+    scheduleInactivityFollowup(user).catch(() => {});
 
     const userResponse = user.toObject();
     delete userResponse.password;

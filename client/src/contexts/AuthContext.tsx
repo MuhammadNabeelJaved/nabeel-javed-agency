@@ -2,11 +2,17 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { authApi, AuthUser } from '../api/auth.api';
 import { AxiosError } from 'axios';
 
+export interface TwoFAPending {
+  requiresTwoFactor: true;
+  userId: string;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<AuthUser>;
+  login: (email: string, password: string) => Promise<AuthUser | TwoFAPending>;
+  loginWithToken: (userData: AuthUser) => void;
   register: (name: string, email: string, password: string) => Promise<{ requiresVerification: boolean; user: AuthUser }>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<AuthUser>) => void;
@@ -67,17 +73,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<AuthUser> => {
+  const login = useCallback(async (email: string, password: string): Promise<AuthUser | TwoFAPending> => {
     setError(null);
     try {
       const res = await authApi.login(email, password);
-      persistUser(res.data.data);
-      return res.data.data;
+      const data = res.data.data as any;
+      // 2FA pending — server signals with requiresTwoFactor: true
+      if (data?.requiresTwoFactor) {
+        return { requiresTwoFactor: true, userId: data.userId } as TwoFAPending;
+      }
+      persistUser(data as AuthUser);
+      return data as AuthUser;
     } catch (err) {
       const msg = (err as AxiosError<{ message: string }>).response?.data?.message ?? 'Login failed';
       setError(msg);
       throw new Error(msg);
     }
+  }, []);
+
+  const loginWithToken = useCallback((userData: AuthUser) => {
+    persistUser(userData);
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
@@ -123,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         login,
+        loginWithToken,
         register,
         logout,
         updateUser,

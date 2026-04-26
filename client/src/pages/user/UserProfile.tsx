@@ -14,6 +14,7 @@ import { User, Lock, Bell, Save, Shield, Loader2, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { usersApi } from '../../api/users.api';
+import { TwoFactorSetup } from '../../components/TwoFactorSetup';
 
 export default function UserProfile() {
   const { user, updateUser } = useAuth();
@@ -245,13 +246,7 @@ export default function UserProfile() {
                 <h3 className="font-medium mb-4 flex items-center gap-2">
                   <Shield className="h-4 w-4 text-green-500" /> Two-Factor Authentication
                 </h3>
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-secondary/10">
-                  <div>
-                    <p className="font-medium text-sm">Secure your account</p>
-                    <p className="text-xs text-muted-foreground">Add an extra layer of security (coming soon).</p>
-                  </div>
-                  <Button variant="outline" size="sm" disabled>Enable 2FA</Button>
-                </div>
+                <TwoFactorSetup />
               </div>
 
               <div className="flex justify-end">
