@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
     Workflow, Plus, X, Save, Trash2, Edit3, RefreshCw, Mail,
-    Clock, Zap, ChevronDown, ChevronUp, AlertCircle, CheckCircle2,
+    Clock, Zap, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Search, ChevronLeft, ChevronRight,
     Loader2, ToggleLeft, ToggleRight, LayoutTemplate, Eye, ArrowRight,
     Sparkles, Code2, RotateCcw, FileText, Settings, Wand2,
 } from 'lucide-react';
@@ -757,6 +757,63 @@ function AutomationForm({ initial, onSave, onClose }: {
     );
 }
 
+const PAGE_SIZE = 15;
+
+// ─── Automation Row ───────────────────────────────────────────────────────────
+function AutomationRow({ a, info, expanded, setExpanded, onToggle, onEdit, onDelete }: {
+    a: EmailAutomation;
+    info: ReturnType<typeof TRIGGERS.find>;
+    expanded: string | null;
+    setExpanded: (id: string | null) => void;
+    onToggle: (id: string) => void;
+    onEdit: () => void;
+    onDelete: (id: string) => void;
+}) {
+    const isExpanded = expanded === a._id;
+    return (
+        <div className={`border rounded-xl overflow-hidden bg-card transition-opacity ${!a.isEnabled ? 'opacity-60' : ''} ${a.isEnabled ? 'border-border/40' : 'border-border/20'}`}>
+            <div className="flex items-center gap-4 px-5 py-4">
+                <div className={`p-2 rounded-lg ${a.isEnabled ? 'bg-primary/10' : 'bg-muted'}`}>
+                    <Mail className={`h-4 w-4 ${a.isEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm">{a.name}</span>
+                        {info && <Badge className={`border text-xs ${info.badge}`}>{info.label}</Badge>}
+                        {a.delayHours > 0 && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{a.delayHours}h delay</span>}
+                        {a.isEnabled ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <AlertCircle className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{a.sentCount} emails sent{a.lastFiredAt ? ` · Last: ${new Date(a.lastFiredAt).toLocaleDateString()}` : ''}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => onToggle(a._id)} className="h-8 w-8">
+                        {a.isEnabled ? <ToggleRight className="h-5 w-5 text-green-500" /> : <ToggleLeft className="h-5 w-5 text-muted-foreground" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={onEdit} className="h-8 w-8"><Edit3 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => onDelete(a._id)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setExpanded(isExpanded ? null : a._id)} className="h-8 w-8">
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </Button>
+                </div>
+            </div>
+            {isExpanded && (
+                <div className="border-t border-border/40 px-5 py-4 space-y-3 bg-muted/10">
+                    <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Subject</p>
+                        <p className="text-sm font-mono">{a.emailSubject}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Body preview</p>
+                        <div className="text-xs font-mono text-muted-foreground bg-muted rounded-lg p-3 max-h-24 overflow-y-auto whitespace-pre-wrap border border-border/40">
+                            {a.emailBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 300)}…
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminEmailAutomations() {
     const [activeTab, setActiveTab] = useState<'automations' | 'templates'>('automations');
@@ -766,6 +823,9 @@ export default function AdminEmailAutomations() {
     const [showForm, setShowForm]       = useState(false);
     const [editing, setEditing]         = useState<EmailAutomation | null>(null);
     const [expanded, setExpanded]       = useState<string | null>(null);
+    const [search, setSearch]           = useState('');
+    const [categoryFilter, setCategoryFilter] = useState<TriggerType | 'all'>('all');
+    const [page, setPage]               = useState(1);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -814,6 +874,44 @@ export default function AdminEmailAutomations() {
     const enabledCount   = automations.filter(a => a.isEnabled).length;
     const totalSent      = stats?.totalSent || 0;
 
+    // Reset page whenever filters change
+    const resetPage = () => setPage(1);
+
+    const filteredAutomations = useMemo(() => {
+        let list = automations;
+        if (categoryFilter !== 'all') list = list.filter(a => a.trigger === categoryFilter);
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            list = list.filter(a =>
+                a.name.toLowerCase().includes(q) ||
+                a.emailSubject?.toLowerCase().includes(q) ||
+                (getTriggerInfo(a.trigger)?.label || '').toLowerCase().includes(q)
+            );
+        }
+        return list;
+    }, [automations, categoryFilter, search]);
+
+    const totalPages   = Math.max(1, Math.ceil(filteredAutomations.length / PAGE_SIZE));
+    const pagedItems   = filteredAutomations.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+    // When viewing "All" with no search, group by trigger
+    const grouped = useMemo(() => {
+        if (categoryFilter !== 'all' || search.trim()) return null;
+        const map = new Map<string, EmailAutomation[]>();
+        for (const a of pagedItems) {
+            const bucket = map.get(a.trigger) || [];
+            bucket.push(a);
+            map.set(a.trigger, bucket);
+        }
+        return map;
+    }, [pagedItems, categoryFilter, search]);
+
+    // Category pills — only show triggers that have at least 1 automation
+    const activeTriggers = useMemo(() =>
+        TRIGGERS.filter(t => automations.some(a => a.trigger === t.value)),
+        [automations]
+    );
+
     return (
         <div className="space-y-6 p-6 max-w-7xl mx-auto">
             {/* Page header */}
@@ -853,10 +951,60 @@ export default function AdminEmailAutomations() {
             {activeTab === 'automations' && (
                 <div className="space-y-6">
                     {/* Toolbar */}
-                    <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={load} className="gap-2"><RefreshCw className="h-4 w-4" /> Refresh</Button>
-                        <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2"><Plus className="h-4 w-4" /> New Automation</Button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        {/* Search */}
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            <input
+                                value={search}
+                                onChange={e => { setSearch(e.target.value); resetPage(); }}
+                                placeholder="Search automations by name, trigger or subject…"
+                                className="w-full h-9 pl-9 pr-3 text-sm rounded-lg bg-background border border-border outline-none focus:border-primary/60 transition-colors"
+                            />
+                            {search && (
+                                <button onClick={() => { setSearch(''); resetPage(); }}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                            <Button variant="outline" onClick={load} className="gap-2 h-9"><RefreshCw className="h-4 w-4" /> Refresh</Button>
+                            <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2 h-9"><Plus className="h-4 w-4" /> New Automation</Button>
+                        </div>
                     </div>
+
+                    {/* Category filter pills */}
+                    {activeTriggers.length > 1 && (
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => { setCategoryFilter('all'); resetPage(); }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                    categoryFilter === 'all'
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
+                                }`}
+                            >
+                                All <span className="ml-1 opacity-70">{automations.length}</span>
+                            </button>
+                            {activeTriggers.map(t => {
+                                const count = automations.filter(a => a.trigger === t.value).length;
+                                return (
+                                    <button
+                                        key={t.value}
+                                        onClick={() => { setCategoryFilter(t.value); resetPage(); }}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                            categoryFilter === t.value
+                                                ? `${t.badge} border-current`
+                                                : 'bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
+                                        }`}
+                                    >
+                                        {t.label} <span className="ml-1 opacity-70">{count}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* Stats */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -905,54 +1053,82 @@ export default function AdminEmailAutomations() {
                             <p className="text-muted-foreground text-sm mt-1 mb-4">Create your first email automation to get started.</p>
                             <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2"><Plus className="h-4 w-4" /> New Automation</Button>
                         </div>
+                    ) : filteredAutomations.length === 0 ? (
+                        <div className="text-center py-12 border border-dashed rounded-xl bg-muted/10">
+                            <Search className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                            <h3 className="font-medium">No results found</h3>
+                            <p className="text-muted-foreground text-sm mt-1">Try a different search term or category.</p>
+                        </div>
                     ) : (
-                        <div className="space-y-3">
-                            {automations.map(a => {
-                                const info = getTriggerInfo(a.trigger);
-                                const isExpanded = expanded === a._id;
-                                return (
-                                    <div key={a._id} className={`border rounded-xl overflow-hidden bg-card transition-opacity ${!a.isEnabled ? 'opacity-60' : ''} ${a.isEnabled ? 'border-border/40' : 'border-border/20'}`}>
-                                        <div className="flex items-center gap-4 px-5 py-4">
-                                            <div className={`p-2 rounded-lg ${a.isEnabled ? 'bg-primary/10' : 'bg-muted'}`}>
-                                                <Mail className={`h-4 w-4 ${a.isEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <div className="space-y-1">
+                            {/* Results summary */}
+                            <p className="text-xs text-muted-foreground pb-2">
+                                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredAutomations.length)} of {filteredAutomations.length} automation{filteredAutomations.length !== 1 ? 's' : ''}
+                                {search && <span> for "<span className="text-foreground font-medium">{search}</span>"</span>}
+                            </p>
+
+                            {grouped ? (
+                                // Grouped view: All + no search
+                                Array.from(grouped.entries()).map(([trigger, items]) => {
+                                    const info = getTriggerInfo(trigger as TriggerType);
+                                    return (
+                                        <div key={trigger} className="space-y-2 mb-5">
+                                            <div className="flex items-center gap-2 py-1">
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${info?.badge || 'bg-muted text-muted-foreground border-border/40'}`}>
+                                                    {info?.label || trigger}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">{items.length} rule{items.length !== 1 ? 's' : ''}</span>
+                                                <div className="flex-1 h-px bg-border/40" />
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="font-semibold text-sm">{a.name}</span>
-                                                    {info && <Badge className={`border text-xs ${info.badge}`}>{info.label}</Badge>}
-                                                    {a.delayHours > 0 && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{a.delayHours}h delay</span>}
-                                                    {a.isEnabled ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <AlertCircle className="h-3.5 w-3.5 text-muted-foreground/50" />}
-                                                </div>
-                                                <p className="text-xs text-muted-foreground mt-0.5">{a.sentCount} emails sent{a.lastFiredAt ? ` · Last: ${new Date(a.lastFiredAt).toLocaleDateString()}` : ''}</p>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <Button variant="ghost" size="icon" onClick={() => handleToggle(a._id)} className="h-8 w-8">
-                                                    {a.isEnabled ? <ToggleRight className="h-5 w-5 text-green-500" /> : <ToggleLeft className="h-5 w-5 text-muted-foreground" />}
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => { setEditing(a); setShowForm(true); }} className="h-8 w-8"><Edit3 className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleDelete(a._id)} className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setExpanded(isExpanded ? null : a._id)} className="h-8 w-8">
-                                                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                                </Button>
-                                            </div>
+                                            {items.map(a => <AutomationRow key={a._id} a={a} info={info} expanded={expanded} setExpanded={setExpanded} onToggle={handleToggle} onEdit={() => { setEditing(a); setShowForm(true); }} onDelete={handleDelete} />)}
                                         </div>
-                                        {isExpanded && (
-                                            <div className="border-t border-border/40 px-5 py-4 space-y-3 bg-muted/10">
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-medium text-muted-foreground">Subject</p>
-                                                    <p className="text-sm font-mono">{a.emailSubject}</p>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-medium text-muted-foreground">Body preview</p>
-                                                    <div className="text-xs font-mono text-muted-foreground bg-muted rounded-lg p-3 max-h-24 overflow-y-auto whitespace-pre-wrap border border-border/40">
-                                                        {a.emailBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 300)}…
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
+                                    );
+                                })
+                            ) : (
+                                // Flat view: specific category or search active
+                                <div className="space-y-2">
+                                    {pagedItems.map(a => {
+                                        const info = getTriggerInfo(a.trigger);
+                                        return <AutomationRow key={a._id} a={a} info={info} expanded={expanded} setExpanded={setExpanded} onToggle={handleToggle} onEdit={() => { setEditing(a); setShowForm(true); }} onDelete={handleDelete} />;
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between pt-4 border-t border-border/40 mt-4">
+                                    <p className="text-xs text-muted-foreground">Page {page} of {totalPages}</p>
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="outline" size="icon" className="h-8 w-8" disabled={page === 1} onClick={() => setPage(1)}>
+                                            <ChevronLeft className="h-4 w-4" /><ChevronLeft className="h-4 w-4 -ml-2.5" />
+                                        </Button>
+                                        <Button variant="outline" size="icon" className="h-8 w-8" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                            .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+                                            .reduce<(number | '…')[]>((acc, n, i, arr) => {
+                                                if (i > 0 && n - (arr[i - 1] as number) > 1) acc.push('…');
+                                                acc.push(n);
+                                                return acc;
+                                            }, [])
+                                            .map((n, i) => n === '…' ? (
+                                                <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground text-sm">…</span>
+                                            ) : (
+                                                <Button key={n} variant={page === n ? 'default' : 'outline'} size="icon" className="h-8 w-8 text-xs" onClick={() => setPage(n as number)}>
+                                                    {n}
+                                                </Button>
+                                            ))
+                                        }
+                                        <Button variant="outline" size="icon" className="h-8 w-8" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="outline" size="icon" className="h-8 w-8" disabled={page === totalPages} onClick={() => setPage(totalPages)}>
+                                            <ChevronRight className="h-4 w-4" /><ChevronRight className="h-4 w-4 -ml-2.5" />
+                                        </Button>
                                     </div>
-                                );
-                            })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
