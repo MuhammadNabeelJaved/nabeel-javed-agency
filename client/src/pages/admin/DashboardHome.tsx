@@ -474,7 +474,7 @@ export default function DashboardHome() {
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">Avg Progress</p>
-                  <p className="font-bold text-lg">{projectStats?.avgProgress??0}%</p>
+                  <p className="font-bold text-lg">{Math.round(projectStats?.avgProgress??0)}%</p>
                 </div>
                 <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
                   <div

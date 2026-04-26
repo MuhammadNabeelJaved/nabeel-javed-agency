@@ -25,14 +25,17 @@ const APP_NAME = 'Nabeel Agency';
 export const setup2FA = asyncHandler(async (req, res) => {
     const secret = speakeasy.generateSecret({
         name: `${APP_NAME} (${req.user.email})`,
+        issuer: APP_NAME,
         length: 20,
     });
 
-    // Store secret temporarily (not yet active — user must verify first)
-    await User.findByIdAndUpdate(req.user._id, {
-        twoFactorSecret: secret.base32,
-        twoFactorEnabled: false,
-    });
+    // Use findById + save to guarantee the field is written (findByIdAndUpdate
+    // can skip validators but may also skip certain write paths on some configs)
+    const user = await User.findById(req.user._id);
+    if (!user) throw new AppError('User not found', 404);
+    user.twoFactorSecret = secret.base32;
+    user.twoFactorEnabled = false;
+    await user.save({ validateBeforeSave: false });
 
     // Generate QR code as data URL
     const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
@@ -57,11 +60,11 @@ export const verify2FA = asyncHandler(async (req, res) => {
     const isValid = speakeasy.totp.verify({
         secret: user.twoFactorSecret,
         encoding: 'base32',
-        token,
-        window: 1, // Allow 30s clock skew
+        token: String(token).trim(),
+        window: 2, // Allow ±60s clock skew
     });
 
-    if (!isValid) throw new AppError('Invalid TOTP code', 400);
+    if (!isValid) throw new AppError('Invalid code. Make sure your device clock is correct and try again.', 400);
 
     // Generate 10 single-use backup codes
     const backupCodes = Array.from({ length: 10 }, () =>
@@ -90,8 +93,8 @@ export const disable2FA = asyncHandler(async (req, res) => {
     const totpValid = token && speakeasy.totp.verify({
         secret: user.twoFactorSecret,
         encoding: 'base32',
-        token,
-        window: 1,
+        token: String(token).trim(),
+        window: 2,
     });
 
     const backupIndex = !totpValid && token
@@ -139,8 +142,8 @@ export const validate2FA = asyncHandler(async (req, res) => {
     const totpValid = speakeasy.totp.verify({
         secret: user.twoFactorSecret,
         encoding: 'base32',
-        token,
-        window: 1,
+        token: String(token).trim(),
+        window: 2,
     });
 
     // Try backup code
@@ -204,10 +207,10 @@ export const regenerateBackupCodes = asyncHandler(async (req, res) => {
     const isValid = speakeasy.totp.verify({
         secret: user.twoFactorSecret,
         encoding: 'base32',
-        token,
-        window: 1,
+        token: String(token).trim(),
+        window: 2,
     });
-    if (!isValid) throw new AppError('Invalid TOTP code', 400);
+    if (!isValid) throw new AppError('Invalid code. Make sure your device clock is correct and try again.', 400);
 
     const backupCodes = Array.from({ length: 10 }, () =>
         crypto.randomBytes(4).toString('hex').toUpperCase()

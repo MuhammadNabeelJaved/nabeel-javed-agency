@@ -13,6 +13,7 @@ import { User, Lock, Bell, Shield, Camera, Save, Loader2, Eye, EyeOff } from 'lu
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { usersApi } from '../../api/users.api';
+import { TwoFactorSetup } from '../../components/TwoFactorSetup';
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -256,13 +257,7 @@ export default function TeamSettings() {
                 <CardDescription>Add an extra layer of security to your account.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/20">
-                  <div>
-                    <p className="font-medium text-sm">Authenticator App</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Use Google Authenticator or similar (coming soon).</p>
-                  </div>
-                  <Button variant="outline" size="sm" disabled>Enable 2FA</Button>
-                </div>
+                <TwoFactorSetup />
               </CardContent>
             </Card>
           </div>
