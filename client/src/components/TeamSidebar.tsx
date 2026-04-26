@@ -1,14 +1,20 @@
 /**
  * Team Dashboard Sidebar
- * Supports collapse/expand toggle (persisted in localStorage).
- * Supports drag-to-reorder and pin-to-top per item (persisted in localStorage).
+ *
+ * Features:
+ *  - Sidebar collapse/expand (persisted)
+ *  - Category grouping with collapsible sections (persisted)
+ *  - Drag items within & ACROSS categories
+ *  - Drag category headers to reorder categories
+ *  - Inline rename for categories and nav items (pencil icon on hover)
+ *  - Pin to top (star icon on hover)
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, BarChart2, Settings, LogOut, Bell,
   ChevronRight, Calendar, MessageSquare, MessageCircle, Files, HelpCircle, X, Sparkles, Briefcase,
-  PanelLeftClose, PanelLeftOpen, GripVertical, Star,
+  PanelLeftClose, PanelLeftOpen, GripVertical, Star, ChevronDown, Pencil, Check, User,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +22,11 @@ import { usePageVisibility } from '../hooks/usePageVisibility';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
-import { useSidebarPreferences } from '../hooks/useSidebarPreferences';
+import {
+  useSidebarPreferences,
+  SidebarLinkDef,
+  CategoryDef,
+} from '../hooks/useSidebarPreferences';
 import { liveChatApi } from '../api/liveChat.api';
 
 interface TeamSidebarProps {
@@ -27,30 +37,53 @@ interface TeamSidebarProps {
   topOffset?: number;
 }
 
-const DEFAULT_LINKS = [
-  { name: 'Dashboard',     path: '/team',                icon: LayoutDashboard },
-  { name: 'Projects',      path: '/team/projects',       icon: FolderKanban },
-  { name: 'My Tasks',      path: '/team/tasks',          icon: CheckSquare },
-  { name: 'AI Assistant',  path: '/team/ai-assistant',   icon: Sparkles },
-  { name: 'Calendar',      path: '/team/calendar',       icon: Calendar },
-  { name: 'Chat',          path: '/team/chat',           icon: MessageSquare },
-  { name: 'Resources',     path: '/team/resources',      icon: Files },
-  { name: 'Reports',       path: '/team/reports',        icon: BarChart2 },
-  { name: 'Notifications', path: '/team/notifications',  icon: Bell },
-  { name: 'Settings',      path: '/team/settings',       icon: Settings },
-  { name: 'Live Chat',     path: '/team/live-chat',       icon: MessageCircle },
-  { name: 'Applied Jobs',  path: '/team/applied-jobs',   icon: Briefcase },
-  { name: 'Support',      path: '/team/support',        icon: HelpCircle },
+const CATEGORIES: CategoryDef[] = [
+  { key: 'main',          label: 'Overview',       icon: LayoutDashboard },
+  { key: 'work',          label: 'Work',           icon: FolderKanban },
+  { key: 'communication', label: 'Communication',  icon: MessageSquare },
+  { key: 'resources',     label: 'Resources',      icon: Files },
+  { key: 'personal',      label: 'Personal',       icon: User },
 ];
+
+const DEFAULT_LINKS: SidebarLinkDef[] = [
+  { name: 'Dashboard',     path: '/team',               icon: LayoutDashboard, category: 'main' },
+  { name: 'Projects',      path: '/team/projects',      icon: FolderKanban,    category: 'work' },
+  { name: 'My Tasks',      path: '/team/tasks',         icon: CheckSquare,     category: 'work' },
+  { name: 'Calendar',      path: '/team/calendar',      icon: Calendar,        category: 'work' },
+  { name: 'Chat',          path: '/team/chat',          icon: MessageSquare,   category: 'communication' },
+  { name: 'Live Chat',     path: '/team/live-chat',     icon: MessageCircle,   category: 'communication' },
+  { name: 'Resources',     path: '/team/resources',     icon: Files,           category: 'resources' },
+  { name: 'Reports',       path: '/team/reports',       icon: BarChart2,       category: 'resources' },
+  { name: 'AI Assistant',  path: '/team/ai-assistant',  icon: Sparkles,        category: 'personal' },
+  { name: 'Applied Jobs',  path: '/team/applied-jobs',  icon: Briefcase,       category: 'personal' },
+  { name: 'Notifications', path: '/team/notifications', icon: Bell,            category: 'personal' },
+  { name: 'Settings',      path: '/team/settings',      icon: Settings,        category: 'personal' },
+  { name: 'Support',       path: '/team/support',       icon: HelpCircle,      category: 'personal' },
+];
+
+type EditTarget = { type: 'cat' | 'link'; key: string; value: string } | null;
+type DragSrc   = { type: 'item'; path: string } | { type: 'cat'; catKey: string } | null;
 
 export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onToggleCollapse, topOffset = 0 }: TeamSidebarProps) {
   const location = useLocation();
   const { isVisible } = usePageVisibility();
   const { logout } = useAuth();
-  const navigate = useNavigate();
-  const { chatUnreadCount } = useNotifications({ enableToast: false });
+  const navigate   = useNavigate();
+  const { chatUnreadCount } = useNotifications({ enableToast: false, enableSound: false });
   const [lcWaiting, setLcWaiting] = useState(0);
-  const { getOrderedLinks, isPinned, togglePin, handleDragStart, handleDrop } = useSidebarPreferences('team', DEFAULT_LINKS);
+
+  const {
+    getOrderedCategories, getLinksForCategory, getPinnedLinks,
+    isPinned, isCatCollapsed, getLinkLabel, getCatLabel,
+    togglePin, toggleCatCollapsed, renameLink, renameCategory,
+    moveItem, moveCategory,
+  } = useSidebarPreferences('team', DEFAULT_LINKS, CATEGORIES);
+
+  const [editing, setEditing] = useState<EditTarget>(null);
+  const dragSrc               = useRef<DragSrc>(null);
+  const [itemDrop, setItemDrop] = useState<string | null>(null);
+  const [catDrop, setCatDrop]   = useState<string | null>(null);
+  const [dragType, setDragType] = useState<'item' | 'cat' | null>(null);
 
   useEffect(() => {
     liveChatApi.getStats().then(s => setLcWaiting(s.waiting)).catch(() => {});
@@ -59,171 +92,268 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
     }, 30000);
     return () => clearInterval(id);
   }, []);
-  const [dragOverPath, setDragOverPath] = useState<string | null>(null);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/', { replace: true });
+  const showText = !collapsed;
+  const visibleLinks = DEFAULT_LINKS.filter(l => isVisible(l.path));
+
+  /* ── inline edit helpers ─────────────────────────────────────────────── */
+  const startEdit = (type: 'cat' | 'link', key: string, current: string, e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setEditing({ type, key, value: current });
+  };
+  const commitEdit = () => {
+    if (!editing) return;
+    if (editing.type === 'cat')  renameCategory(editing.key, editing.value);
+    else                         renameLink(editing.key, editing.value);
+    setEditing(null);
+  };
+  const cancelEdit = () => setEditing(null);
+
+  /* ── drag helpers ────────────────────────────────────────────────────── */
+  const clearDrag = () => { dragSrc.current = null; setDragType(null); setItemDrop(null); setCatDrop(null); };
+
+  const onItemDragStart  = (path: string)   => { dragSrc.current = { type: 'item', path };   setDragType('item'); };
+  const onCatDragStart   = (catKey: string) => { dragSrc.current = { type: 'cat', catKey };   setDragType('cat'); };
+
+  const onItemDragOver = (e: React.DragEvent, path: string) => {
+    e.preventDefault(); e.stopPropagation();
+    if (dragType === 'item') setItemDrop(path);
+  };
+  const onCatHeaderDragOver = (e: React.DragEvent, catKey: string) => {
+    e.preventDefault(); e.stopPropagation();
+    setCatDrop(catKey); setItemDrop(null);
   };
 
-  const visibleLinks = DEFAULT_LINKS.filter(link => isVisible(link.path));
-  const showText = !collapsed;
-  const { pinned, rest } = getOrderedLinks(visibleLinks);
+  const onItemDrop = (e: React.DragEvent, targetPath: string, targetCatKey: string) => {
+    e.preventDefault(); e.stopPropagation();
+    const src = dragSrc.current;
+    if (src?.type === 'item') moveItem(src.path, targetPath, targetCatKey);
+    clearDrag();
+  };
+  const onCatHeaderDrop = (e: React.DragEvent, targetCatKey: string) => {
+    e.preventDefault(); e.stopPropagation();
+    const src = dragSrc.current;
+    if (src?.type === 'item')   moveItem(src.path, null, targetCatKey);
+    else if (src?.type === 'cat') moveCategory(src.catKey, targetCatKey);
+    clearDrag();
+  };
 
-  const renderLink = (link: typeof DEFAULT_LINKS[0]) => {
-    const Icon = link.icon;
-    const isActive = link.path === '/team'
+  /* ── render link ─────────────────────────────────────────────────────── */
+  const renderLink = (link: SidebarLinkDef, catKey: string) => {
+    const Icon        = link.icon;
+    const isActive    = link.path === '/team'
       ? location.pathname === '/team'
       : location.pathname.startsWith(link.path);
-    const pinned_ = isPinned(link.path);
-    const isDragOver = dragOverPath === link.path;
+    const pinned_     = isPinned(link.path);
+    const isItemDrop  = itemDrop === link.path && dragType === 'item' && dragSrc.current?.type === 'item' && (dragSrc.current as { path: string }).path !== link.path;
+    const isEditing   = editing?.type === 'link' && editing.key === link.path;
+    const displayName = getLinkLabel(link.path, link.name);
 
     return (
       <div
         key={link.path}
         draggable={showText}
-        onDragStart={() => handleDragStart(link.path)}
-        onDragOver={(e) => { e.preventDefault(); setDragOverPath(link.path); }}
-        onDragLeave={() => setDragOverPath(prev => prev === link.path ? null : prev)}
-        onDrop={(e) => { e.preventDefault(); handleDrop(link.path); setDragOverPath(null); }}
-        className={cn(
-          'relative group/item',
-          isDragOver && 'before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary before:rounded-full',
-        )}
+        onDragStart={e => { e.stopPropagation(); onItemDragStart(link.path); }}
+        onDragOver={e => onItemDragOver(e, link.path)}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setItemDrop(null); }}
+        onDrop={e => onItemDrop(e, link.path, catKey)}
+        onDragEnd={clearDrag}
+        className={cn('relative group/item', isItemDrop && 'before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary before:rounded-full')}
       >
-        {/* Drag grip — desktop expanded only */}
         {showText && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 hidden lg:flex opacity-0 group-hover/item:opacity-100 cursor-grab active:cursor-grabbing z-10 text-muted-foreground/40 hover:text-muted-foreground transition-opacity pl-0.5">
             <GripVertical className="h-3.5 w-3.5" />
           </div>
         )}
 
-        <Link to={link.path} title={link.name} className="relative group block">
-          {isActive && (
-            <>
+        {isEditing ? (
+          <div className="relative flex items-center gap-3 py-2 rounded-xl px-3 lg:pl-5 bg-accent/50 border border-primary/30">
+            <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+            <input
+              autoFocus
+              value={editing!.value}
+              onChange={e => setEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
+              onBlur={commitEdit}
+              onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
+              onClick={e => e.stopPropagation()}
+              className="flex-1 bg-transparent border-b border-primary text-sm font-medium outline-none min-w-0 text-foreground"
+            />
+            <button type="button" onClick={commitEdit} className="shrink-0 p-0.5 text-primary">
+              <Check className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <Link to={link.path} title={displayName} className="relative group block">
+            {isActive && (
               <motion.div layoutId="activeTeamTab" className="absolute inset-0 bg-primary/10 rounded-xl border border-primary/20" initial={false} transition={{ type: 'spring', stiffness: 350, damping: 30 }} />
-            </>
-          )}
-          <motion.div
-            whileHover={{ x: 2 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className={cn(
-              'relative flex items-center gap-3 py-2.5 rounded-xl transition-colors duration-150 group-hover:bg-accent/80',
-              showText ? 'px-3 lg:pl-5' : 'px-3',
-              isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
             )}
-          >
-            <div className="relative shrink-0">
-              <Icon className={cn('h-5 w-5 transition-all duration-200 group-hover:scale-110', isActive ? 'drop-shadow-[0_0_5px_rgba(139,92,246,0.5)]' : '')} />
-            </div>
-            <AnimatePresence initial={false}>
-              {showText && (
-                <motion.span
-                  key={`label-${link.path}`}
-                  initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="hidden lg:flex items-center gap-1 font-medium text-sm flex-1 overflow-hidden whitespace-nowrap"
-                >
-                  {link.name}
-                  {link.path === '/team/chat' && chatUnreadCount > 0 && (
-                    <span className="ml-auto h-5 min-w-[20px] px-1 rounded-full bg-primary text-[10px] text-primary-foreground font-bold flex items-center justify-center">
-                      {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
-                    </span>
-                  )}
-                  {link.path === '/team/live-chat' && lcWaiting > 0 && (
-                    <span className="ml-auto h-5 min-w-[20px] px-1 rounded-full bg-yellow-500 text-[10px] text-white font-bold flex items-center justify-center">
-                      {lcWaiting > 99 ? '99+' : lcWaiting}
-                    </span>
-                  )}
-                  {isActive && !pinned_ && <ChevronRight className="h-4 w-4 opacity-40 ml-auto" />}
-
-                  {/* Pin / star button */}
-                  <button
-                    type="button"
-                    title={pinned_ ? 'Unpin' : 'Pin to top'}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePin(link.path); }}
-                    className={cn(
-                      'hidden lg:flex shrink-0 p-0.5 rounded transition-all ml-auto',
-                      pinned_ ? 'opacity-100 text-primary' : 'opacity-0 group-hover/item:opacity-100 text-muted-foreground/50 hover:text-primary',
+            <motion.div whileHover={{ x: 2 }} transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className={cn('relative flex items-center gap-3 py-2.5 rounded-xl transition-colors duration-150 group-hover:bg-accent/80', showText ? 'px-3 lg:pl-5' : 'px-3', isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}>
+              <div className="relative shrink-0">
+                <Icon className={cn('h-5 w-5 transition-all duration-200 group-hover:scale-110', isActive && 'drop-shadow-[0_0_5px_rgba(139,92,246,0.5)]')} />
+              </div>
+              <AnimatePresence initial={false}>
+                {showText && (
+                  <motion.span key={`label-${link.path}`} initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.18 }}
+                    className="hidden lg:flex items-center gap-1 font-medium text-sm flex-1 overflow-hidden whitespace-nowrap min-w-0">
+                    <span className="flex-1 truncate min-w-0">{displayName}</span>
+                    {link.path === '/team/chat' && chatUnreadCount > 0 && (
+                      <span className="shrink-0 h-5 min-w-[20px] px-1 rounded-full bg-primary text-[10px] text-primary-foreground font-bold flex items-center justify-center">
+                        {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                      </span>
                     )}
-                  >
-                    <Star className={cn('h-3.5 w-3.5', pinned_ && 'fill-primary')} />
-                  </button>
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </Link>
+                    {link.path === '/team/live-chat' && lcWaiting > 0 && (
+                      <span className="shrink-0 h-5 min-w-[20px] px-1 rounded-full bg-yellow-500 text-[10px] text-white font-bold flex items-center justify-center">
+                        {lcWaiting > 99 ? '99+' : lcWaiting}
+                      </span>
+                    )}
+                    {isActive && !pinned_ && <ChevronRight className="h-4 w-4 opacity-40 shrink-0" />}
+                    <button type="button" title="Rename" onClick={e => startEdit('link', link.path, displayName, e)}
+                      className="hidden lg:block opacity-0 group-hover/item:opacity-100 shrink-0 p-0.5 rounded text-muted-foreground/40 hover:text-foreground transition-all">
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button type="button" title={pinned_ ? 'Unpin' : 'Pin to top'} onClick={e => { e.preventDefault(); e.stopPropagation(); togglePin(link.path); }}
+                      className={cn('hidden lg:flex shrink-0 p-0.5 rounded transition-all', pinned_ ? 'opacity-100 text-primary' : 'opacity-0 group-hover/item:opacity-100 text-muted-foreground/50 hover:text-primary')}>
+                      <Star className={cn('h-3.5 w-3.5', pinned_ && 'fill-primary')} />
+                    </button>
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </Link>
+        )}
       </div>
     );
   };
+
+  /* ── render category ─────────────────────────────────────────────────── */
+  const renderCategory = (catKey: string) => {
+    const catDef     = CATEGORIES.find(c => c.key === catKey);
+    if (!catDef) return null;
+
+    const catLinks   = getLinksForCategory(catKey, visibleLinks);
+    const CatIcon    = catDef.icon;
+    const catLabel   = getCatLabel(catKey, catDef.label);
+    const collapsed_ = isCatCollapsed(catKey);
+    const isDropZone = catDrop === catKey;
+    const isEditCat  = editing?.type === 'cat' && editing.key === catKey;
+    const isMain     = catKey === 'main';
+
+    if (isMain) {
+      return (
+        <div key="main" className="space-y-0.5">
+          {catLinks.map(l => renderLink(l, catKey))}
+        </div>
+      );
+    }
+
+    return (
+      <div key={catKey} className="mt-2">
+        <AnimatePresence initial={false}>
+          {showText && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              draggable
+              onDragStart={e => { e.stopPropagation(); onCatDragStart(catKey); }}
+              onDragOver={e => onCatHeaderDragOver(e, catKey)}
+              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setCatDrop(null); }}
+              onDrop={e => onCatHeaderDrop(e, catKey)}
+              onDragEnd={clearDrag}
+              className={cn(
+                'hidden lg:flex w-full items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors group/cat cursor-default',
+                isDropZone ? 'bg-primary/15 border border-primary/30 text-primary' : 'hover:bg-accent/50 text-muted-foreground/50 hover:text-muted-foreground',
+              )}
+            >
+              <div className="opacity-0 group-hover/cat:opacity-100 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-opacity shrink-0">
+                <GripVertical className="h-3.5 w-3.5" />
+              </div>
+              <CatIcon className="h-3.5 w-3.5 shrink-0" />
+
+              {isEditCat ? (
+                <input autoFocus value={editing!.value}
+                  onChange={e => setEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
+                  onBlur={commitEdit}
+                  onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                  onClick={e => e.stopPropagation()}
+                  className="flex-1 bg-transparent border-b border-primary text-[10px] font-semibold uppercase tracking-widest outline-none text-foreground min-w-0"
+                />
+              ) : (
+                <button onClick={() => toggleCatCollapsed(catKey)} className="flex-1 text-[10px] font-semibold uppercase tracking-widest text-left truncate">
+                  {catLabel}
+                </button>
+              )}
+
+              {!isEditCat && (
+                <>
+                  <button type="button" title="Rename category" onClick={e => startEdit('cat', catKey, catLabel, e)}
+                    className="opacity-0 group-hover/cat:opacity-100 shrink-0 p-0.5 rounded text-muted-foreground/40 hover:text-foreground transition-all">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <motion.button onClick={() => toggleCatCollapsed(catKey)} animate={{ rotate: collapsed_ ? -90 : 0 }} transition={{ duration: 0.2 }} className="shrink-0 p-0.5">
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </motion.button>
+                </>
+              )}
+              {isEditCat && (
+                <button type="button" onClick={commitEdit} className="shrink-0 p-0.5 text-primary">
+                  <Check className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence initial={false}>
+          {(!showText || !collapsed_) && (
+            <motion.div key={`items-${catKey}`} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: 'easeInOut' }} className="overflow-hidden">
+              <div className="space-y-0.5 pt-0.5">
+                {catLinks.map(l => renderLink(l, catKey))}
+                {catLinks.length === 0 && showText && (
+                  <div onDragOver={e => { e.preventDefault(); setCatDrop(catKey); }} onDragLeave={() => setCatDrop(null)} onDrop={e => onCatHeaderDrop(e, catKey)}
+                    className={cn('mx-1 h-8 rounded-lg border-2 border-dashed transition-colors flex items-center justify-center text-[10px] text-muted-foreground/40', isDropZone ? 'border-primary/50 text-primary/60 bg-primary/5' : 'border-border/30')}>
+                    {isDropZone ? 'Drop here' : 'Empty'}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const pinnedLinks = getPinnedLinks(visibleLinks);
+  const catOrder    = getOrderedCategories();
 
   return (
     <>
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-30 sm:hidden"
-            onClick={onClose}
-          />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-30 sm:hidden" onClick={onClose} />
         )}
       </AnimatePresence>
 
       <aside
-        className={cn(
-          'fixed left-0 bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col w-72',
-          isOpen ? 'translate-x-0' : '-translate-x-full',
-          'sm:translate-x-0 sm:w-20',
-          collapsed ? 'lg:w-20' : 'lg:w-72',
-        )}
+        className={cn('fixed left-0 bg-background/80 backdrop-blur-xl border-r border-border/50 z-40 transition-all duration-300 flex flex-col w-72',
+          isOpen ? 'translate-x-0' : '-translate-x-full', 'sm:translate-x-0 sm:w-20', collapsed ? 'lg:w-20' : 'lg:w-72')}
         style={{ top: topOffset, height: `calc(100vh - ${topOffset}px)` }}
       >
         {isOpen && (
-          <motion.button
-            onClick={onClose}
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            className="absolute top-4 right-4 sm:hidden p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
-          >
+          <motion.button onClick={onClose} whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }}
+            className="absolute top-4 right-4 sm:hidden p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors">
             <X className="h-4 w-4" />
           </motion.button>
         )}
 
-        {/* Logo + collapse toggle */}
-        <motion.div
-          layout
-          className={cn(
-            'h-16 sm:h-20 flex items-center border-b border-border/50 shrink-0',
-            showText ? 'px-3 lg:px-4 justify-between' : 'justify-center px-3',
-          )}
-        >
-          {/* Logo — hidden at lg+ when collapsed */}
-          <motion.div
-            key="logo-link"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.18 }}
-            className={cn(!showText && 'lg:hidden')}
-          >
+        <motion.div layout className={cn('h-16 sm:h-20 flex items-center border-b border-border/50 shrink-0', showText ? 'px-3 lg:px-4 justify-between' : 'justify-center px-3')}>
+          <motion.div key="logo-link" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className={cn(!showText && 'lg:hidden')}>
             <Link to="/" className="flex items-center gap-2.5 group min-w-0">
-              <motion.img
-                src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png"
-                alt="Nabeel Logo"
-                className="h-9 w-auto dark:invert shrink-0"
-                whileHover={{ scale: 1.08, rotate: -3 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-              />
+              <motion.img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png"
+                alt="Nabeel Logo" className="h-9 w-auto dark:invert shrink-0" whileHover={{ scale: 1.08, rotate: -3 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }} />
               <AnimatePresence initial={false}>
                 {showText && (
-                  <motion.span
-                    key="logo-text"
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.22, ease: 'easeInOut' }}
-                    className="hidden lg:block font-bold text-xl tracking-tight text-foreground overflow-hidden whitespace-nowrap"
-                  >
+                  <motion.span key="logo-text" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.22, ease: 'easeInOut' }}
+                    className="hidden lg:block font-bold text-xl tracking-tight text-foreground overflow-hidden whitespace-nowrap">
                     TEAM<span className="text-primary">DASH</span>
                   </motion.span>
                 )}
@@ -232,22 +362,10 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
           </motion.div>
 
           {onToggleCollapse && (
-            <motion.button
-              layout
-              onClick={onToggleCollapse}
-              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="hidden lg:flex p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            >
+            <motion.button layout onClick={onToggleCollapse} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+              className="hidden lg:flex p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0">
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={collapsed ? 'open' : 'close'}
-                  initial={{ opacity: 0, rotate: -90 }}
-                  animate={{ opacity: 1, rotate: 0 }}
-                  exit={{ opacity: 0, rotate: 90 }}
-                  transition={{ duration: 0.18 }}
-                >
+                <motion.div key={collapsed ? 'open' : 'close'} initial={{ opacity: 0, rotate: -90 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, rotate: 90 }} transition={{ duration: 0.18 }}>
                   {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
                 </motion.div>
               </AnimatePresence>
@@ -255,12 +373,9 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
           )}
         </motion.div>
 
-        {/* Navigation */}
         <div className="flex-grow py-4 px-3 overflow-y-auto no-scrollbar">
-
-          {/* ── Pinned section ─────────────────────────────────────────────── */}
           <AnimatePresence initial={false}>
-            {pinned.length > 0 && (
+            {pinnedLinks.length > 0 && (
               <motion.div key="pinned-section" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {showText && (
                   <div className="px-3 mb-1.5 hidden lg:flex items-center gap-1.5">
@@ -268,36 +383,23 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
                     <span className="text-[10px] font-semibold text-primary/70 uppercase tracking-widest">Pinned</span>
                   </div>
                 )}
-                <div className="space-y-0.5">
-                  {pinned.map(link => renderLink(link))}
-                </div>
+                <div className="space-y-0.5">{pinnedLinks.map(l => renderLink(l, 'pinned'))}</div>
                 <div className="border-t border-border/30 my-3 mx-1" />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* ── Main workspace ─────────────────────────────────────────────── */}
-          <AnimatePresence initial={false}>
-            {showText && (
-              <motion.div key="section-label" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-3 mb-1.5 hidden lg:flex items-center gap-1.5">
-                <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">Team Workspace</span>
-                <span className="text-[10px] text-muted-foreground/40">· drag to reorder · ★ to pin</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="space-y-0.5">
-            {rest.map(link => renderLink(link))}
-          </div>
+          {catOrder.map(catKey => renderCategory(catKey))}
         </div>
 
-        {/* Sign out */}
         <div className="p-3 border-t border-border/50 mt-auto">
-          <button onClick={handleLogout} title="Sign Out" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 group">
+          <button onClick={async () => { await logout(); navigate('/', { replace: true }); }} title="Sign Out"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 group">
             <LogOut className="h-5 w-5 shrink-0 group-hover:-translate-x-1 group-hover:scale-110 transition-all duration-200" />
             <AnimatePresence initial={false}>
               {showText && (
-                <motion.span key="signout-text" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.18 }} className="hidden lg:block font-medium text-sm overflow-hidden whitespace-nowrap">
+                <motion.span key="signout-text" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.18 }}
+                  className="hidden lg:block font-medium text-sm overflow-hidden whitespace-nowrap">
                   Sign Out
                 </motion.span>
               )}

@@ -132,6 +132,7 @@ import pageStatusRoutes from "./routes/userRoutes/pageStatus.route.js";
 import announcementRoutes from "./routes/userRoutes/announcement.route.js";
 import chatRoutes from "./routes/userRoutes/chat.route.js";
 import notificationRoutes from "./routes/userRoutes/notification.route.js";
+import notificationSoundRoutes from "./routes/userRoutes/notificationSound.route.js";
 import databaseRoutes from "./routes/userRoutes/database.route.js";
 import cookieConsentRoutes from "./routes/userRoutes/cookieConsent.route.js";
 import supportTicketRoutes from "./routes/userRoutes/supportTicket.route.js";
@@ -139,6 +140,10 @@ import chatbotRoutes from "./routes/userRoutes/chatbot.route.js";
 import liveChatRoutes from "./routes/userRoutes/liveChat.route.js";
 import standupRoutes from "./routes/userRoutes/standup.route.js";
 import healthRoutes from "./routes/userRoutes/health.route.js";
+import seoRoutes from "./routes/userRoutes/seo.route.js";
+import milestoneRoutes from "./routes/userRoutes/milestone.route.js";
+import emailAutomationRoutes from "./routes/userRoutes/emailAutomation.route.js";
+import twoFactorRoutes from "./routes/userRoutes/twoFactor.route.js";
 
 // ─── Dev-only Utilities ──────────────────────────────────────────────────────
 // These endpoints are BLOCKED in production. They are only registered when
@@ -171,6 +176,7 @@ app.use("/api/v1/page-status", pageStatusRoutes);      // Public page status (ma
 app.use("/api/v1/announcements", announcementRoutes);  // Announcement bar (public GET, admin CRUD)
 app.use("/api/v1/chat", chatRoutes);                  // Real-time chat (conversations, messages, uploads)
 app.use("/api/v1/notifications", notificationRoutes); // Notification list, mark-read, clear
+app.use("/api/v1/notification-sounds", notificationSoundRoutes); // Notification sound library + rule mapping
 app.use("/api/v1/database", databaseRoutes);           // Admin database manager
 app.use("/api/v1/consent", cookieConsentRoutes);       // GDPR cookie consent audit log
 app.use("/api/v1/support-tickets", supportTicketRoutes); // User support tickets
@@ -178,6 +184,10 @@ app.use("/api/v1/chatbot",         chatbotRoutes);         // AI chatbot (public
 app.use("/api/v1/live-chat",       liveChatRoutes);        // Live chat handoff system
 app.use("/api/v1/standup",         standupRoutes);          // Daily standup notes + availability status
 app.use("/api/v1/health",          healthRoutes);           // Liveness probe + Web Vitals receiver
+app.use("/api/v1/seo",             seoRoutes);              // SEO meta management
+app.use("/api/v1/milestones",      milestoneRoutes);        // Project milestones
+app.use("/api/v1/email-automations", emailAutomationRoutes); // Email automation rules
+app.use("/api/v1/2fa",             twoFactorRoutes);        // Two-factor authentication
 
 // ─── Error Handling ─────────────────────────────────────────────────────────
 

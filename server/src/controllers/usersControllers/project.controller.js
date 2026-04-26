@@ -8,6 +8,7 @@ import { uploadFile, deleteImage } from "../../middlewares/Cloudinary.js";
 import { createAndEmitNotification } from "../../utils/notificationService.js";
 import { emitDataUpdate } from "../../utils/dataUpdateService.js";
 import { sendProjectCreated, sendProjectCompleted, sendFeedbackRequest } from "../../utils/sendEmails.js";
+import { fireAutomation } from "../../utils/emailAutomationService.js";
 
 
 // =========================
@@ -283,6 +284,9 @@ export const updateProject = asyncHandler(async (req, res) => {
 
         // Only admin can update status and team assignment
         const prevStatus = project.status;
+        const prevTotalCost = project.totalCost ?? null;
+        const prevPaidAmount = project.paidAmount ?? 0;
+        const prevPaymentStatus = project.paymentStatus;
         const prevAssignedTeam = [...(project.assignedTeam || [])].map(String);
 
         if (req?.user?.role === 'admin') {
@@ -328,6 +332,18 @@ export const updateProject = asyncHandler(async (req, res) => {
             if (req?.user?.role === 'admin') {
                 // Notify project owner when admin accepts or rejects
                 if (status && status !== prevStatus) {
+                    // Fire automation emails for all status changes
+                    const autoCtx = {
+                        userName:    project.requestedBy?.name,
+                        userEmail:   project.requestedBy?.email,
+                        projectName: project.projectName,
+                        projectType: project.projectType,
+                        totalCost: project.totalCost ?? 0,
+                        paidAmount: project.paidAmount ?? 0,
+                        dueAmount: project.dueAmount ?? 0,
+                        paymentStatus: project.paymentStatus,
+                    };
+
                     if (status === 'approved') {
                         await createAndEmitNotification(io, {
                             recipientId: ownerId,
@@ -337,6 +353,7 @@ export const updateProject = asyncHandler(async (req, res) => {
                             payload: { projectId: project._id },
                             createdBy: req.user._id,
                         }).catch(() => {});
+                        fireAutomation('project_approved', autoCtx).catch(() => {});
                     } else if (status === 'rejected') {
                         await createAndEmitNotification(io, {
                             recipientId: ownerId,
@@ -346,6 +363,7 @@ export const updateProject = asyncHandler(async (req, res) => {
                             payload: { projectId: project._id },
                             createdBy: req.user._id,
                         }).catch(() => {});
+                        fireAutomation('project_rejected', autoCtx).catch(() => {});
                     } else if (status === 'in_review') {
                         await createAndEmitNotification(io, {
                             recipientId: ownerId,
@@ -374,6 +392,9 @@ export const updateProject = asyncHandler(async (req, res) => {
                                 sendFeedbackRequest({ to: ownerEmail, name: ownerName, projectName: project.projectName }),
                             ]).catch(() => {});
                         }
+                        // Fire configurable automation rules
+                        fireAutomation('project_completed', autoCtx).catch(() => {});
+                        fireAutomation('review_request', autoCtx).catch(() => {});
 
                         // Auto-create a Portfolio Project (AdminProject) entry if one doesn't exist yet
                         AdminProject.findOne({ sourceProjectId: project._id }).then(async (existing) => {
@@ -402,6 +423,28 @@ export const updateProject = asyncHandler(async (req, res) => {
                             }
                         }).catch(() => {});
                     }
+                }
+
+                const billingChanged = (totalCost !== undefined && project.totalCost !== prevTotalCost)
+                    || (paidAmount !== undefined && project.paidAmount !== prevPaidAmount);
+                const paymentReminderEligible = Boolean(
+                    project.requestedBy?.email
+                    && project.totalCost
+                    && project.dueAmount > 0
+                    && (billingChanged || project.paymentStatus !== prevPaymentStatus)
+                );
+
+                if (paymentReminderEligible) {
+                    fireAutomation('payment_reminder', {
+                        userName: project.requestedBy?.name,
+                        userEmail: project.requestedBy?.email,
+                        projectName: project.projectName,
+                        projectType: project.projectType,
+                        totalCost: project.totalCost ?? 0,
+                        paidAmount: project.paidAmount ?? 0,
+                        dueAmount: project.dueAmount ?? 0,
+                        paymentStatus: project.paymentStatus,
+                    }).catch(() => {});
                 }
 
                 // Notify newly assigned team members + refresh their dashboard

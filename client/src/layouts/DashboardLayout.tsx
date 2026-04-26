@@ -16,11 +16,13 @@ import { useContent } from '../contexts/ContentContext';
 import { ProfileDropdown, type ProfileMenuItem } from '../components/ProfileDropdown';
 import { AnnouncementBar } from '../components/AnnouncementBar';
 import { toast } from 'sonner';
+import { useNotifications } from '../hooks/useNotifications';
 
 export function DashboardLayout() {
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
   const { globalTheme, updateGlobalTheme, dashboardAnnouncementBars, fetchDashboardBars } = useContent();
+  useNotifications();
 
   // Fetch dashboard-targeted announcement bars once on mount
   useEffect(() => { fetchDashboardBars(); }, [fetchDashboardBars]);

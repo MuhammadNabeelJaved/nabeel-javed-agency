@@ -9,6 +9,7 @@
  */
 import { generateTokens } from "../../utils/generateTokens.js";
 import { sendVerificationEmail } from "../../utils/sendEmails.js";
+import { scheduleInactivityFollowup } from "../../utils/emailAutomationService.js";
 
 const COOKIE_OPTIONS = {
     httpOnly: true,
@@ -66,6 +67,7 @@ const handleOAuthSuccess = async (req, res) => {
         }
 
         // ── Verified existing user — issue tokens and redirect ────────────────
+        user.lastLoginAt = new Date();
         const { accessToken, refreshToken } = await generateTokens(user);
 
         res.cookie("accessToken", accessToken, {
@@ -76,6 +78,8 @@ const handleOAuthSuccess = async (req, res) => {
             ...COOKIE_OPTIONS,
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         });
+
+        scheduleInactivityFollowup(user).catch(() => {});
 
         // Pass only safe display fields — never put tokens in the URL
         const params = new URLSearchParams({

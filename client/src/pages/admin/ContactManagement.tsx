@@ -26,7 +26,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -84,15 +84,17 @@ export default function ContactManagement() {
         order: sortConfig.direction,
       });
       const result = response.data.data;
-      // Backend may return { contacts, total, totalPages } or just an array
       if (Array.isArray(result)) {
         setContacts(result);
         setTotalCount(result.length);
         setTotalPages(Math.ceil(result.length / itemsPerPage));
       } else {
-        setContacts(result.contacts || result.data || []);
-        setTotalCount(result.total || 0);
-        setTotalPages(result.totalPages || Math.ceil((result.total || 0) / itemsPerPage) || 1);
+        const list = result.contacts || result.data || [];
+        const total = result.pagination?.totalContacts ?? result.total ?? list.length;
+        const pages = (result.pagination?.totalPages ?? result.totalPages ?? Math.ceil(total / itemsPerPage)) || 1;
+        setContacts(list);
+        setTotalCount(total);
+        setTotalPages(pages);
       }
     } catch (err: any) {
       toast.error('Failed to load contacts', { description: err?.response?.data?.message || 'Could not connect to the server.' });
@@ -110,15 +112,17 @@ export default function ContactManagement() {
     fetchContacts(currentPage);
   }, [currentPage]);
 
-  // Statistics derived from current page data (full stats would need /contacts/stats endpoint)
   const stats = useMemo(() => {
-    const unread = contacts.filter(c => !c.isRead).length;
+    const now = new Date();
     const thisMonth = contacts.filter(c => {
       const date = new Date(c.createdAt);
-      const now = new Date();
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     }).length;
-    return { total: totalCount, unread, thisMonth };
+    const thisWeek = contacts.filter(c => {
+      const diff = now.getTime() - new Date(c.createdAt).getTime();
+      return diff <= 7 * 24 * 60 * 60 * 1000;
+    }).length;
+    return { total: totalCount, thisMonth, thisWeek };
   }, [contacts, totalCount]);
 
   // Handlers
@@ -219,8 +223,8 @@ export default function ContactManagement() {
         <Card className="bg-card hover:bg-accent/5 transition-colors">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Unread Inquiries</p>
-              <h3 className="text-3xl font-bold mt-2">{stats.unread}</h3>
+              <p className="text-sm font-medium text-muted-foreground">This Week</p>
+              <h3 className="text-3xl font-bold mt-2">{stats.thisWeek}</h3>
             </div>
             <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500">
               <MessageSquare className="h-6 w-6" />
@@ -278,11 +282,17 @@ export default function ContactManagement() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                  <DropdownMenuLabel>Sort By</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>All Messages</DropdownMenuItem>
-                  <DropdownMenuItem>Unread Only</DropdownMenuItem>
-                  <DropdownMenuItem>Replied Only</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortConfig({ key: 'createdAt', direction: 'desc' })}>
+                    Newest First
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortConfig({ key: 'createdAt', direction: 'asc' })}>
+                    Oldest First
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortConfig({ key: 'firstName', direction: 'asc' })}>
+                    Name A–Z
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -320,7 +330,7 @@ export default function ContactManagement() {
                       Date <ArrowUpDown className="h-3 w-3" />
                     </div>
                   </TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">Received</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -341,10 +351,7 @@ export default function ContactManagement() {
                   contacts.map((contact) => (
                     <TableRow
                       key={contact._id}
-                      className={`
-                        group transition-colors hover:bg-muted/50
-                        ${!contact.isRead ? 'bg-primary/5' : ''}
-                      `}
+                      className="group transition-colors hover:bg-muted/50"
                     >
                       <TableCell className="text-center">
                         <div
@@ -366,7 +373,7 @@ export default function ContactManagement() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
-                            <span className={`text-sm ${!contact.isRead ? 'font-bold' : 'font-medium'}`}>
+                            <span className="text-sm font-medium">
                               {contact.firstName} {contact.lastName}
                             </span>
                             <span className="text-xs text-muted-foreground truncate max-w-[150px]">
@@ -385,8 +392,8 @@ export default function ContactManagement() {
                         {format(new Date(contact.createdAt), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <Badge variant={contact.isRead ? "outline" : "default"} className="text-xs">
-                          {contact.isRead ? 'Read' : 'New'}
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(contact.createdAt), { addSuffix: true })}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

@@ -6,19 +6,25 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Zap, ArrowLeft, Github, Mail } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { Zap, ArrowLeft, Github, Mail, Shield } from 'lucide-react';
+import { useAuth, TwoFAPending } from '../../contexts/AuthContext';
 import { authApi } from '../../api/auth.api';
+import { twoFactorApi } from '../../api/twoFactor.api';
 import { toast } from 'sonner';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, error, clearError } = useAuth();
+  const { login, loginWithToken, error, clearError } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // 2FA state
+  const [twoFAPending, setTwoFAPending] = useState<TwoFAPending | null>(null);
+  const [totpCode, setTotpCode] = useState('');
+  const [validating2FA, setValidating2FA] = useState(false);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? null;
 
@@ -61,12 +67,32 @@ export default function Login() {
     clearError();
     setSubmitting(true);
     try {
-      const loggedInUser = await login(email, password);
-      navigate(from ?? getDashboardPath(loggedInUser.role), { replace: true });
+      const result = await login(email, password);
+      if ('requiresTwoFactor' in result && result.requiresTwoFactor) {
+        setTwoFAPending(result as TwoFAPending);
+      } else {
+        const loggedInUser = result as any;
+        navigate(from ?? getDashboardPath(loggedInUser.role), { replace: true });
+      }
     } catch {
       // error shown from context
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handle2FAValidate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!twoFAPending || !totpCode) return;
+    setValidating2FA(true);
+    try {
+      const { user } = await twoFactorApi.validate(totpCode, twoFAPending.userId);
+      loginWithToken(user);
+      navigate(from ?? getDashboardPath(user.role), { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid 2FA code');
+    } finally {
+      setValidating2FA(false);
     }
   };
 
@@ -79,7 +105,7 @@ export default function Login() {
           <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-primary/10 blur-[150px] animate-pulse" />
           <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full bg-secondary/10 blur-[150px] animate-pulse" />
         </div>
-        
+
         <div className="relative z-10 space-y-8 max-w-lg">
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
             <div className="flex items-center space-x-2 mb-6">
@@ -93,16 +119,16 @@ export default function Login() {
               Access your dashboard to manage projects, view analytics, and collaborate with your team.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
-             <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4">
-               <div className="text-2xl font-bold text-white mb-1">2.4k+</div>
-               <div className="text-sm text-white/50">Active Users</div>
-             </div>
-             <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4">
-               <div className="text-2xl font-bold text-white mb-1">99.9%</div>
-               <div className="text-sm text-white/50">Uptime</div>
-             </div>
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4">
+              <div className="text-2xl font-bold text-white mb-1">2.4k+</div>
+              <div className="text-sm text-white/50">Active Users</div>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4">
+              <div className="text-2xl font-bold text-white mb-1">99.9%</div>
+              <div className="text-sm text-white/50">Uptime</div>
+            </div>
           </div>
         </div>
       </div>
@@ -121,7 +147,38 @@ export default function Login() {
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          {/* 2FA Step */}
+          {twoFAPending && (
+            <form onSubmit={handle2FAValidate} className="space-y-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-violet-500/20 rounded-xl"><Shield className="h-5 w-5 text-violet-400" /></div>
+                <div>
+                  <div className="font-semibold">Two-Factor Verification</div>
+                  <div className="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app</div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Authentication Code</label>
+                <Input
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  placeholder="000000"
+                  className="text-center font-mono text-xl tracking-widest"
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">You can also enter a backup code.</p>
+              </div>
+              <Button type="submit" className="w-full" disabled={validating2FA || totpCode.length < 6}>
+                {validating2FA ? 'Verifying...' : 'Verify & Sign In'}
+              </Button>
+              <button type="button" onClick={() => { setTwoFAPending(null); setTotpCode(''); }}
+                className="text-sm text-muted-foreground hover:text-foreground w-full text-center transition-colors">
+                ← Back to sign in
+              </button>
+            </form>
+          )}
+
+          {!twoFAPending && <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none" htmlFor="email">
                 Email
@@ -157,36 +214,51 @@ export default function Login() {
             <Button type="submit" className="w-full" size="lg" isLoading={submitting}>
               Sign In
             </Button>
-          </form>
+          </form>}
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
+          {!twoFAPending && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGitHubLogin()}>
-              <Github className="mr-2 h-4 w-4" />
-              Github
-            </Button>
-            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGoogleLogin()}>
-              <Mail className="mr-2 h-4 w-4" />
-              Google
-            </Button>
-          </div>
-          
-          <p className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link to="/signup" className="font-semibold text-primary hover:underline">
-              Sign up
-            </Link>
-          </p>
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => authApi.initiateGitHubLogin()}
+                >
+                  <Github className="mr-2 h-4 w-4" />
+                  Github
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => authApi.initiateGoogleLogin()}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Google
+                </Button>
+              </div>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Don't have an account?{" "}
+                <Link to="/signup" className="font-semibold text-primary hover:underline">
+                  Sign up
+                </Link>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>

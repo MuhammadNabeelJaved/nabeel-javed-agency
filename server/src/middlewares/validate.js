@@ -136,7 +136,7 @@ export const updateProfileSchema = validate([
         .trim()
         .isLength({ min: 2, max: 100 }).withMessage("Name must be 2–100 characters"),
     body("phone")
-        .optional()
+        .optional({ checkFalsy: true })
         .trim()
         .isMobilePhone("any", { strictMode: false }).withMessage("Invalid phone number"),
     body("bio")
@@ -155,7 +155,7 @@ export const jobApplicationSchema = validate([
     nameRule("lastName", "Last name"),
     emailRule(),
     body("phone")
-        .optional()
+        .optional({ checkFalsy: true })
         .trim()
         .isMobilePhone("any", { strictMode: false }).withMessage("Invalid phone number"),
     body("coverLetter")

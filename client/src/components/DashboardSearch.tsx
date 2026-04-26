@@ -19,7 +19,7 @@ import {
   LayoutDashboard, FolderKanban, Users, Mail, Briefcase, Database,
   Megaphone, LayoutList, PenTool, Bot, MessageSquare, MessageCircle, CreditCard,
   HelpCircle, Bell, Settings, Zap, CheckSquare, Calendar, Files,
-  BarChart2, Sparkles, User, Activity, Globe, FileText, Star, Package, ThumbsUp, Clock,
+  BarChart2, Sparkles, User, Activity, Globe, FileText, Star, Package, ThumbsUp, Clock, Workflow, Milestone,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -63,6 +63,9 @@ const ADMIN_ITEMS: SearchItem[] = [
   { id: 'a-reviews',     label: 'Reviews & Testimonials', description: 'Moderate client reviews',           path: '/admin/reviews',          icon: ThumbsUp,        group: 'Pages',   keywords: ['feedback', 'ratings', 'testimonials', 'approve', 'reject', 'stars'] },
   { id: 'a-performance', label: 'Performance Monitor',    description: 'Server health, cache & Web Vitals', path: '/admin/performance',      icon: Activity,        group: 'Pages',   keywords: ['health', 'uptime', 'memory', 'redis', 'cache', 'web vitals', 'metrics', 'monitoring', 'lcp', 'cls', 'ttfb'] },
   { id: 'a-settings',    label: 'Settings',               description: 'Account & system settings',      path: '/admin/settings',          icon: Settings,        group: 'Pages',   keywords: ['config', 'preferences', 'account'] },
+  { id: 'a-seo',        label: 'SEO Manager',            description: 'Control meta tags per page',     path: '/admin/seo',               icon: Globe,           group: 'Pages',   keywords: ['seo', 'meta', 'title', 'description', 'og', 'open graph', 'search engine', 'keywords', 'canonical'] },
+  { id: 'a-automations',label: 'Email Automations',      description: 'Configure automatic email rules', path: '/admin/email-automations', icon: Workflow,        group: 'Pages',   keywords: ['automation', 'triggers', 'email', 'workflow', 'scheduled', 'rules'] },
+  { id: 'a-milestones', label: 'Milestones',             description: 'Project phases & client approvals', path: '/admin/milestones',     icon: Milestone,       group: 'Pages',   keywords: ['milestones', 'phases', 'approval', 'discovery', 'design', 'development', 'launch'] },
   { id: 'a-content',     label: 'Content Editor',         description: 'Edit public website content',    path: '/admin/content-editor',    icon: PenTool,         group: 'Pages',   keywords: ['cms', 'copy', 'text', 'website'] },
   { id: 'a-nav-footer',  label: 'Nav & Footer Manager',   description: 'Manage navbar & footer links',   path: '/admin/nav-footer',        icon: Package,         group: 'Pages',   keywords: ['navbar', 'footer', 'links', 'navigation', 'menu'] },
   { id: 'a-pages',       label: 'Page Manager',           description: 'Control page visibility',        path: '/admin/page-manager',      icon: LayoutList,      group: 'Pages',   keywords: ['visibility', 'maintenance', 'coming soon'] },
@@ -118,7 +121,8 @@ const USER_ITEMS: SearchItem[] = [
   { id: 'u-billing',   label: 'Billing & Payments',   description: 'Project invoices & payment status', path: '/user-dashboard/billing',   icon: CreditCard,      group: 'Pages',   keywords: ['invoices', 'payments', 'cost', 'billing'] },
   { id: 'u-profile',   label: 'Profile & Settings',   description: 'Edit your profile & password',  path: '/user-dashboard/profile',       icon: User,            group: 'Pages',   keywords: ['account', 'avatar', 'password', 'email'] },
   { id: 'u-notifs',    label: 'Notifications',         description: 'Alerts & updates',              path: '/user-dashboard/notifications', icon: Bell,            group: 'Pages',   keywords: ['alerts', 'updates'] },
-  { id: 'u-reviews',   label: 'My Reviews',            description: 'Write & manage your reviews',   path: '/user-dashboard/reviews',       icon: ThumbsUp,        group: 'Pages',   keywords: ['testimonials', 'feedback', 'ratings', 'stars'] },
+  { id: 'u-reviews',    label: 'My Reviews',     description: 'Write & manage your reviews',      path: '/user-dashboard/reviews',     icon: ThumbsUp,   group: 'Pages', keywords: ['testimonials', 'feedback', 'ratings', 'stars'] },
+  { id: 'u-milestones', label: 'Milestones',     description: 'Review project phases & approvals', path: '/user-dashboard/milestones',  icon: Milestone,  group: 'Pages', keywords: ['milestones', 'phases', 'approval', 'progress', 'deliverables'] },
   { id: 'u-support',   label: 'Support',               description: 'Get help & raise tickets',      path: '/user-dashboard/support',       icon: HelpCircle,      group: 'Pages',   keywords: ['help', 'faq', 'tickets'] },
   { id: 'u-chat-now',  label: 'Chat with Support',     description: 'Open the support chat',         path: '/user-dashboard/messages',      icon: MessageSquare,   group: 'Actions', keywords: ['contact', 'message'] },
   { id: 'u-new-proj',  label: 'New Project Request',   description: 'Submit a project request',      path: '/user-dashboard/projects',      icon: FolderKanban,    group: 'Actions', keywords: ['create', 'request', 'submit'] },

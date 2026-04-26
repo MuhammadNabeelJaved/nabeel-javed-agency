@@ -92,6 +92,10 @@ const PerformanceMonitor    = lazy(() => import('./pages/admin/PerformanceMonito
 const NavFooterManager      = lazy(() => import('./pages/admin/NavFooterManager'));
 const ReviewsManagement     = lazy(() => import('./pages/admin/ReviewsManagement'));
 const LiveChat              = lazy(() => import('./pages/admin/LiveChat'));
+const SeoManager            = lazy(() => import('./pages/admin/SeoManager'));
+const AdminEmailAutomations = lazy(() => import('./pages/admin/AdminEmailAutomations'));
+const AdminMilestones       = lazy(() => import('./pages/admin/AdminMilestones'));
+// const TwoFASetup            = lazy(() => import('./pages/admin/TwoFASetup'));
 
 // ─── Team Pages ───────────────────────────────────────────────────────────────
 const TeamDashboardHome       = lazy(() => import('./pages/team/TeamDashboardHome'));
@@ -121,6 +125,7 @@ const UserAppliedJobs    = lazy(() => import('./pages/user/UserAppliedJobs'));
 const UserBilling        = lazy(() => import('./pages/user/UserBilling'));
 const UserSupport        = lazy(() => import('./pages/user/UserSupport'));
 const UserReviews        = lazy(() => import('./pages/user/UserReviews'));
+const UserMilestones     = lazy(() => import('./pages/user/UserMilestones'));
 
 // Configure Tailwind Theme Extension
 // This must run before rendering
@@ -297,6 +302,9 @@ export default function App() {
                 <Route path="performance" element={<RouteWithBoundary component={PerformanceMonitor} />} />
                 <Route path="reviews" element={<RouteWithBoundary component={ReviewsManagement} />} />
                 <Route path="live-chat" element={<RouteWithBoundary component={LiveChat} />} />
+                <Route path="seo" element={<RouteWithBoundary component={SeoManager} />} />
+                <Route path="email-automations" element={<RouteWithBoundary component={AdminEmailAutomations} />} />
+                <Route path="milestones" element={<RouteWithBoundary component={AdminMilestones} />} />
               </Route>
 
               {/* Team Dashboard Routes */}
@@ -346,6 +354,7 @@ export default function App() {
                 <Route path="notifications" element={<RouteWithBoundary component={UserNotifications} />} />
                 <Route path="support" element={<RouteWithBoundary component={UserSupport} />} />
                 <Route path="reviews" element={<RouteWithBoundary component={UserReviews} />} />
+                <Route path="milestones" element={<RouteWithBoundary component={UserMilestones} />} />
               </Route>
             </Routes>
           </BrowserRouter>

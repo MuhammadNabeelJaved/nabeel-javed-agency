@@ -123,7 +123,7 @@ export function NotificationBell({ notificationsRoute, chatRoute }: Notification
     const navigate = useNavigate();
     const { user } = useAuth();
     const role = user?.role ?? 'user';
-    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications({ enableToast: false });
+    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications({ enableToast: false, enableSound: false });
     const [open, setOpen] = React.useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
