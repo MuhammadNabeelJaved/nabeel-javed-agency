@@ -244,139 +244,114 @@ function AIGenerateDialog({
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[205] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
-                style={{ background: 'linear-gradient(135deg, rgba(15,10,30,0.98) 0%, rgba(20,10,40,0.98) 100%)', border: '1px solid rgba(255,255,255,0.08)' }}>
-
-                {/* Ambient glow */}
-                <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none"
-                    style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+        <div className="fixed inset-0 z-[205] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-background border border-border rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
 
                 {/* Header */}
-                <div className="relative flex items-center justify-between px-6 py-5 border-b border-white/8">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.25), rgba(236,72,153,0.15))', border: '1px solid rgba(124,58,237,0.3)' }}>
-                            <Sparkles className="h-5 w-5 text-violet-400" />
+                        <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500/20 to-pink-500/20">
+                            <Sparkles className="h-5 w-5 text-violet-500" />
                         </div>
                         <div>
-                            <h2 className="font-bold text-base text-white">Design with AI</h2>
-                            <p className="text-xs text-white/50 mt-0.5">Tell Claude what you need — it'll design the full template</p>
+                            <h2 className="font-bold text-lg">Design with AI</h2>
+                            <p className="text-xs text-muted-foreground">Tell Claude what you need — it'll design the full template</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors">
+                    <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8">
                         <X className="h-4 w-4" />
-                    </button>
+                    </Button>
                 </div>
 
                 {step === 'form' ? (
-                    <div className="relative p-6 space-y-4">
+                    <div className="p-6 space-y-4">
                         {/* Trigger */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-white/60 uppercase tracking-wide">What is this email for?</label>
-                            <Select value={trigger} onValueChange={setTrigger}
-                                className="w-full h-9 text-sm rounded-lg text-white"
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}>
+                            <Label>What is this email for?</Label>
+                            <Select value={trigger} onValueChange={setTrigger}>
                                 <SelectItem value="custom">Custom / General</SelectItem>
                                 {TRIGGERS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                             </Select>
-                            {triggerInfo && <p className="text-xs text-violet-400/80">{triggerInfo.description}</p>}
+                            {triggerInfo && <p className="text-xs text-muted-foreground">{triggerInfo.description}</p>}
                         </div>
 
                         {/* Name */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-white/60 uppercase tracking-wide">Template name</label>
-                            <input
+                            <Label>Template name</Label>
+                            <Input
                                 value={name}
                                 onChange={e => setName(e.target.value)}
                                 placeholder="e.g. New Service Launch Announcement"
-                                className="w-full h-9 px-3 text-sm rounded-lg text-white placeholder-white/25 outline-none transition-colors focus:border-violet-500/60"
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
                             />
                         </div>
 
                         {/* Description */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-white/60 uppercase tracking-wide">Describe what this email should say</label>
-                            <textarea
+                            <Label>Describe what this email should say</Label>
+                            <Textarea
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
                                 rows={4}
                                 placeholder="e.g. Tell the client their project has started, mention the team lead name ({{TEAM_LEAD}}), show the deadline, include a warm welcome and a dashboard link..."
-                                className="w-full px-3 py-2 text-sm rounded-lg text-white placeholder-white/25 outline-none resize-none transition-colors focus:border-violet-500/60"
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                className="text-sm"
                             />
-                            <p className="text-xs text-white/35">The more detail you give, the better the result.</p>
+                            <p className="text-xs text-muted-foreground">The more detail you give, the better the result.</p>
                         </div>
 
                         {/* Tone */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-white/60 uppercase tracking-wide">Tone</label>
-                            <Select value={tone} onValueChange={setTone}
-                                className="w-full h-9 text-sm rounded-lg text-white"
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}>
-                                <SelectItem value="professional and friendly">Professional &amp; Friendly</SelectItem>
-                                <SelectItem value="warm and personal">Warm &amp; Personal</SelectItem>
-                                <SelectItem value="formal and corporate">Formal &amp; Corporate</SelectItem>
-                                <SelectItem value="casual and conversational">Casual &amp; Conversational</SelectItem>
-                                <SelectItem value="urgent and action-oriented">Urgent &amp; Action-Oriented</SelectItem>
-                                <SelectItem value="celebratory and exciting">Celebratory &amp; Exciting</SelectItem>
+                            <Label>Tone</Label>
+                            <Select value={tone} onValueChange={setTone}>
+                                <SelectItem value="professional and friendly">Professional & Friendly</SelectItem>
+                                <SelectItem value="warm and personal">Warm & Personal</SelectItem>
+                                <SelectItem value="formal and corporate">Formal & Corporate</SelectItem>
+                                <SelectItem value="casual and conversational">Casual & Conversational</SelectItem>
+                                <SelectItem value="urgent and action-oriented">Urgent & Action-Oriented</SelectItem>
+                                <SelectItem value="celebratory and exciting">Celebratory & Exciting</SelectItem>
                             </Select>
                         </div>
 
                         {/* Design reference note */}
-                        <div className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)' }}>
-                            <Sparkles className="h-4 w-4 text-violet-400 mt-0.5 shrink-0" />
-                            <p className="text-xs text-white/50">
-                                AI will design the template using the <span className="text-white font-medium">same design system</span> as your existing templates — same colors, logo, responsive layout, inline CSS, and CTA buttons.
+                        <div className="flex items-start gap-2.5 p-3 bg-violet-500/5 border border-violet-500/20 rounded-xl">
+                            <Sparkles className="h-4 w-4 text-violet-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-muted-foreground">
+                                AI will design the template using the <strong className="text-foreground">same design system</strong> as your existing templates — same colors, logo, responsive layout, inline CSS, and CTA buttons.
                             </p>
                         </div>
 
-                        <div className="flex gap-3 pt-1">
-                            <button
+                        <div className="flex gap-3 pt-2">
+                            <Button
                                 onClick={handleGenerate}
                                 disabled={generating}
-                                className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-60"
-                                style={{ background: 'linear-gradient(135deg, #7c3aed, #db2777)' }}
+                                className="flex-1 gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 border-0 text-white"
                             >
                                 {generating
                                     ? <><Loader2 className="h-4 w-4 animate-spin" /> Designing template…</>
                                     : <><Wand2 className="h-4 w-4" /> Generate Template</>
                                 }
-                            </button>
-                            <button onClick={onClose}
-                                className="px-5 h-10 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
-                                style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
-                                Cancel
-                            </button>
+                            </Button>
+                            <Button variant="outline" onClick={onClose}>Cancel</Button>
                         </div>
                     </div>
                 ) : (
                     <div className="flex flex-col" style={{ maxHeight: '80vh' }}>
-                        <div className="px-6 py-3 border-b shrink-0 flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+                        <div className="px-6 py-3 border-b border-border/40 bg-muted/10 shrink-0 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                                <span className="text-sm font-medium text-white/80">Template generated — preview below</span>
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                <span className="text-sm font-medium">Template generated — preview below</span>
                             </div>
-                            <button onClick={() => setStep('form')}
-                                className="flex items-center gap-1.5 px-3 h-7 rounded-lg text-xs text-white/50 hover:text-white hover:bg-white/8 transition-colors"
-                                style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <Button variant="ghost" size="sm" onClick={() => setStep('form')} className="gap-1.5 h-7 text-xs">
                                 <RotateCcw className="h-3 w-3" /> Regenerate
-                            </button>
+                            </Button>
                         </div>
                         <div className="flex-1 overflow-hidden bg-[#f5f5f5]">
                             <iframe title="ai-preview" srcDoc={generatedHtml} className="w-full border-0" style={{ height: '400px' }} sandbox="allow-same-origin" />
                         </div>
-                        <div className="flex gap-3 p-4 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                            <button onClick={handleUse}
-                                className="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold text-white transition-opacity"
-                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>
-                                <Save className="h-4 w-4" /> Use &amp; Edit this Template
-                            </button>
-                            <button onClick={() => setStep('form')}
-                                className="px-5 h-10 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 transition-colors"
-                                style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
-                                Back
-                            </button>
+                        <div className="flex gap-3 p-4 border-t border-border/40 shrink-0">
+                            <Button onClick={handleUse} className="flex-1 gap-2">
+                                <Save className="h-4 w-4" /> Use & Edit this Template
+                            </Button>
+                            <Button variant="outline" onClick={() => setStep('form')}>Back</Button>
                         </div>
                     </div>
                 )}
