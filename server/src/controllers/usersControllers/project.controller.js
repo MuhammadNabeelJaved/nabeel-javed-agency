@@ -334,13 +334,18 @@ export const updateProject = asyncHandler(async (req, res) => {
                 if (status && status !== prevStatus) {
                     // Fire automation emails for all status changes
                     const autoCtx = {
-                        userName:    project.requestedBy?.name,
-                        userEmail:   project.requestedBy?.email,
-                        projectName: project.projectName,
-                        projectType: project.projectType,
-                        totalCost: project.totalCost ?? 0,
-                        paidAmount: project.paidAmount ?? 0,
-                        dueAmount: project.dueAmount ?? 0,
+                        userName:      project.requestedBy?.name,
+                        userEmail:     project.requestedBy?.email,
+                        projectName:   project.projectName,
+                        projectType:   project.projectType,
+                        budgetRange:   project.budgetRange ?? '',
+                        deadline:      project.deadline
+                            ? new Date(project.deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                            : 'Not specified',
+                        completedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                        totalCost:     project.totalCost ?? 0,
+                        paidAmount:    project.paidAmount ?? 0,
+                        dueAmount:     project.dueAmount ?? 0,
                         paymentStatus: project.paymentStatus,
                     };
 
