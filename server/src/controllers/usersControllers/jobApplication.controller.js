@@ -27,8 +27,10 @@ import {
     sendJobApplicationConfirmation,
     sendJobApplicationAdminNotification,
 } from "../../utils/sendEmails.js";
+import crypto from "crypto";
 import { emitDataUpdate } from "../../utils/dataUpdateService.js";
 import { notifyAdmins, createAndEmitNotification } from "../../utils/notificationService.js";
+import { sendPasswordResetEmail } from "../../utils/sendEmails.js";
 
 // =========================
 // SUBMIT APPLICATION (public)
@@ -211,14 +213,58 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
 
     if (!application) throw new AppError("Application not found", 404);
 
-    // When hired: upgrade the applicant's user account role to 'team'
+    // When hired: upgrade existing user to 'team', or create a new team account
     let applicantUserId = null;
     if (status === "hired") {
-        const user = await User.findOne({ email: application.email });
-        if (user && user.role !== "admin") {
-            user.role = "team";
-            await user.save();
+        let user = await User.findOne({ email: application.email });
+        if (user) {
+            if (user.role !== "admin") {
+                user.role = "team";
+                await user.save({ validateBeforeSave: false });
+            }
             applicantUserId = user._id.toString();
+        } else {
+            // Applicant has no account — auto-create a pre-verified team member
+            const tempPassword = crypto.randomBytes(16).toString("hex");
+            const fullName = `${application.firstName} ${application.lastName}`.trim();
+
+            // JobPosting uses a different department enum than User — map them
+            const JOB_TO_USER_DEPT = {
+                Engineering: "Development", Design:      "Design",
+                Marketing:   "Marketing",   Sales:       "Sales",
+                HR:          "Management",  Finance:     "Management",
+                Operations:  "Management",  Product:     "Management",
+                Other:       "Other",
+            };
+            const mappedDept = JOB_TO_USER_DEPT[application.job?.department] || "Other";
+
+            user = await User.create({
+                name:       fullName,
+                email:      application.email,
+                password:   tempPassword,
+                role:       "team",
+                provider:   "local",
+                isVerified: true,
+                isActive:   true,
+                teamProfile: {
+                    position:   application.job?.jobTitle  || application.desiredRole || "Team Member",
+                    department: mappedDept,
+                    status:     "Recently Joined",
+                },
+            });
+            applicantUserId = user._id.toString();
+
+            // Send a password-reset link so the new hire can set their own password
+            const resetToken = crypto.randomBytes(20).toString("hex");
+            user.passwordResetToken   = crypto.createHash("sha256").update(resetToken).digest("hex");
+            user.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 h
+            await user.save({ validateBeforeSave: false });
+
+            const resetUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password/${resetToken}`;
+            sendPasswordResetEmail({ to: user.email, name: fullName, resetUrl }).catch(() => {});
+
+            // Broadcast new user to team management page
+            emitDataUpdate(req.app.get("io"), "users", ["admin:global"]);
         }
     } else {
         const user = await User.findOne({ email: application.email }).select("_id");
