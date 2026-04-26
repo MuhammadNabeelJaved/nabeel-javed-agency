@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
 
     // Don't intercept 401s from auth endpoints themselves (wrong password, expired refresh token)
     const url = originalRequest.url ?? '';
-    const isAuthEndpoint = url.includes('/login') || url.includes('/register') || url.includes('/refresh-token');
+    const isAuthEndpoint = url.includes('/login') || url.includes('/register') || url.includes('/refresh-token') || url.includes('/2fa');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
