@@ -22,6 +22,8 @@ export function TwoFactorSetup() {
             .catch(() => setStep('idle'));
     }, []);
 
+    const errMsg = (e: any) => e?.response?.data?.message || e?.message || 'Something went wrong';
+
     const handleSetup = async () => {
         setBusy(true);
         try {
@@ -31,7 +33,7 @@ export function TwoFactorSetup() {
             setTotpInput('');
             setStep('setup');
         } catch (e: any) {
-            toast.error(e.message);
+            toast.error(errMsg(e));
         } finally {
             setBusy(false);
         }
@@ -49,7 +51,7 @@ export function TwoFactorSetup() {
             setStep('backup');
             toast.success('2FA enabled successfully!');
         } catch (e: any) {
-            toast.error(e.message);
+            toast.error(errMsg(e));
         } finally {
             setBusy(false);
         }
@@ -68,7 +70,7 @@ export function TwoFactorSetup() {
             setStep('idle');
             toast.success('2FA disabled');
         } catch (e: any) {
-            toast.error(e.message);
+            toast.error(errMsg(e));
         } finally {
             setBusy(false);
         }
@@ -81,7 +83,7 @@ export function TwoFactorSetup() {
             setBackupCodes(codes);
             setStep('backup');
         } catch (e: any) {
-            toast.error(e.message);
+            toast.error(errMsg(e));
         } finally {
             setBusy(false);
         }
@@ -162,6 +164,7 @@ export function TwoFactorSetup() {
                                     {busy ? 'Verifying...' : 'Enable 2FA'}
                                 </button>
                             </div>
+                            <p className="mt-1.5 text-xs text-muted-foreground">Codes refresh every 30 seconds — enter a fresh code right before clicking Enable.</p>
                         </div>
                         <button onClick={() => setStep('idle')} className="text-xs text-muted-foreground transition-colors hover:text-foreground">
                             Cancel
