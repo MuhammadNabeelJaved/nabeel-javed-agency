@@ -951,22 +951,22 @@ const BUSINESS_CONTEXT_TEMPLATE = `## Agency Overview
 // ─── Model catalog (mirrors server ANTHROPIC_MODELS — used as fallback) ────────
 const DEFAULT_MODELS: AnthropicModel[] = [
   {
-    id:    'claude-haiku-4-5-20251001',
-    name:  'Claude Haiku 4.5',
+    id:    'claude-sonnet-4-20250514',
+    name:  'Claude Sonnet 4',
     tier:  'fast',
     badge: '⚡ Fastest · Most Affordable',
-    desc:  'Best for simple queries, greetings, and FAQ-style answers. Very low cost.',
+    desc:  'Reliable default for simple queries, greetings, and FAQ-style answers.',
   },
   {
-    id:    'claude-sonnet-4-6',
-    name:  'Claude Sonnet 4.6',
+    id:    'claude-sonnet-4-20250514',
+    name:  'Claude Sonnet 4',
     tier:  'balanced',
     badge: '⚖️ Balanced · Recommended',
     desc:  'Best balance of quality and cost. Ideal for most customer interactions.',
   },
   {
-    id:    'claude-opus-4-6',
-    name:  'Claude Opus 4.6',
+    id:    'claude-opus-4-1-20250805',
+    name:  'Claude Opus 4.1',
     tier:  'advanced',
     badge: '🧠 Most Capable · Highest Cost',
     desc:  'Maximum reasoning depth. Use for complex, nuanced conversations.',
@@ -1164,14 +1164,14 @@ function ConfigTab() {
           <ModelSelector
             label="Primary Model"
             sublabel="Used for complex, multi-turn conversations"
-            value={local.activeModel ?? 'claude-sonnet-4-6'}
+            value={local.activeModel ?? 'claude-sonnet-4-20250514'}
             models={cfg?.availableModels ?? DEFAULT_MODELS}
             onChange={id => setLocal(l => ({ ...l, activeModel: id }))}
           />
           <ModelSelector
             label="Simple Model (Smart Routing)"
             sublabel="Auto-selected for short queries to reduce cost"
-            value={local.simpleModel ?? 'claude-haiku-4-5-20251001'}
+            value={local.simpleModel ?? 'claude-sonnet-4-20250514'}
             models={cfg?.availableModels ?? DEFAULT_MODELS}
             onChange={id => setLocal(l => ({ ...l, simpleModel: id }))}
           />
@@ -2086,9 +2086,8 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
 
 // Full pricing reference (USD per million tokens) mirroring the Anthropic docs
 const PRICING_REF = [
-  { model: 'Claude Opus 4.6 / 4.5',    input: '$5.00',  output: '$25.00', tier: 'Opus'   },
-  { model: 'Claude Sonnet 4.6 / 4.5',  input: '$3.00',  output: '$15.00', tier: 'Sonnet' },
-  { model: 'Claude Haiku 4.5',         input: '$1.00',  output: '$5.00',  tier: 'Haiku'  },
+  { model: 'Claude Opus 4.1 / 4',      input: '$15.00', output: '$75.00', tier: 'Opus'   },
+  { model: 'Claude Sonnet 4',          input: '$3.00',  output: '$15.00', tier: 'Sonnet' },
   { model: 'Claude Haiku 3.5',         input: '$0.80',  output: '$4.00',  tier: 'Haiku'  },
   { model: 'Claude Haiku 3',           input: '$0.25',  output: '$1.25',  tier: 'Haiku'  },
 ];

@@ -225,7 +225,7 @@ export const suggestReply = asyncHandler(async (req, res) => {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 250,
       messages: [{
         role: 'user',

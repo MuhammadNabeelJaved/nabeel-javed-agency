@@ -64,7 +64,16 @@
       "Bash(BASE=\"http://localhost:8000/api/v1\"\nCOOKIES=\"/tmp/cookies_final.txt\"\nADMIN_ID=\"69b87f981b944a2b76763852\"\n\ncurl -s -b $COOKIES -X POST \"$BASE/admin/projects\" -H \"Content-Type: application/json\" \\\\\n  -d \"{\\\\\"projectTitle\\\\\":\\\\\"E-commerce Platform\\\\\",\\\\\"clientName\\\\\":\\\\\"Acme Corp\\\\\",\\\\\"category\\\\\":\\\\\"Web App\\\\\",\\\\\"status\\\\\":\\\\\"Completed\\\\\",\\\\\"projectDescription\\\\\":\\\\\"A full-featured e-commerce platform built with React and Node.js for modern retail\\\\\",\\\\\"yourRole\\\\\":\\\\\"Lead\\\\\",\\\\\"projectLead\\\\\":\\\\\"$ADMIN_ID\\\\\",\\\\\"teamMembers\\\\\":[\\\\\"$ADMIN_ID\\\\\"],\\\\\"startDate\\\\\":\\\\\"2024-01-01\\\\\",\\\\\"duration\\\\\":{\\\\\"value\\\\\":3,\\\\\"unit\\\\\":\\\\\"months\\\\\"}}\" | head -c 400)",
       "Bash(BASE=\"http://localhost:8000/api/v1\"\nCOOKIES=\"/tmp/cookies_final.txt\"\nAPROJ_ID=\"69b8843f80e5c102031ead0a\"\ncurl -s -b $COOKIES \"$BASE/admin/projects/$APROJ_ID\" | head -c 300)",
       "Bash(BASE=\"http://localhost:8000/api/v1\"\nCOOKIES=\"/tmp/cookies_final.txt\"\n\necho \"=== CMS ===\"\ngrep -n \"router\\\\.\" \"E:/Nabeel Javed/Web Portfolios/My Agency Website/server/src/routes/userRoutes/cms.route.js\" | head -20)",
-      "Bash(BASE=\"http://localhost:8000/api/v1\" COOKIES=\"/tmp/cookies_final.txt\" __NEW_LINE_415cb37f3cb9b888__ echo \"=== CMS Error checks ===\" echo \"PUT /cms/tech-stack:\" curl -s -b $COOKIES -X PUT \"$BASE/cms/tech-stack\" -H \"Content-Type: application/json\" -d '{\"\"\"\"categories\"\"\"\":[{\"\"\"\"name\"\"\"\":\"\"\"\"Frontend\"\"\"\",\"\"\"\"items\"\"\"\":[{\"\"\"\"name\"\"\"\":\"\"\"\"React\"\"\"\",\"\"\"\"iconKey\"\"\"\":\"\"\"\"react\"\"\"\"}]}]}')"
+      "Bash(BASE=\"http://localhost:8000/api/v1\" COOKIES=\"/tmp/cookies_final.txt\" __NEW_LINE_415cb37f3cb9b888__ echo \"=== CMS Error checks ===\" echo \"PUT /cms/tech-stack:\" curl -s -b $COOKIES -X PUT \"$BASE/cms/tech-stack\" -H \"Content-Type: application/json\" -d '{\"\"\"\"categories\"\"\"\":[{\"\"\"\"name\"\"\"\":\"\"\"\"Frontend\"\"\"\",\"\"\"\"items\"\"\"\":[{\"\"\"\"name\"\"\"\":\"\"\"\"React\"\"\"\",\"\"\"\"iconKey\"\"\"\":\"\"\"\"react\"\"\"\"}]}]}')",
+      "Bash(npx shadcn@latest add dropdown-menu --yes)",
+      "Bash(npx shadcn@latest init --yes)",
+      "Bash(node -e \"require\\(''@radix-ui/react-slot''\\)\")",
+      "Bash(find '/e/Nabeel Javed/Web Portfolios/My Agency Website/client' -name *.config.* -o -name tsconfig* -o -name package.json)",
+      "Bash(find '/e/Nabeel Javed/Web Portfolios/My Agency Website/server/src/controllers' -type f -name *user* -o -name *auth*)",
+      "Bash(find '/e/Nabeel Javed/Web Portfolios/My Agency Website/client' -type f \\\\\\(-name *api* -o -name *service* -o -name *client* \\\\\\))",
+      "Bash(npx tsc:*)",
+      "Bash(python -m json.tool)",
+      "Bash(USER_ID=\"69be3fea1acfd97440df4f16\")"
     ]
   }
 }
