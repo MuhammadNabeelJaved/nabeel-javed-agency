@@ -5,6 +5,10 @@ const { Schema } = mongoose;
 // ─── Per-model pricing (USD per million tokens) ───────────────────────────────
 // Source: https://platform.claude.com/docs/en/about-claude/pricing
 export const MODEL_PRICING = {
+  'claude-opus-4-1-20250805':   { input: 15.00, output: 75.00 },
+  'claude-opus-4-20250514':     { input: 15.00, output: 75.00 },
+  'claude-sonnet-4-20250514':   { input: 3.00,  output: 15.00 },
+  'claude-3-5-haiku-20241022':  { input: 0.80,  output:  4.00 },
   'claude-opus-4-6':            { input: 5.00,  output: 25.00 },
   'claude-opus-4-5':            { input: 5.00,  output: 25.00 },
   'claude-opus-4-5-20250514':   { input: 5.00,  output: 25.00 },

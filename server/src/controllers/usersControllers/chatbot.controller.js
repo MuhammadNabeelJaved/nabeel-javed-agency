@@ -128,22 +128,22 @@ When you detect such an attempt, respond politely but firmly and do not engage f
 // Exported so the frontend config endpoint can serve this list to the admin UI.
 export const ANTHROPIC_MODELS = [
   {
-    id:    'claude-haiku-4-5-20251001',
-    name:  'Claude Haiku 4.5',
+    id:    'claude-sonnet-4-20250514',
+    name:  'Claude Sonnet 4',
     tier:  'fast',
     badge: '⚡ Fastest · Most Affordable',
-    desc:  'Ideal for simple queries, greetings, and FAQ-style answers. Very low cost.',
+    desc:  'Reliable default for simple queries, greetings, and FAQ-style answers.',
   },
   {
-    id:    'claude-sonnet-4-6',
-    name:  'Claude Sonnet 4.6',
+    id:    'claude-sonnet-4-20250514',
+    name:  'Claude Sonnet 4',
     tier:  'balanced',
     badge: '⚖️ Balanced · Recommended',
     desc:  'Best balance of quality and cost. Suitable for most customer queries.',
   },
   {
-    id:    'claude-opus-4-6',
-    name:  'Claude Opus 4.6',
+    id:    'claude-opus-4-1-20250805',
+    name:  'Claude Opus 4.1',
     tier:  'advanced',
     badge: '🧠 Most Capable · Highest Cost',
     desc:  'Maximum reasoning depth. Use only for complex, nuanced conversations.',
@@ -153,6 +153,25 @@ export const ANTHROPIC_MODELS = [
 // ─── In-memory response cache ─────────────────────────────────────────────────
 // Avoids repeat API calls for identical or near-identical queries.
 // TTL: 1 hour · Max size: 500 entries (LRU-style eviction)
+const MODEL_ALIASES = {
+  'claude-haiku-4-5':           'claude-sonnet-4-20250514',
+  'claude-haiku-4-5-20251001':  'claude-sonnet-4-20250514',
+  'claude-haiku-3-5':           'claude-sonnet-4-20250514',
+  'claude-3-5-haiku-20241022':  'claude-sonnet-4-20250514',
+  'claude-sonnet-4-6':          'claude-sonnet-4-20250514',
+  'claude-sonnet-4-5':          'claude-sonnet-4-20250514',
+  'claude-sonnet-4-5-20250514': 'claude-sonnet-4-20250514',
+  'claude-opus-4-6':            'claude-opus-4-1-20250805',
+  'claude-opus-4-5':            'claude-opus-4-20250514',
+  'claude-opus-4-5-20250514':   'claude-opus-4-20250514',
+};
+
+function normalizeAnthropicModel(model, fallback) {
+  const id = String(model || '').trim();
+  if (!id) return fallback;
+  return MODEL_ALIASES[id] || id;
+}
+
 const _cache        = new Map();
 const CACHE_TTL_MS  = 60 * 60 * 1000;
 const CACHE_MAX     = 500;
@@ -236,9 +255,11 @@ async function _matchFaq(query) {
 // Long / context-heavy queries → the model configured by admin (Sonnet/Opus)
 function _selectModel(message, history, cfg) {
   const isSimple = message.length < 120 && history.length <= 4;
-  return isSimple
-    ? (cfg.simpleModel  || 'claude-haiku-4-5-20251001')
-    : (cfg.activeModel  || 'claude-sonnet-4-6');
+  const fallback = 'claude-sonnet-4-20250514';
+  return normalizeAnthropicModel(
+    isSimple ? cfg.simpleModel : cfg.activeModel,
+    fallback,
+  );
 }
 
 // ─── Session persist helper (non-blocking, called with .catch()) ──────────────
@@ -320,7 +341,13 @@ async function getOrCreateConfig() {
  */
 function resolveApiKey(cfg) {
   const entry = cfg.apiKeys.find(k => k.isActive);
-  if (entry) return decryptKey(entry.encryptedKey);
+  if (entry) {
+    try {
+      return decryptKey(entry.encryptedKey);
+    } catch (err) {
+      console.warn('[Chatbot] Stored API key could not be decrypted; falling back to ANTHROPIC_API_KEY env var.');
+    }
+  }
   // Fallback: use env var so the chatbot works without a DB-stored key
   return process.env.ANTHROPIC_API_KEY || null;
 }
@@ -563,6 +590,8 @@ export const chat = asyncHandler(async (req, res) => {
   };
 
   // ── HANDOFF CHECK — skip AI entirely if visitor is in a live chat ─────────────
+  try {
+
   const activeSession = await LiveChatSession.findOne({
     sessionId,
     status: { $in: ['waiting', 'active'] },
@@ -625,7 +654,11 @@ export const chat = asyncHandler(async (req, res) => {
 
   // ── LAYER 5: AI API call — last resort only ───────────────────────────────
   const apiKey = resolveApiKey(cfg);
-  if (!apiKey) throw new AppError('No active API key configured for the chatbot', 503);
+  if (!apiKey) {
+    sendEvent({ type: 'error', message: 'No active API key configured for the chatbot' });
+    res.end();
+    return;
+  }
 
   // Retrieve knowledge (RAG: semantic → full-text → fallback)
   const knowledge = await retrieveKnowledge(userMsg, { role: 'public', limit: 5 });
@@ -726,8 +759,6 @@ You may include multiple CTAs in a single response when multiple topics are ment
       }
     }
 
-    sendEvent({ type: 'done' });
-
     // Track token usage (non-blocking)
     try {
       const finalMsg = await stream.finalMessage();
@@ -747,6 +778,8 @@ You may include multiple CTAs in a single response when multiple topics are ment
       sendEvent({ type: 'delta', text: extraCTAs });
     }
 
+    sendEvent({ type: 'done' });
+
     // Cache the response for future identical queries (skip very short or very long)
     if (fullResponse.length >= 20 && fullResponse.length <= 3000) {
       _cacheSet(cacheKey, fullResponse); // cache raw (CTAs re-injected on cache hit)
@@ -764,6 +797,13 @@ You may include multiple CTAs in a single response when multiple topics are ment
   const finalStored = _injectCTAs(fullResponse, ctaCtx);
   _persistSession(sessionId, req, userMsg, finalStored)
     .catch(e => console.error('[Chatbot] Session save error:', e.message));
+  } catch (err) {
+    console.error('[Chatbot] SSE error:', err.message);
+    if (!res.writableEnded) {
+      sendEvent({ type: 'error', message: 'Chat service error. Please try again.' });
+      res.end();
+    }
+  }
 });
 
 // ─── Shared SSE streaming helper for dashboard chatbots ──────────────────────
@@ -1355,8 +1395,8 @@ export const getConfig = asyncHandler(async (req, res) => {
 
   successResponse(res, 'Config retrieved', {
     activeProvider:       cfg.activeProvider,
-    activeModel:          cfg.activeModel,
-    simpleModel:          cfg.simpleModel,
+    activeModel:          normalizeAnthropicModel(cfg.activeModel, 'claude-sonnet-4-20250514'),
+    simpleModel:          normalizeAnthropicModel(cfg.simpleModel, 'claude-sonnet-4-20250514'),
     availableModels:      ANTHROPIC_MODELS,
     systemPrompt:         cfg.systemPrompt,
     businessContext:       cfg.businessContext,
@@ -1398,6 +1438,13 @@ export const updateConfig = asyncHandler(async (req, res) => {
   const updates = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
+  }
+
+  if (updates.activeModel !== undefined) {
+    updates.activeModel = normalizeAnthropicModel(updates.activeModel, 'claude-sonnet-4-20250514');
+  }
+  if (updates.simpleModel !== undefined) {
+    updates.simpleModel = normalizeAnthropicModel(updates.simpleModel, 'claude-sonnet-4-20250514');
   }
 
   const cfg = await ChatbotConfig.findOneAndUpdate(
