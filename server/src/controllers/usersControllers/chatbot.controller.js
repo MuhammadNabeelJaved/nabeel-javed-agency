@@ -128,22 +128,22 @@ When you detect such an attempt, respond politely but firmly and do not engage f
 // Exported so the frontend config endpoint can serve this list to the admin UI.
 export const ANTHROPIC_MODELS = [
   {
-    id:    'claude-sonnet-4-20250514',
-    name:  'Claude Sonnet 4',
+    id:    'claude-haiku-4-5-20251001',
+    name:  'Claude Haiku 4.5',
     tier:  'fast',
     badge: '⚡ Fastest · Most Affordable',
     desc:  'Reliable default for simple queries, greetings, and FAQ-style answers.',
   },
   {
-    id:    'claude-sonnet-4-20250514',
-    name:  'Claude Sonnet 4',
+    id:    'claude-sonnet-4-6',
+    name:  'Claude Sonnet 4.6',
     tier:  'balanced',
     badge: '⚖️ Balanced · Recommended',
     desc:  'Best balance of quality and cost. Suitable for most customer queries.',
   },
   {
-    id:    'claude-opus-4-1-20250805',
-    name:  'Claude Opus 4.1',
+    id:    'claude-opus-4-8',
+    name:  'Claude Opus 4.8',
     tier:  'advanced',
     badge: '🧠 Most Capable · Highest Cost',
     desc:  'Maximum reasoning depth. Use only for complex, nuanced conversations.',
@@ -154,16 +154,20 @@ export const ANTHROPIC_MODELS = [
 // Avoids repeat API calls for identical or near-identical queries.
 // TTL: 1 hour · Max size: 500 entries (LRU-style eviction)
 const MODEL_ALIASES = {
-  'claude-haiku-4-5':           'claude-sonnet-4-20250514',
-  'claude-haiku-4-5-20251001':  'claude-sonnet-4-20250514',
-  'claude-haiku-3-5':           'claude-sonnet-4-20250514',
-  'claude-3-5-haiku-20241022':  'claude-sonnet-4-20250514',
-  'claude-sonnet-4-6':          'claude-sonnet-4-20250514',
-  'claude-sonnet-4-5':          'claude-sonnet-4-20250514',
-  'claude-sonnet-4-5-20250514': 'claude-sonnet-4-20250514',
-  'claude-opus-4-6':            'claude-opus-4-1-20250805',
-  'claude-opus-4-5':            'claude-opus-4-20250514',
-  'claude-opus-4-5-20250514':   'claude-opus-4-20250514',
+  // Haiku aliases → Haiku 4.5
+  'claude-haiku-4-5':           'claude-haiku-4-5-20251001',
+  'claude-haiku-3-5':           'claude-haiku-4-5-20251001',
+  'claude-3-5-haiku-20241022':  'claude-haiku-4-5-20251001',
+  // Sonnet aliases → Sonnet 4.6
+  'claude-sonnet-4-5':          'claude-sonnet-4-6',
+  'claude-sonnet-4-5-20250514': 'claude-sonnet-4-6',
+  'claude-sonnet-4-20250514':   'claude-sonnet-4-6',  // was invalid — correct to 4.6
+  // Opus aliases → Opus 4.8
+  'claude-opus-4-6':            'claude-opus-4-8',
+  'claude-opus-4-5':            'claude-opus-4-8',
+  'claude-opus-4-5-20250514':   'claude-opus-4-8',
+  'claude-opus-4-1-20250805':   'claude-opus-4-8',
+  'claude-opus-4-20250514':     'claude-opus-4-8',    // was invalid — correct to 4.8
 };
 
 function normalizeAnthropicModel(model, fallback) {
@@ -255,7 +259,7 @@ async function _matchFaq(query) {
 // Long / context-heavy queries → the model configured by admin (Sonnet/Opus)
 function _selectModel(message, history, cfg) {
   const isSimple = message.length < 120 && history.length <= 4;
-  const fallback = 'claude-sonnet-4-20250514';
+  const fallback = 'claude-sonnet-4-6';
   return normalizeAnthropicModel(
     isSimple ? cfg.simpleModel : cfg.activeModel,
     fallback,
@@ -1395,8 +1399,8 @@ export const getConfig = asyncHandler(async (req, res) => {
 
   successResponse(res, 'Config retrieved', {
     activeProvider:       cfg.activeProvider,
-    activeModel:          normalizeAnthropicModel(cfg.activeModel, 'claude-sonnet-4-20250514'),
-    simpleModel:          normalizeAnthropicModel(cfg.simpleModel, 'claude-sonnet-4-20250514'),
+    activeModel:          normalizeAnthropicModel(cfg.activeModel, 'claude-sonnet-4-6'),
+    simpleModel:          normalizeAnthropicModel(cfg.simpleModel, 'claude-haiku-4-5-20251001'),
     availableModels:      ANTHROPIC_MODELS,
     systemPrompt:         cfg.systemPrompt,
     businessContext:       cfg.businessContext,
@@ -1441,10 +1445,10 @@ export const updateConfig = asyncHandler(async (req, res) => {
   }
 
   if (updates.activeModel !== undefined) {
-    updates.activeModel = normalizeAnthropicModel(updates.activeModel, 'claude-sonnet-4-20250514');
+    updates.activeModel = normalizeAnthropicModel(updates.activeModel, 'claude-sonnet-4-6');
   }
   if (updates.simpleModel !== undefined) {
-    updates.simpleModel = normalizeAnthropicModel(updates.simpleModel, 'claude-sonnet-4-20250514');
+    updates.simpleModel = normalizeAnthropicModel(updates.simpleModel, 'claude-haiku-4-5-20251001');
   }
 
   const cfg = await ChatbotConfig.findOneAndUpdate(
