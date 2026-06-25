@@ -168,13 +168,15 @@ export const getFooterBottom = asyncHandler(async (req, res) => {
 export const updateFooterBottom = asyncHandler(async (req, res) => {
     const { copyrightText, links, taglineText, taglineVisible } = req.body;
 
-    const cms = await CMS.getOrCreate();
-
+    const $set = {};
     if (copyrightText !== undefined)
-        cms.footerBottom.copyrightText = String(copyrightText).trim().slice(0, 200);
-
+        $set['footerBottom.copyrightText'] = String(copyrightText).trim().slice(0, 200);
+    if (taglineText !== undefined)
+        $set['footerBottom.taglineText'] = String(taglineText).trim().slice(0, 200);
+    if (taglineVisible !== undefined)
+        $set['footerBottom.taglineVisible'] = Boolean(taglineVisible);
     if (Array.isArray(links)) {
-        cms.footerBottom.links = links
+        $set['footerBottom.links'] = links
             .map((l, i) => ({
                 label:        String(l.label || '').trim(),
                 href:         String(l.href  || '').trim(),
@@ -184,18 +186,12 @@ export const updateFooterBottom = asyncHandler(async (req, res) => {
             }))
             .filter(l => l.label && l.href);
     }
+    $set.lastUpdatedBy = req.user._id;
 
-    if (taglineText !== undefined)
-        cms.footerBottom.taglineText = String(taglineText).trim().slice(0, 200);
-
-    if (taglineVisible !== undefined)
-        cms.footerBottom.taglineVisible = Boolean(taglineVisible);
-
-    cms.lastUpdatedBy = req.user._id;
-    cms.markModified('footerBottom');
-    await cms.save();
+    await CMS.getOrCreate();
+    const updated = await CMS.findOneAndUpdate({}, { $set }, { new: true, upsert: true });
     emitCmsUpdate(req, 'footerBottom');
-    successResponse(res, 'Footer bottom updated', { footerBottom: cms.footerBottom });
+    successResponse(res, 'Footer bottom updated', { footerBottom: updated.footerBottom });
 });
 
 // =========================

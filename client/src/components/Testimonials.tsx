@@ -10,7 +10,7 @@ import { useContent } from '../contexts/ContentContext';
 import apiClient from '../api/apiClient';
 
 const fallbackTestimonials = [
-  { content: "Nova Agency transformed our digital presence. Their attention to detail is unmatched.", author: "Sarah Johnson", role: "CTO, TechFlow", rating: 5 },
+  { content: "CometBrew transformed our digital presence. Their attention to detail is unmatched.", author: "Sarah Johnson", role: "CTO, TechFlow", rating: 5 },
   { content: "The AI integration features they built significantly improved our workflow efficiency.", author: "Michael Chen", role: "Founder, DataSphere", rating: 5 },
   { content: "Professional, responsive, and incredibly talented team. Executed our vision perfectly.", author: "Emily Rodriguez", role: "VP Ops, FinEdge", rating: 5 },
   { content: "They delivered the project 2 weeks ahead of schedule. Exceptional quality.", author: "David Kim", role: "CEO, StartupX", rating: 5 },

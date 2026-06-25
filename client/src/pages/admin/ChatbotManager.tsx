@@ -901,7 +901,7 @@ function KnowledgeTab() {
 
 // ─── Business Context Template ─────────────────────────────────────────────────
 const BUSINESS_CONTEXT_TEMPLATE = `## Agency Overview
-[Agency Name] is a full-service digital agency specialising in web development, UI/UX design, branding, and digital marketing. We work with startups, SMEs, and enterprise clients worldwide.
+CometBrew is a full-service digital agency specialising in web development, UI/UX design, branding, and digital marketing. We work with startups, SMEs, and enterprise clients worldwide.
 
 ## Our Services
 - **Web Development**: Custom websites, web apps, e-commerce (React, Next.js, Node.js, Laravel)
