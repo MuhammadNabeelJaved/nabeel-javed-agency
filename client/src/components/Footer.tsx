@@ -127,8 +127,8 @@ export function Footer() {
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-sm font-medium text-green-500 uppercase tracking-wider">{t('footer.available')}</span>
             </div>
-             <a href={`mailto:${contactInfo.email || 'hello@nabeel.agency'}`} className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-foreground hover:text-primary transition-colors border-b border-border/50 hover:border-primary pb-1 break-all sm:break-normal">
-              {contactInfo.email || 'hello@nabeel.agency'}
+             <a href={`mailto:${contactInfo.email || 'hello@cometbrew.com'}`} className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-foreground hover:text-primary transition-colors border-b border-border/50 hover:border-primary pb-1 break-all sm:break-normal">
+              {contactInfo.email || 'hello@cometbrew.com'}
             </a>
           </div>
         </div>
@@ -146,16 +146,16 @@ export function Footer() {
                 <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <img 
                   src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png" 
-                  alt="Nabeel Logo" 
-                  className="h-12 w-auto relative z-10 dark:invert transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3" 
+                  alt="CometBrew Logo"
+                  className="h-12 w-auto relative z-10 dark:invert transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3"
                 />
               </div>
               <div className="flex flex-col">
                 <span className="font-black text-3xl tracking-tighter leading-none text-foreground">
-                  NABEEL
+                  COMET
                 </span>
                 <span className="text-xs font-bold tracking-[0.2em] uppercase text-primary group-hover:tracking-[0.3em] transition-all duration-300">
-                  Agency
+                  Brew
                 </span>
               </div>
             </Link>

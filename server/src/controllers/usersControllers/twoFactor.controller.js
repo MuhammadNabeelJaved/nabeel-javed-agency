@@ -19,7 +19,7 @@ import User from '../../models/usersModels/User.model.js';
 import { generateTokens } from '../../utils/generateTokens.js';
 import { scheduleInactivityFollowup } from '../../utils/emailAutomationService.js';
 
-const APP_NAME = 'Nabeel Agency';
+const APP_NAME = 'CometBrew';
 
 // ─── Step 1: Generate secret + QR code ────────────────────────────────────────
 export const setup2FA = asyncHandler(async (req, res) => {

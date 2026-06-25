@@ -575,7 +575,7 @@ function FooterBottomPanel() {
           <Input
             value={copyright}
             onChange={e => setCopyright(e.target.value)}
-            placeholder="Nabeel Agency. All rights reserved."
+            placeholder="CometBrew. All rights reserved."
             className="h-9"
           />
           <p className="text-[11px] text-muted-foreground/60">Shown after "© {new Date().getFullYear()}"</p>

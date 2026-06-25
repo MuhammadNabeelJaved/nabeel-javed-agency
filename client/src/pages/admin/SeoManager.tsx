@@ -96,7 +96,7 @@ function PageRow({ pageKey, label, saved, onSave, onReset }: PageRowProps) {
                                 value={form.title || ''}
                                 onChange={e => set('title', e.target.value)}
                                 maxLength={70}
-                                placeholder="Best Digital Agency | Nabeel Agency"
+                                placeholder="Best Digital Agency | CometBrew"
                             />
                         </div>
 
@@ -159,7 +159,7 @@ function PageRow({ pageKey, label, saved, onSave, onReset }: PageRowProps) {
                             <Input
                                 value={form.canonicalUrl || ''}
                                 onChange={e => set('canonicalUrl', e.target.value)}
-                                placeholder="https://nabeel.agency/page"
+                                placeholder="https://cometbrew.com/page"
                             />
                         </div>
                     </div>

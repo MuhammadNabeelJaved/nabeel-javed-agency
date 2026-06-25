@@ -173,7 +173,7 @@ const cmsSchema = new mongoose.Schema(
         footerBottom: {
             copyrightText: {
                 type: String, trim: true, maxlength: 200,
-                default: 'Nabeel Agency. All rights reserved.',
+                default: 'CometBrew. All rights reserved.',
             },
             links: [{
                 label:        { type: String, required: true, trim: true, maxlength: 60 },

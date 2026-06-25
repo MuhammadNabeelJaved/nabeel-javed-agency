@@ -17,7 +17,7 @@ const AUTOMATION_TEMPLATES = [
         name: 'Welcome Email',
         description: 'Sent when a new user verifies their email and account is ready.',
         bestFor: 'welcome_user',
-        suggestedSubject: 'Welcome to Nabeel Agency — your account is ready',
+        suggestedSubject: 'Welcome to CometBrew — your account is ready',
         placeholders: ['{{NAME}}', '{{EMAIL}}', '{{DASHBOARD_URL}}'],
     },
     {
@@ -285,7 +285,7 @@ export const generateTemplate = asyncHandler(async (req, res) => {
     try { refTemplate = fs.readFileSync(path.join(TEMPLATES_DIR, '7-project-completed.html'), 'utf-8'); } catch { /* skip */ }
 
     const triggerLabel = (trigger || 'general').replace(/_/g, ' ');
-    const prompt = `You are an expert HTML email designer for Nabeel Agency, a web development agency.
+    const prompt = `You are an expert HTML email designer for CometBrew, a web development agency.
 
 Design a complete, responsive HTML email template with this specification:
 - Template name: ${name || 'Email Template'}
@@ -305,7 +305,7 @@ ${refTemplate}
 5. Use {{PLACEHOLDER}} tokens — pick appropriate ones: {{NAME}}, {{PROJECT_NAME}}, {{DASHBOARD_URL}}, {{CLIENT_URL}}, {{EMAIL}}, {{MILESTONE_TITLE}}, {{FEEDBACK_URL}}, {{DUE_AMOUNT}} etc.
 6. Include a colored top accent bar (4px height gradient) matching the email's theme color
 7. Include an icon circle (emoji inside colored circle) matching the theme
-8. Footer: © 2025 Nabeel Agency. All rights reserved.
+8. Footer: © 2025 CometBrew. All rights reserved.
 9. CTA button(s): bold, rounded (border-radius:10px), matches theme color
 10. Return ONLY the complete HTML — no markdown, no explanations`;
 

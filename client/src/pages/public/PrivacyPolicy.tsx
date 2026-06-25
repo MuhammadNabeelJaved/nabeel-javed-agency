@@ -81,7 +81,7 @@ export default function PrivacyPolicy() {
               Have questions about our Privacy Policy?{' '}
               <br />
               <a
-                href={`mailto:${contactEmail || 'privacy@nabeel.agency'}`}
+                href={`mailto:${contactEmail || 'hello@cometbrew.com'}`}
                 className="text-primary hover:underline font-medium mt-2 inline-block"
               >
                 Contact our Privacy Team

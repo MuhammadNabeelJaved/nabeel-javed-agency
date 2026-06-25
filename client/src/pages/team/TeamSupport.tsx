@@ -103,7 +103,7 @@ export default function TeamSupport() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Help & Support</h2>
           <p className="text-muted-foreground mt-1">
-            Internal help center for the Nabeel Agency team.
+            Internal help center for the CometBrew team.
           </p>
         </div>
         <Button className="gap-2" onClick={() => setIsNewTicketOpen(true)}>

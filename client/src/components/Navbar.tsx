@@ -131,20 +131,20 @@ export function Navbar() {
                 <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <img 
                   src={logoUrl} 
-                  alt="Nabeel Logo" 
-                  className="h-10 w-auto relative z-10 dark:invert transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3" 
+                  alt="CometBrew Logo"
+                  className="h-10 w-auto relative z-10 dark:invert transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3"
                 />
               </div>
               <div className="flex flex-col">
                 <span className={`font-black text-2xl tracking-tighter leading-none transition-colors duration-300 ${
                   scrolled ? 'text-foreground' : 'text-foreground dark:text-white'
                 }`}>
-                  NABEEL
+                  COMET
                 </span>
                 <span className={`text-[0.65rem] font-bold tracking-[0.2em] uppercase text-primary transition-all duration-300 ${
                   scrolled ? 'opacity-100' : 'opacity-80'
                 } group-hover:tracking-[0.3em]`}>
-                  Agency
+                  Brew
                 </span>
               </div>
             </Link>

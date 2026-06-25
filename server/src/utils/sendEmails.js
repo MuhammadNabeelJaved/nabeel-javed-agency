@@ -4,7 +4,7 @@
  * Required environment variables:
  *   RESEND_API_KEY – Resend API key
  *   FROM_EMAIL     – Verified sender address (e.g. "no-reply@yourdomain.com")
- *   CLIENT_URL     – Frontend base URL (e.g. "https://nabeel.agency")
+ *   CLIENT_URL     – Frontend base URL (e.g. "https://cometbrew.com")
  */
 import { Resend } from 'resend';
 import fs from 'fs';
@@ -114,7 +114,7 @@ export const sendVerificationEmail = async ({ to, name, code }) => {
 
     return sendEmail({
         to,
-        subject: 'Verify your email address — Nabeel Agency',
+        subject: 'Verify your email address — CometBrew',
         html,
         text: `Hello ${name}, your verification code is: ${code}. It expires in 10 minutes.`,
     });
@@ -137,7 +137,7 @@ export const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
 
     return sendEmail({
         to,
-        subject: 'Password Reset Request — Nabeel Agency',
+        subject: 'Password Reset Request — CometBrew',
         html,
         text: `Hello ${name}, reset your password here: ${resetUrl}. Link expires in 10 minutes.`,
     });
@@ -158,14 +158,14 @@ export const sendJobApplicationConfirmation = async ({ to, name, jobTitle, depar
         NAME: name,
         JOB_TITLE: jobTitle,
         DEPARTMENT: department,
-        CLIENT_URL: process.env.CLIENT_URL || 'https://nabeel.agency',
+        CLIENT_URL: process.env.CLIENT_URL || 'https://cometbrew.com',
     });
 
     return sendEmail({
         to,
         subject: `Application Received — ${jobTitle}`,
         html,
-        text: `Hi ${name}, we received your application for ${jobTitle} (${department}). Our team will review it and reach out if your profile matches. Decisions are communicated within 2–3 weeks. — Nabeel Agency`,
+        text: `Hi ${name}, we received your application for ${jobTitle} (${department}). Our team will review it and reach out if your profile matches. Decisions are communicated within 2–3 weeks. — CometBrew`,
     });
 };
 
@@ -189,7 +189,7 @@ export const sendJobApplicationAdminNotification = async ({
     department,
     applicationId,
 }) => {
-    const adminUrl = `${process.env.CLIENT_URL || 'https://nabeel.agency'}/admin/job-applications`;
+    const adminUrl = `${process.env.CLIENT_URL || 'https://cometbrew.com'}/admin/job-applications`;
 
     const submittedAt = new Date().toLocaleString('en-US', {
         month: 'short',
@@ -222,7 +222,7 @@ export const sendJobApplicationAdminNotification = async ({
  * Sends a welcome/signup confirmation email after the user verifies their account.
  */
 export const sendSignupConfirmation = async ({ to, name }) => {
-    const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+    const clientUrl = process.env.CLIENT_URL || 'https://cometbrew.com';
 
     const html = renderTemplate('5-signup-confirmation.html', {
         NAME: name,
@@ -233,9 +233,9 @@ export const sendSignupConfirmation = async ({ to, name }) => {
 
     return sendEmail({
         to,
-        subject: 'Welcome to Nabeel Agency — Account Verified!',
+        subject: 'Welcome to CometBrew — Account Verified!',
         html,
-        text: `Hi ${name}, welcome to Nabeel Agency! Your account has been verified. Visit your dashboard: ${clientUrl}/user-dashboard`,
+        text: `Hi ${name}, welcome to CometBrew! Your account has been verified. Visit your dashboard: ${clientUrl}/user-dashboard`,
     });
 };
 
@@ -243,7 +243,7 @@ export const sendSignupConfirmation = async ({ to, name }) => {
  * Sends a confirmation email when a user submits a new project request.
  */
 export const sendProjectCreated = async ({ to, name, projectName, projectType, budgetRange, deadline }) => {
-    const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+    const clientUrl = process.env.CLIENT_URL || 'https://cometbrew.com';
 
     const deadlineStr = deadline
         ? new Date(deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -261,7 +261,7 @@ export const sendProjectCreated = async ({ to, name, projectName, projectType, b
 
     return sendEmail({
         to,
-        subject: `Project "${projectName}" received — Nabeel Agency`,
+        subject: `Project "${projectName}" received — CometBrew`,
         html,
         text: `Hi ${name}, your project "${projectName}" has been received and is under review. We'll be in touch within 1–2 business days.`,
     });
@@ -271,7 +271,7 @@ export const sendProjectCreated = async ({ to, name, projectName, projectType, b
  * Sends a project-completed notification + prompts for feedback.
  */
 export const sendProjectCompleted = async ({ to, name, projectName }) => {
-    const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+    const clientUrl = process.env.CLIENT_URL || 'https://cometbrew.com';
     const completedDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     const html = renderTemplate('7-project-completed.html', {
@@ -284,7 +284,7 @@ export const sendProjectCompleted = async ({ to, name, projectName }) => {
 
     return sendEmail({
         to,
-        subject: `🎉 Project "${projectName}" is complete! — Nabeel Agency`,
+        subject: `🎉 Project "${projectName}" is complete! — CometBrew`,
         html,
         text: `Hi ${name}, your project "${projectName}" has been completed! Leave feedback at: ${clientUrl}/user-dashboard/reviews`,
     });
@@ -294,7 +294,7 @@ export const sendProjectCompleted = async ({ to, name, projectName }) => {
  * Sends a standalone feedback request email.
  */
 export const sendFeedbackRequest = async ({ to, name, projectName }) => {
-    const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+    const clientUrl = process.env.CLIENT_URL || 'https://cometbrew.com';
 
     const html = renderTemplate('8-feedback-request.html', {
         NAME: name,
@@ -304,7 +304,7 @@ export const sendFeedbackRequest = async ({ to, name, projectName }) => {
 
     return sendEmail({
         to,
-        subject: `How did we do on "${projectName}"? — Nabeel Agency`,
+        subject: `How did we do on "${projectName}"? — CometBrew`,
         html,
         text: `Hi ${name}, we'd love your feedback on the "${projectName}" project. Share your review: ${clientUrl}/user-dashboard/reviews`,
     });

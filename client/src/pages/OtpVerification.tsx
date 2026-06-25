@@ -102,7 +102,7 @@ export default function OtpVerification() {
               Verification Code
             </h1>
             <p className="text-neutral-500 dark:text-neutral-400 text-sm">
-              We sent a 6-digit code to <span className="font-semibold text-neutral-900 dark:text-neutral-200">alex@nabeel.agency</span>.
+              We sent a 6-digit code to <span className="font-semibold text-neutral-900 dark:text-neutral-200">alex@cometbrew.com</span>.
               <br />Enter the code below to confirm your identity.
             </p>
           </div>

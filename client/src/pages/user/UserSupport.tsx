@@ -234,7 +234,7 @@ export default function UserSupport() {
               <p className="font-semibold">Email Support</p>
               <p className="text-xs text-muted-foreground mt-0.5">Response within 24 business hours</p>
             </div>
-            <Button size="sm" variant="outline" onClick={() => window.location.href = 'mailto:support@nabeeljaved.com'}>
+            <Button size="sm" variant="outline" onClick={() => window.location.href = 'mailto:hello@cometbrew.com'}>
               Send Email
             </Button>
           </CardContent>

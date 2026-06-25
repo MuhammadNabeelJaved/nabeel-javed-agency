@@ -112,7 +112,7 @@ export default function Login() {
               <div className="bg-primary/20 p-2 rounded-lg">
                 <Zap className="h-6 w-6 text-primary" />
               </div>
-              <span className="font-bold text-2xl tracking-tight text-white">Nova<span className="text-primary">Agency</span></span>
+              <span className="font-bold text-2xl tracking-tight text-white">Comet<span className="text-primary">Brew</span></span>
             </div>
             <h2 className="text-3xl font-bold text-white mb-4">Welcome back to the future of development.</h2>
             <p className="text-white/60 leading-relaxed">

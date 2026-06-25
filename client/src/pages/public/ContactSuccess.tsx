@@ -37,7 +37,7 @@ export default function ContactSuccess() {
             Message Sent!
           </h1>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Thanks for reaching out to Nabeel Agency. We've received your message and are looking forward to connecting with you.
+            Thanks for reaching out to CometBrew. We've received your message and are looking forward to connecting with you.
           </p>
         </motion.div>
 

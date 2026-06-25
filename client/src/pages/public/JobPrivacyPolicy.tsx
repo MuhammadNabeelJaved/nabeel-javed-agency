@@ -131,7 +131,7 @@ export default function JobPrivacyPolicy() {
           </p>
           <div className="flex justify-center gap-4">
             <Button asChild variant="outline">
-              <a href="mailto:privacy@nabeel.agency">Contact Privacy Team</a>
+              <a href="mailto:hello@cometbrew.com">Contact Privacy Team</a>
             </Button>
             <Button asChild>
               <a href="/careers/apply">Back to Application</a>

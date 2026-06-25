@@ -39,7 +39,7 @@ export default function JobApplicationSuccess() {
             Application Received!
           </h1>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Thank you for applying to Nabeel Agency. We've received your details and our recruitment team is already excited to review your profile.
+            Thank you for applying to CometBrew. We've received your details and our recruitment team is already excited to review your profile.
           </p>
         </motion.div>
 

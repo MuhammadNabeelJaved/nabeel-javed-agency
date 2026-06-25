@@ -125,7 +125,7 @@ const INITIAL_CANDIDATES = [
     appliedDate: '2 days ago',
     avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=100',
     skills: ['Figma', 'Prototyping', 'Design Systems'],
-    coverLetter: "I've been following Nabeel Agency's work for years. My background in complex system design would be a great fit.",
+    coverLetter: "I've been following CometBrew's work for years. My background in complex system design would be a great fit.",
   },
   {
     id: 102, name: 'Maria Garcia', role: 'Frontend Developer', experience: '3 years',

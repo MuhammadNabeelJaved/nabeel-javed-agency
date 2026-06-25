@@ -13,7 +13,7 @@ export default function PasswordReset() {
         <div className="bg-neutral-50 dark:bg-neutral-900/50 p-6 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
            <img 
             src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png" 
-            alt="Nabeel Logo" 
+            alt="CometBrew Logo" 
             className="h-8 w-auto dark:invert" 
           />
           <span className="text-xs font-mono text-neutral-400">SECURITY</span>
@@ -29,7 +29,7 @@ export default function PasswordReset() {
           </h1>
           
           <p className="text-neutral-600 dark:text-neutral-400 leading-relaxed mb-8">
-            We received a request to reset the password for your Nabeel Agency account. If you didn't make this request, you can safely ignore this email.
+            We received a request to reset the password for your CometBrew account. If you didn't make this request, you can safely ignore this email.
           </p>
 
           <div className="bg-neutral-50 dark:bg-neutral-900 p-4 rounded border border-neutral-100 dark:border-neutral-800 mb-8 font-mono text-center text-xl tracking-widest select-all">
@@ -42,13 +42,13 @@ export default function PasswordReset() {
           
           <p className="text-sm text-neutral-500 dark:text-neutral-500">
             Or copy and paste this link into your browser:<br/>
-            <span className="text-blue-500 underline break-all">https://nabeel.agency/reset-password?token=882910293847</span>
+            <span className="text-blue-500 underline break-all">https://cometbrew.com/reset-password?token=882910293847</span>
           </p>
         </div>
 
         <div className="bg-neutral-50 dark:bg-neutral-900/50 p-6 border-t border-neutral-100 dark:border-neutral-800 text-center">
           <p className="text-xs text-neutral-400">
-            © 2024 Nabeel Agency. Security Team.
+            © 2024 CometBrew. Security Team.
           </p>
         </div>
       </motion.div>

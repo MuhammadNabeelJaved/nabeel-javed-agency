@@ -45,7 +45,7 @@ export async function fireAutomation(trigger, context = {}) {
         const automations = await EmailAutomation.find({ trigger, isEnabled: true }).lean();
         if (automations.length === 0) return;
 
-        const clientUrl = process.env.CLIENT_URL || 'https://nabeel.agency';
+        const clientUrl = process.env.CLIENT_URL || 'https://cometbrew.com';
         const mapped = Object.fromEntries(
             Object.entries(context).map(([k, v]) => [toPlaceholderKey(k), v])
         );

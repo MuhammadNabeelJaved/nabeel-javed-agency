@@ -144,21 +144,21 @@ const cmsData = {
 
   contactInfo: {
     address: "123 Tech Boulevard\nSan Francisco, CA 94107\nUnited States",
-    email: "hello@nabeel.agency",
+    email: "hello@cometbrew.com",
     phone: "+1 (555) 123-4567",
     businessHours: "Monday – Friday\n9:00 AM – 6:00 PM PST",
   },
 
   socialLinks: {
-    twitter: "https://twitter.com/nabeelAgency",
-    linkedin: "https://linkedin.com/company/nabeel-agency",
-    instagram: "https://instagram.com/nabeelAgency",
-    github: "https://github.com/nabeelAgency",
+    twitter: "https://twitter.com/cometbrew",
+    linkedin: "https://linkedin.com/company/cometbrew",
+    instagram: "https://instagram.com/cometbrew",
+    github: "https://github.com/cometbrew",
   },
 
   testimonials: [
     {
-      content: "Working with Nabeel Agency was an absolute game-changer. They delivered our e-commerce platform in record time with exceptional quality. Our conversion rate jumped 40% after launch.",
+      content: "Working with CometBrew was an absolute game-changer. They delivered our e-commerce platform in record time with exceptional quality. Our conversion rate jumped 40% after launch.",
       author: "Sarah Johnson",
       role: "CEO, TechVentures Inc.",
       rating: 5,
@@ -186,7 +186,7 @@ const cmsData = {
       order: 4,
     },
     {
-      content: "We've worked with many agencies, but Nabeel Agency stands out for their communication, quality, and ability to solve complex problems. They're our go-to tech partner.",
+      content: "We've worked with many agencies, but CometBrew stands out for their communication, quality, and ability to solve complex problems. They're our go-to tech partner.",
       author: "Aisha Patel",
       role: "Director of Engineering, ScaleUp Labs",
       rating: 5,
@@ -280,7 +280,7 @@ const servicesData = [
       subheading: "Let's talk about your project.",
       description: "Book a free 30-minute discovery call and we'll map out exactly how to bring your vision to life.",
       button: { text: "Book a Free Call", link: "/contact" },
-      contactEmail: "hello@nabeel.agency",
+      contactEmail: "hello@cometbrew.com",
     },
   },
   {
@@ -357,7 +357,7 @@ const servicesData = [
       subheading: "Let's turn it into reality.",
       description: "From concept to the App Store — we'll guide you every step of the way.",
       button: { text: "Book a Free Call", link: "/contact" },
-      contactEmail: "hello@nabeel.agency",
+      contactEmail: "hello@cometbrew.com",
     },
   },
   {
@@ -434,7 +434,7 @@ const servicesData = [
       subheading: "Let's build your store.",
       description: "Book a free consultation and we'll recommend the best approach for your business.",
       button: { text: "Book Free Consultation", link: "/contact" },
-      contactEmail: "hello@nabeel.agency",
+      contactEmail: "hello@cometbrew.com",
     },
   },
   {
@@ -510,7 +510,7 @@ const servicesData = [
       subheading: "Great design is a competitive advantage.",
       description: "Schedule a design consultation and we'll show you what's possible.",
       button: { text: "Book Design Consultation", link: "/contact" },
-      contactEmail: "hello@nabeel.agency",
+      contactEmail: "hello@cometbrew.com",
     },
   },
   {
@@ -585,7 +585,7 @@ const servicesData = [
       subheading: "Let's talk strategy.",
       description: "Book a free 30-minute discovery call and walk away with at least 3 actionable insights.",
       button: { text: "Book Free Strategy Call", link: "/contact" },
-      contactEmail: "hello@nabeel.agency",
+      contactEmail: "hello@cometbrew.com",
     },
   },
 ];

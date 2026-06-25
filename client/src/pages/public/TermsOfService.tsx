@@ -81,7 +81,7 @@ export default function TermsOfService() {
               Have questions about our Terms?{' '}
               <br />
               <a
-                href={`mailto:${contactEmail || 'legal@nabeel.agency'}`}
+                href={`mailto:${contactEmail || 'hello@cometbrew.com'}`}
                 className="text-primary hover:underline font-medium mt-2 inline-block"
               >
                 Contact our Legal Team

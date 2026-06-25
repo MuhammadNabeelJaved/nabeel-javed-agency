@@ -373,9 +373,9 @@ const defaultAbout: AboutContent = {
 const defaultPrivacyPolicy: PrivacyPolicyContent = {
   lastUpdated: 'October 24, 2023',
   subtitle: 'We value your privacy and are committed to protecting your personal data.',
-  contactEmail: 'privacy@nabeel.agency',
+  contactEmail: 'hello@cometbrew.com',
   sections: [
-    { title: '1. Introduction', content: 'Welcome to Nabeel Agency. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our website (regardless of where you visit it from) and tell you about your privacy rights and how the law protects you.', order: 0 },
+    { title: '1. Introduction', content: 'Welcome to CometBrew. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our website (regardless of where you visit it from) and tell you about your privacy rights and how the law protects you.', order: 0 },
     { title: '2. Data We Collect', content: 'We may collect, use, store and transfer different kinds of personal data about you which we have grouped together as follows: Identity Data (Name, username), Contact Data (Email, phone), Technical Data (IP address, browser), Usage Data (How you use our site), Marketing Data (Preferences), Profile Data (Interests, feedback).', order: 1 },
     { title: '3. How We Use Your Data', content: 'We will only use your personal data when the law allows us to. Most commonly, we will use your personal data in the following circumstances: Where we need to perform the contract we are about to enter into or have entered into with you. Where it is necessary for our legitimate interests (or those of a third party) and your interests and fundamental rights do not override those interests. Where we need to comply with a legal or regulatory obligation.', order: 2 },
     { title: '4. Data Security', content: 'We have put in place appropriate security measures to prevent your personal data from being accidentally lost, used or accessed in an unauthorized way, altered or disclosed. In addition, we limit access to your personal data to those employees, agents, contractors and other third parties who have a business need to know.', order: 3 },
@@ -385,11 +385,11 @@ const defaultPrivacyPolicy: PrivacyPolicyContent = {
 const defaultTermsOfService: TermsContent = {
   lastUpdated: 'October 24, 2023',
   subtitle: 'Please read these terms carefully before using our services.',
-  contactEmail: 'legal@nabeel.agency',
+  contactEmail: 'hello@cometbrew.com',
   sections: [
     { title: '1. Agreement to Terms', content: 'By accessing our website and using our services, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site.', order: 0 },
-    { title: '2. Use License', content: 'Permission is granted to temporarily download one copy of the materials on Nabeel Agency\'s website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not: modify or copy the materials; use the materials for any commercial purpose; attempt to decompile or reverse engineer any software; remove any copyright or other proprietary notations.', order: 1 },
-    { title: '3. Disclaimer', content: 'The materials on Nabeel Agency\'s website are provided on an \'as is\' basis. Nabeel Agency makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.', order: 2 },
+    { title: '2. Use License', content: 'Permission is granted to temporarily download one copy of the materials on CometBrew\'s website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not: modify or copy the materials; use the materials for any commercial purpose; attempt to decompile or reverse engineer any software; remove any copyright or other proprietary notations.', order: 1 },
+    { title: '3. Disclaimer', content: 'The materials on CometBrew\'s website are provided on an \'as is\' basis. CometBrew makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.', order: 2 },
     { title: '4. Governing Law', content: 'These terms and conditions are governed by and construed in accordance with the laws of California and you irrevocably submit to the exclusive jurisdiction of the courts in that State or location.', order: 3 },
   ],
 };
@@ -540,7 +540,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [navLinks, setNavLinks] = useState<NavLinkItem[]>([]);
   const [footerSections, setFooterSections] = useState<FooterSectionItem[]>([]);
   const [footerBottom, setFooterBottom] = useState<FooterBottomContent>({
-    copyrightText: 'Nabeel Agency. All rights reserved.',
+    copyrightText: 'CometBrew. All rights reserved.',
     links: [
       { label: 'Privacy Policy', href: '/privacy',  order: 0, isActive: true, openInNewTab: false },
       { label: 'Terms',          href: '/terms',    order: 1, isActive: true, openInNewTab: false },

@@ -142,7 +142,7 @@ export const updateFooterSections = asyncHandler(async (req, res) => {
 // GET FOOTER BOTTOM (public)
 // =========================
 const DEFAULT_FOOTER_BOTTOM = {
-    copyrightText: 'Nabeel Agency. All rights reserved.',
+    copyrightText: 'CometBrew. All rights reserved.',
     links: [
         { label: 'Privacy Policy', href: '/privacy', order: 0, isActive: true, openInNewTab: false },
         { label: 'Terms',          href: '/terms',   order: 1, isActive: true, openInNewTab: false },

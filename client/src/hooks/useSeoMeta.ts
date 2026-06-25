@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { seoApi, SeoMetaEntry } from '../api/seo.api';
 
-const DEFAULT_TITLE = 'Nabeel Agency — Creative Digital Solutions';
+const DEFAULT_TITLE = 'CometBrew — Creative Digital Solutions';
 const DEFAULT_DESC  = 'Full-service digital agency delivering web, mobile, and branding solutions.';
 
 export function useSeoMeta(pageKey: string) {

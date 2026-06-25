@@ -134,7 +134,7 @@ export default function JobDetail() {
             
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                 <ShareWidget
-                  title={`Check out this ${job.jobTitle} role at Nabeel Agency`}
+                  title={`Check out this ${job.jobTitle} role at CometBrew`}
                   description={`I found this great job opportunity for a ${job.jobTitle} position.`}
                   open={shareOpen}
                   onOpenChange={setShareOpen}
