@@ -683,7 +683,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
 
   // Real-time CMS updates via public socket namespace (no auth required)
   useEffect(() => {
-    const socket = socketIO('/public', {
+    const SOCKET_BASE = (import.meta.env.VITE_SOCKET_URL as string) || window.location.origin;
+    const socket = socketIO(`${SOCKET_BASE}/public`, {
       path: '/socket.io',
       transports: ['polling', 'websocket'],
       reconnectionAttempts: 5,

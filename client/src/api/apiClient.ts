@@ -1,7 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
+const API_BASE = (import.meta.env.VITE_API_URL as string) ?? '';
+
 const apiClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: `${API_BASE}/api/v1`,
   withCredentials: true, // send HTTP-only cookies automatically
   headers: {
     'Content-Type': 'application/json',
@@ -44,7 +46,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.post('/api/v1/users/refresh-token', {}, { withCredentials: true });
+        await axios.post(`${API_BASE}/api/v1/users/refresh-token`, {}, { withCredentials: true });
         processQueue(null);
         return apiClient(originalRequest);
       } catch (refreshError) {
