@@ -1,16 +1,26 @@
 {
-  "name": "Nabeel Agency",
-  "short_name": "Nabeel",
-  "description": "Digital Agency — Web, Mobile & AI Solutions",
+  "name": "CometBrew",
+  "short_name": "CometBrew",
+  "description": "AI-driven development & award-winning design. We build products that scale.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#0a0515",
   "theme_color": "#7c3aed",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon"
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }
