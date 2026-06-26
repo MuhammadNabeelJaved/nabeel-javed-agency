@@ -6,7 +6,7 @@
  * Events from the server and calls the provided callbacks in real-time.
  */
 
-const BASE = '/api/v1/chatbot';
+const BASE = `${(import.meta.env.VITE_API_URL as string) ?? ''}/api/v1/chatbot`;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
