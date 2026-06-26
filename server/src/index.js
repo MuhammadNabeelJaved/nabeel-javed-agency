@@ -32,8 +32,13 @@ const PORT = process.env.PORT || 8000;
 const httpServer = http.createServer(app);
 
 // Initialise Socket.IO with the same CORS config as Express.
+const SOCKET_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
 const io = await initSocket(httpServer, {
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: SOCKET_ORIGINS,
     credentials: true,
 });
 
