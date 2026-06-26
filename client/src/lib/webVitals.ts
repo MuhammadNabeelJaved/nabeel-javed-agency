@@ -13,6 +13,7 @@ function logToConsole(metric: Metric): void {
 }
 
 function sendToBackend(metric: Metric): void {
+  const API_BASE = (import.meta.env.VITE_API_URL as string) ?? '';
   const body = JSON.stringify({
     name: metric.name,
     value: metric.value,
@@ -21,11 +22,11 @@ function sendToBackend(metric: Metric): void {
   try {
     if (navigator.sendBeacon) {
       navigator.sendBeacon(
-        '/api/v1/health/vitals',
+        `${API_BASE}/api/v1/health/vitals`,
         new Blob([body], { type: 'application/json' })
       );
     } else {
-      fetch('/api/v1/health/vitals', {
+      fetch(`${API_BASE}/api/v1/health/vitals`, {
         method: 'POST',
         body,
         headers: { 'Content-Type': 'application/json' },
