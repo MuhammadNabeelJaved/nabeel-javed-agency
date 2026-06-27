@@ -1,5 +1,7 @@
 import apiClient from './apiClient';
 
+const API_BASE = (import.meta.env.VITE_API_URL as string) ?? '';
+
 export interface AuthUser {
   _id: string;
   name: string;
@@ -41,23 +43,23 @@ export const authApi = {
   // OAuth — full-page browser navigations (not axios calls)
   // Kept for backwards-compat; defaults to login mode
   initiateGoogleOAuth: () => {
-    window.location.href = '/api/v1/users/auth/google?mode=login';
+    window.location.href = `${API_BASE}/api/v1/users/auth/google?mode=login`;
   },
   initiateGitHubOAuth: () => {
-    window.location.href = '/api/v1/users/auth/github?mode=login';
+    window.location.href = `${API_BASE}/api/v1/users/auth/github?mode=login`;
   },
 
   // Explicit login / signup variants
   initiateGoogleLogin: () => {
-    window.location.href = '/api/v1/users/auth/google?mode=login';
+    window.location.href = `${API_BASE}/api/v1/users/auth/google?mode=login`;
   },
   initiateGoogleSignup: () => {
-    window.location.href = '/api/v1/users/auth/google?mode=signup';
+    window.location.href = `${API_BASE}/api/v1/users/auth/google?mode=signup`;
   },
   initiateGitHubLogin: () => {
-    window.location.href = '/api/v1/users/auth/github?mode=login';
+    window.location.href = `${API_BASE}/api/v1/users/auth/github?mode=login`;
   },
   initiateGitHubSignup: () => {
-    window.location.href = '/api/v1/users/auth/github?mode=signup';
+    window.location.href = `${API_BASE}/api/v1/users/auth/github?mode=signup`;
   },
 };
