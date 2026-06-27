@@ -460,7 +460,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
             {(showText || true) && (
               <motion.div key="logo-link" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className={cn(!showText && 'lg:hidden')}>
                 <Link to="/" className="min-w-0">
-                  <img src="/Comet Brew Sidebar Logo.svg" alt="CometBrew Logo" className="h-12 w-auto" />
+                  <img src="/Comet Brew Sidebar Logo.svg" alt="CometBrew Logo" className="h-8 w-auto" />
                 </Link>
               </motion.div>
             )}

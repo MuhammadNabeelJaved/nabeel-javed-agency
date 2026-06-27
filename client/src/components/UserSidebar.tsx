@@ -335,7 +335,7 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
         <motion.div layout className={cn('h-16 sm:h-20 flex items-center border-b border-border/50 shrink-0 transition-all duration-300', showText ? 'px-3 lg:px-4 justify-between' : 'justify-center gap-2 px-2')}>
           <motion.div key="logo-link" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className={cn(!showText && 'lg:hidden')}>
             <Link to="/" className="min-w-0">
-              <img src="/Comet Brew Sidebar Logo.svg" alt="CometBrew Logo" className="h-12 w-auto" />
+              <img src="/Comet Brew Sidebar Logo.svg" alt="CometBrew Logo" className="h-8 w-auto" />
             </Link>
           </motion.div>
           {onToggleCollapse && (
