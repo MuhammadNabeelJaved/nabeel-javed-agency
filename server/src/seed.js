@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Database Seed Script
  * Run: node src/seed.js
  *
  * Populates the database with the original hardcoded content so it
  * renders correctly on the website via the CMS and API.
  *
- * Safe to re-run — uses upsert/replace logic, never duplicates.
+ * Safe to re-run â€” uses upsert/replace logic, never duplicates.
  */
 import 'dotenv/config';
 import mongoose from 'mongoose';
@@ -18,7 +18,7 @@ import User from './models/usersModels/User.model.js';
 import Resource from './models/usersModels/Resource.model.js';
 import JobPosting from './models/usersModels/Jobs.model.js';
 
-// ─── Hero Section ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Hero Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const heroData = {
   statusBadge: "Accepting New Projects for 2026",
@@ -32,10 +32,10 @@ const heroData = {
   isActive: true,
 };
 
-// ─── CMS Data ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ CMS Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const cmsData = {
-  logoUrl: "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png",
+  logoUrl: "/Comet Brew.svg",
 
   techStack: [
     {
@@ -134,7 +134,7 @@ const cmsData = {
       { title: "24/7 Support", description: "Round-the-clock support so you're never left stranded.", iconName: "Clock", order: 1 },
       { title: "Top Security", description: "Enterprise-grade protection with SSL, audits & compliance.", iconName: "Shield", order: 2 },
       { title: "Expert Team", description: "Top 1% of global talent handpicked for your project.", iconName: "Users", order: 3 },
-      { title: "Fast Delivery", description: "2x faster than industry average — without cutting corners.", iconName: "Zap", order: 4 },
+      { title: "Fast Delivery", description: "2x faster than industry average â€” without cutting corners.", iconName: "Zap", order: 4 },
       { title: "Scalable Architecture", description: "Built to grow from MVP to millions of users seamlessly.", iconName: "Rocket", order: 5 },
       { title: "Modern Tech Stack", description: "Always using the latest, battle-tested technologies.", iconName: "Code", order: 6 },
       { title: "Transparent Process", description: "Real-time updates, weekly calls, and full visibility.", iconName: "Eye", order: 7 },
@@ -146,7 +146,7 @@ const cmsData = {
     address: "123 Tech Boulevard\nSan Francisco, CA 94107\nUnited States",
     email: "hello@cometbrew.com",
     phone: "+1 (555) 123-4567",
-    businessHours: "Monday – Friday\n9:00 AM – 6:00 PM PST",
+    businessHours: "Monday â€“ Friday\n9:00 AM â€“ 6:00 PM PST",
   },
 
   socialLinks: {
@@ -202,7 +202,7 @@ const cmsData = {
   ],
 };
 
-// ─── Services ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const servicesData = [
   {
@@ -214,11 +214,11 @@ const servicesData = [
     isActive: true,
     isFeatured: true,
     order: 1,
-    deliveryTime: "4–8 weeks",
+    deliveryTime: "4â€“8 weeks",
     heroSection: {
       badge: "Web Development",
       heading: "Web Applications That Scale",
-      subheading: "From idea to production — fast, clean, and built to last.",
+      subheading: "From idea to production â€” fast, clean, and built to last.",
       ctaButton: { text: "Start Your Project", link: "/contact" },
       secondaryButton: { text: "View Portfolio", link: "/portfolio" },
     },
@@ -230,7 +230,7 @@ const servicesData = [
     ],
     features: [
       { icon: "Code2", title: "Custom Web Apps", description: "Bespoke applications built exactly to your requirements, not templated solutions.", category: "development" },
-      { icon: "Zap", title: "Performance Optimized", description: "Sub-second load times with Lighthouse scores above 95 — for real.", category: "performance" },
+      { icon: "Zap", title: "Performance Optimized", description: "Sub-second load times with Lighthouse scores above 95 â€” for real.", category: "performance" },
       { icon: "Smartphone", title: "Fully Responsive", description: "Pixel-perfect experiences across every device, screen, and browser.", category: "design" },
       { icon: "Lock", title: "Secure by Default", description: "OWASP best practices, SSL, CSRF protection, and security headers out of the box.", category: "security" },
       { icon: "Database", title: "Scalable Architecture", description: "Architected to handle traffic spikes and grow alongside your business.", category: "infrastructure" },
@@ -271,7 +271,7 @@ const servicesData = [
       },
     ],
     faqs: [
-      { question: "How long does a typical web project take?", answer: "Most projects take 4–8 weeks depending on complexity. We'll give you an exact timeline after the discovery call.", order: 1 },
+      { question: "How long does a typical web project take?", answer: "Most projects take 4â€“8 weeks depending on complexity. We'll give you an exact timeline after the discovery call.", order: 1 },
       { question: "Do you provide hosting and maintenance?", answer: "Yes, we can set up hosting on AWS, Vercel, or any platform you prefer, and offer ongoing maintenance packages.", order: 2 },
       { question: "Can you work with our existing codebase?", answer: "Absolutely. We regularly take over legacy codebases, audit them, and modernize or extend them.", order: 3 },
     ],
@@ -292,23 +292,23 @@ const servicesData = [
     isActive: true,
     isFeatured: true,
     order: 2,
-    deliveryTime: "8–16 weeks",
+    deliveryTime: "8â€“16 weeks",
     heroSection: {
       badge: "Mobile Development",
       heading: "Apps That Users Love",
-      subheading: "iOS, Android, and everything in between — shipped fast.",
+      subheading: "iOS, Android, and everything in between â€” shipped fast.",
       ctaButton: { text: "Start Your App", link: "/contact" },
       secondaryButton: { text: "See Our Apps", link: "/portfolio" },
     },
     metrics: [
       { value: "80+", label: "Apps Launched", icon: "Smartphone" },
-      { value: "4.8★", label: "Avg. App Store Rating", icon: "Star" },
+      { value: "4.8â˜…", label: "Avg. App Store Rating", icon: "Star" },
       { value: "2M+", label: "Total Downloads", icon: "Download" },
       { value: "60%", label: "Avg. Retention Lift", icon: "TrendingUp" },
     ],
     features: [
-      { icon: "Smartphone", title: "Cross-Platform", description: "One codebase for iOS and Android using React Native — 95% code sharing, 100% native feel.", category: "development" },
-      { icon: "Zap", title: "Smooth Performance", description: "60fps animations and instant interactions — no compromise on performance.", category: "performance" },
+      { icon: "Smartphone", title: "Cross-Platform", description: "One codebase for iOS and Android using React Native â€” 95% code sharing, 100% native feel.", category: "development" },
+      { icon: "Zap", title: "Smooth Performance", description: "60fps animations and instant interactions â€” no compromise on performance.", category: "performance" },
       { icon: "Bell", title: "Push Notifications", description: "Smart, targeted push notifications to re-engage users at the right moment.", category: "engagement" },
       { icon: "WifiOff", title: "Offline Support", description: "Full offline-first architecture so your app works even without connectivity.", category: "reliability" },
       { icon: "Lock", title: "Secure Auth", description: "Biometric login, OAuth, and secure token storage built into every app.", category: "security" },
@@ -355,7 +355,7 @@ const servicesData = [
     ctaSection: {
       heading: "Have an app idea?",
       subheading: "Let's turn it into reality.",
-      description: "From concept to the App Store — we'll guide you every step of the way.",
+      description: "From concept to the App Store â€” we'll guide you every step of the way.",
       button: { text: "Book a Free Call", link: "/contact" },
       contactEmail: "hello@cometbrew.com",
     },
@@ -363,13 +363,13 @@ const servicesData = [
   {
     title: "E-Commerce Solutions",
     slug: "ecommerce",
-    subtitle: "Online stores built to sell — beautifully and efficiently",
+    subtitle: "Online stores built to sell â€” beautifully and efficiently",
     description: "We build high-converting online stores that are fast, secure, and easy to manage. Whether you need a Shopify customization, a headless commerce build, or a fully custom platform, we deliver results.",
     category: "ecommerce",
     isActive: true,
     isFeatured: false,
     order: 3,
-    deliveryTime: "6–12 weeks",
+    deliveryTime: "6â€“12 weeks",
     heroSection: {
       badge: "E-Commerce",
       heading: "Online Stores That Convert",
@@ -425,8 +425,8 @@ const servicesData = [
       },
     ],
     faqs: [
-      { question: "Shopify vs custom build — which is right for me?", answer: "Shopify is great for standard stores launching quickly. Custom builds are better for unique requirements, complex integrations, or when you need full control.", order: 1 },
-      { question: "Can you migrate my existing store?", answer: "Yes, we handle full migrations including products, customers, orders, and SEO redirects — with zero downtime.", order: 2 },
+      { question: "Shopify vs custom build â€” which is right for me?", answer: "Shopify is great for standard stores launching quickly. Custom builds are better for unique requirements, complex integrations, or when you need full control.", order: 1 },
+      { question: "Can you migrate my existing store?", answer: "Yes, we handle full migrations including products, customers, orders, and SEO redirects â€” with zero downtime.", order: 2 },
       { question: "Do you offer ongoing maintenance?", answer: "Yes, we offer monthly maintenance packages covering updates, security patches, and feature additions.", order: 3 },
     ],
     ctaSection: {
@@ -441,12 +441,12 @@ const servicesData = [
     title: "UI/UX Design",
     slug: "design",
     subtitle: "Interfaces that are beautiful, intuitive, and conversion-focused",
-    description: "Our designers craft interfaces that don't just look stunning — they guide users effortlessly towards their goals. From brand identity to interactive prototypes, we bridge the gap between aesthetics and performance.",
+    description: "Our designers craft interfaces that don't just look stunning â€” they guide users effortlessly towards their goals. From brand identity to interactive prototypes, we bridge the gap between aesthetics and performance.",
     category: "design",
     isActive: true,
     isFeatured: false,
     order: 4,
-    deliveryTime: "2–6 weeks",
+    deliveryTime: "2â€“6 weeks",
     heroSection: {
       badge: "UI/UX Design",
       heading: "Design That Converts",
@@ -522,7 +522,7 @@ const servicesData = [
     isActive: true,
     isFeatured: false,
     order: 5,
-    deliveryTime: "1–4 weeks",
+    deliveryTime: "1â€“4 weeks",
     heroSection: {
       badge: "Consulting",
       heading: "Strategy That Drives Growth",
@@ -537,7 +537,7 @@ const servicesData = [
       { value: "100%", label: "Client Satisfaction", icon: "Star" },
     ],
     features: [
-      { icon: "Map", title: "Technology Roadmap", description: "A clear 12–24 month plan for your technology investments with prioritized initiatives.", category: "strategy" },
+      { icon: "Map", title: "Technology Roadmap", description: "A clear 12â€“24 month plan for your technology investments with prioritized initiatives.", category: "strategy" },
       { icon: "Cpu", title: "AI Integration Strategy", description: "Identify where AI can reduce costs, increase revenue, or create competitive moats.", category: "ai" },
       { icon: "RefreshCw", title: "Digital Transformation", description: "End-to-end transformation planning from legacy systems to modern cloud architecture.", category: "transformation" },
       { icon: "DollarSign", title: "Tech Audit & Cost Optimization", description: "Deep dive into your existing tech stack to eliminate waste and improve efficiency.", category: "audit" },
@@ -576,7 +576,7 @@ const servicesData = [
       },
     ],
     faqs: [
-      { question: "What makes your consulting different?", answer: "We're builders first, consultants second. Every recommendation comes from hands-on experience shipping products — not just theoretical frameworks.", order: 1 },
+      { question: "What makes your consulting different?", answer: "We're builders first, consultants second. Every recommendation comes from hands-on experience shipping products â€” not just theoretical frameworks.", order: 1 },
       { question: "Do you only work with tech startups?", answer: "No. We work with startups, SMEs, and enterprises across all industries that are serious about digital transformation.", order: 2 },
       { question: "Can consulting lead to a development engagement?", answer: "Yes, and it often does. Many clients start with consulting to validate their approach before hiring us to build.", order: 3 },
     ],
@@ -590,42 +590,42 @@ const servicesData = [
   },
 ];
 
-// ─── Seed Functions ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Seed Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function seedHero() {
   await HomePage.deleteMany({});
   await HomePage.create(heroData);
-  console.log('✓ HomePageHero seeded');
+  console.log('âœ“ HomePageHero seeded');
 }
 
 async function seedCMS() {
-  // CMS is a singleton — delete existing and recreate
+  // CMS is a singleton â€” delete existing and recreate
   await CMS.deleteMany({});
   await CMS.create(cmsData);
-  console.log('✓ CMS seeded (techStack, processSteps, whyChooseUs, contactInfo, socialLinks, testimonials)');
+  console.log('âœ“ CMS seeded (techStack, processSteps, whyChooseUs, contactInfo, socialLinks, testimonials)');
 }
 
 async function seedServices() {
   // Remove existing services and insert fresh
   await Service.deleteMany({});
   await Service.insertMany(servicesData);
-  console.log(`✓ Services seeded (${servicesData.length} services)`);
+  console.log(`âœ“ Services seeded (${servicesData.length} services)`);
 }
 
-// ─── Tasks ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Tasks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function seedTasks() {
   // Only seed if no tasks exist yet
   const existing = await Task.countDocuments();
   if (existing > 0) {
-    console.log(`✓ Tasks already seeded (${existing} found), skipping`);
+    console.log(`âœ“ Tasks already seeded (${existing} found), skipping`);
     return;
   }
 
   // Use first admin user as createdBy (required field)
   const adminUser = await User.findOne({ role: 'admin' }).lean();
   if (!adminUser) {
-    console.log('⚠ No admin user found — skipping task seed. Create an admin first.');
+    console.log('âš  No admin user found â€” skipping task seed. Create an admin first.');
     return;
   }
 
@@ -634,33 +634,33 @@ async function seedTasks() {
 
   const dummyTasks = [
     { title: 'Fix Mobile Navigation', description: 'Fix the broken hamburger menu on mobile viewport (< 768px). Menu closes unexpectedly on iOS Safari.', status: 'todo', priority: 'high', dueDate: d(0), tags: ['bug', 'mobile'], createdBy: adminUser._id },
-    { title: 'Research Competitors', description: 'Analyze top 5 competitor websites — identify gaps in our service offering and pricing.', status: 'todo', priority: 'low', dueDate: d(3), tags: ['research'], createdBy: adminUser._id },
+    { title: 'Research Competitors', description: 'Analyze top 5 competitor websites â€” identify gaps in our service offering and pricing.', status: 'todo', priority: 'low', dueDate: d(3), tags: ['research'], createdBy: adminUser._id },
     { title: 'Update README & Onboarding Docs', description: 'Rewrite setup guide for new team members. Include env variables and local dev steps.', status: 'todo', priority: 'medium', dueDate: d(5), tags: ['docs'], createdBy: adminUser._id },
     { title: 'Homepage Hero Animation', description: 'Implement scroll-triggered fade-in + stagger animations for the hero section text and CTA buttons.', status: 'in_progress', priority: 'high', dueDate: d(0), tags: ['animation', 'frontend'], createdBy: adminUser._id },
     { title: 'Client Feedback Meeting', description: 'Prepare slide deck and live demo for FinTech Corp quarterly review. Focus on dashboard KPIs.', status: 'in_progress', priority: 'medium', dueDate: d(1), tags: ['meeting', 'client'], createdBy: adminUser._id },
     { title: 'Dark Mode Token Audit', description: 'Review all CSS custom properties and ensure dark mode variants are correctly defined across all pages.', status: 'in_progress', priority: 'medium', dueDate: d(4), tags: ['css', 'design-system'], createdBy: adminUser._id },
     { title: 'Update API Documentation', description: 'Sync Postman collection with latest endpoints. Add request/response examples for all v1 routes.', status: 'in_review', priority: 'low', dueDate: d(2), tags: ['docs', 'api'], createdBy: adminUser._id },
     { title: 'Setup Project Repo', description: 'Initialized GitHub repo with branch protection rules, CI/CD via GitHub Actions, and ESLint config.', status: 'completed', priority: 'high', tags: ['devops'], createdBy: adminUser._id },
-    { title: 'Design System V1', description: 'Created base Figma component library — colors, typography, spacing tokens, and core UI components.', status: 'completed', priority: 'high', tags: ['design', 'figma'], createdBy: adminUser._id },
-    { title: 'Performance Audit — Lighthouse', description: 'Ran Lighthouse on all public pages. Identified 3 CLS issues and 2 LCP bottlenecks to fix.', status: 'completed', priority: 'medium', tags: ['performance'], createdBy: adminUser._id },
+    { title: 'Design System V1', description: 'Created base Figma component library â€” colors, typography, spacing tokens, and core UI components.', status: 'completed', priority: 'high', tags: ['design', 'figma'], createdBy: adminUser._id },
+    { title: 'Performance Audit â€” Lighthouse', description: 'Ran Lighthouse on all public pages. Identified 3 CLS issues and 2 LCP bottlenecks to fix.', status: 'completed', priority: 'medium', tags: ['performance'], createdBy: adminUser._id },
   ];
 
   await Task.insertMany(dummyTasks);
-  console.log(`✓ Tasks seeded (${dummyTasks.length} tasks across 4 Kanban columns)`);
+  console.log(`âœ“ Tasks seeded (${dummyTasks.length} tasks across 4 Kanban columns)`);
 }
 
-// ─── Resources ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Resources â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function seedResources() {
   const existing = await Resource.countDocuments();
   if (existing > 0) {
-    console.log(`✓ Resources already seeded (${existing} found), skipping`);
+    console.log(`âœ“ Resources already seeded (${existing} found), skipping`);
     return;
   }
 
   const adminUser = await User.findOne({ role: 'admin' }).lean();
   if (!adminUser) {
-    console.log('⚠ No admin user found — skipping resource seed.');
+    console.log('âš  No admin user found â€” skipping resource seed.');
     return;
   }
 
@@ -748,21 +748,21 @@ async function seedResources() {
   ];
 
   await Resource.insertMany(dummyResources);
-  console.log(`✓ Resources seeded (${dummyResources.length} dummy files)`);
+  console.log(`âœ“ Resources seeded (${dummyResources.length} dummy files)`);
 }
 
-// ─── Jobs ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Jobs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function seedJobs() {
   const existing = await JobPosting.countDocuments();
   if (existing > 0) {
-    console.log(`⏭  Jobs already seeded (${existing} found), skipping.`);
+    console.log(`â­  Jobs already seeded (${existing} found), skipping.`);
     return;
   }
 
   const adminUser = await User.findOne({ role: 'admin' }).lean();
   if (!adminUser) {
-    console.warn('⚠  No admin user found — skipping job seed. Create an admin account first.');
+    console.warn('âš   No admin user found â€” skipping job seed. Create an admin account first.');
     return;
   }
 
@@ -792,7 +792,7 @@ async function seedJobs() {
         'Excellent communication skills in English',
       ],
       benefits: [
-        'Fully remote — work from anywhere',
+        'Fully remote â€” work from anywhere',
         'Competitive USD salary',
         'Flexible working hours',
         'Annual learning & development budget',
@@ -828,7 +828,7 @@ async function seedJobs() {
         'User research and testing experience',
       ],
       benefits: [
-        'Fully remote — work from anywhere',
+        'Fully remote â€” work from anywhere',
         'Competitive USD salary',
         'Flexible working hours',
         'Annual conference & workshop budget',
@@ -863,7 +863,7 @@ async function seedJobs() {
         'Excellent written English for content creation',
       ],
       benefits: [
-        'Fully remote — work from anywhere',
+        'Fully remote â€” work from anywhere',
         'Competitive USD salary',
         'Performance bonus structure',
         'Annual learning budget',
@@ -910,13 +910,13 @@ async function seedJobs() {
   ];
 
   await JobPosting.insertMany(jobs);
-  console.log(`✓ Jobs seeded (${jobs.length} positions)`);
+  console.log(`âœ“ Jobs seeded (${jobs.length} positions)`);
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function main() {
-  console.log('\n🌱 Starting database seed...\n');
+  console.log('\nðŸŒ± Starting database seed...\n');
   await connectDB();
 
   await seedHero();
@@ -926,13 +926,13 @@ async function main() {
   await seedResources();
   await seedJobs();
 
-  console.log('\n✅ Seed complete! All data is now live in the database.\n');
+  console.log('\nâœ… Seed complete! All data is now live in the database.\n');
   await mongoose.disconnect();
   process.exit(0);
 }
 
 main().catch(err => {
-  console.error('❌ Seed failed:', err);
+  console.error('âŒ Seed failed:', err);
   mongoose.disconnect();
   process.exit(1);
 });

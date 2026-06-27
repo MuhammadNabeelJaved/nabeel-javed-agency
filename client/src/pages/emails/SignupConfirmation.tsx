@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
@@ -13,7 +13,7 @@ export default function SignupConfirmation() {
         {/* Email Header */}
         <div className="bg-neutral-50 dark:bg-neutral-900/50 p-6 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
            <img 
-            src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png" 
+            src="/Comet Brew.svg" 
             alt="CometBrew Logo" 
             className="h-8 w-auto dark:invert" 
           />
@@ -57,7 +57,7 @@ export default function SignupConfirmation() {
         {/* Email Footer */}
         <div className="bg-neutral-50 dark:bg-neutral-900/50 p-6 border-t border-neutral-100 dark:border-neutral-800 text-center">
           <p className="text-xs text-neutral-400 mb-2">
-            © 2024 CometBrew. All rights reserved.
+            Â© 2024 CometBrew. All rights reserved.
           </p>
           <div className="flex justify-center gap-4 text-xs text-neutral-400">
             <a href="#" className="hover:text-neutral-600 dark:hover:text-neutral-200">Unsubscribe</a>

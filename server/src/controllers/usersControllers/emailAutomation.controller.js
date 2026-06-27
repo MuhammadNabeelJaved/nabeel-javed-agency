@@ -1,4 +1,4 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Anthropic from '@anthropic-ai/sdk';
@@ -17,7 +17,7 @@ const AUTOMATION_TEMPLATES = [
         name: 'Welcome Email',
         description: 'Sent when a new user verifies their email and account is ready.',
         bestFor: 'welcome_user',
-        suggestedSubject: 'Welcome to CometBrew — your account is ready',
+        suggestedSubject: 'Welcome to CometBrew â€” your account is ready',
         placeholders: ['{{NAME}}', '{{EMAIL}}', '{{DASHBOARD_URL}}'],
     },
     {
@@ -25,7 +25,7 @@ const AUTOMATION_TEMPLATES = [
         name: 'Project Received',
         description: 'Confirms receipt of a new project request with full project details.',
         bestFor: 'project_approved',
-        suggestedSubject: 'Project "{{PROJECT_NAME}}" received — we\'re on it',
+        suggestedSubject: 'Project "{{PROJECT_NAME}}" received â€” we\'re on it',
         placeholders: ['{{NAME}}', '{{PROJECT_NAME}}', '{{PROJECT_TYPE}}', '{{BUDGET_RANGE}}', '{{DEADLINE}}', '{{PROJECT_INITIAL}}', '{{DASHBOARD_URL}}'],
     },
     {
@@ -49,7 +49,7 @@ const AUTOMATION_TEMPLATES = [
         name: 'Project Not Accepted',
         description: 'Informs the client their project request could not be accepted.',
         bestFor: 'project_rejected',
-        suggestedSubject: 'Update on your project request — {{PROJECT_NAME}}',
+        suggestedSubject: 'Update on your project request â€” {{PROJECT_NAME}}',
         placeholders: ['{{NAME}}', '{{PROJECT_NAME}}', '{{PROJECT_TYPE}}', '{{DASHBOARD_URL}}', '{{CLIENT_URL}}'],
     },
     {
@@ -65,7 +65,7 @@ const AUTOMATION_TEMPLATES = [
         name: 'Milestone Approved',
         description: 'Notifies the team that the client approved a milestone.',
         bestFor: 'milestone_approved',
-        suggestedSubject: 'Milestone "{{MILESTONE_TITLE}}" approved — great work!',
+        suggestedSubject: 'Milestone "{{MILESTONE_TITLE}}" approved â€” great work!',
         placeholders: ['{{NAME}}', '{{MILESTONE_TITLE}}', '{{PROJECT_NAME}}', '{{DASHBOARD_URL}}'],
     },
     {
@@ -73,7 +73,7 @@ const AUTOMATION_TEMPLATES = [
         name: 'Payment Reminder',
         description: 'Reminds the client about an outstanding payment on their project.',
         bestFor: 'payment_reminder',
-        suggestedSubject: 'Payment reminder for {{PROJECT_NAME}} — ${{DUE_AMOUNT}} due',
+        suggestedSubject: 'Payment reminder for {{PROJECT_NAME}} â€” ${{DUE_AMOUNT}} due',
         placeholders: ['{{NAME}}', '{{PROJECT_NAME}}', '{{TOTAL_COST}}', '{{PAID_AMOUNT}}', '{{DUE_AMOUNT}}', '{{DASHBOARD_URL}}'],
     },
     {
@@ -81,7 +81,7 @@ const AUTOMATION_TEMPLATES = [
         name: 'We Miss You',
         description: 'Re-engages inactive clients who haven\'t logged in for a while.',
         bestFor: 'inactivity_followup',
-        suggestedSubject: 'We miss you, {{NAME}} — your dashboard is waiting',
+        suggestedSubject: 'We miss you, {{NAME}} â€” your dashboard is waiting',
         placeholders: ['{{NAME}}', '{{DASHBOARD_URL}}', '{{CLIENT_URL}}'],
     },
 ];
@@ -156,7 +156,7 @@ export const getTemplates = asyncHandler(async (req, res) => {
     const overrideByFile = Object.fromEntries(overrides.filter(o => o.originalFile).map(o => [o.originalFile, o]));
     const customTemplates = overrides.filter(o => o.isCustom);
 
-    // Built-in templates — use DB override html if present
+    // Built-in templates â€” use DB override html if present
     const builtIn = AUTOMATION_TEMPLATES.map(t => {
         let html = '';
         try { html = fs.readFileSync(path.join(TEMPLATES_DIR, t.file), 'utf-8'); } catch { /* skip */ }
@@ -299,15 +299,15 @@ ${refTemplate}
 
 ` : ''}STRICT RULES:
 1. Use IDENTICAL structure: #f5f5f5 outer bg, #ffffff card, border-radius:16px, box-shadow
-2. Logo: <img src="https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/uploads/216147d0-06c1-4dee-8a5a-f933c6ef8556/1766429553723-26c2f3fe/N_Logo-01.png" height="30">
-3. All CSS must be inline — no external stylesheets, only a small <style> block for media queries
+2. Logo: <img src="https://www.cometbrew.com/Comet%20Brew.svg" height="30">
+3. All CSS must be inline â€” no external stylesheets, only a small <style> block for media queries
 4. Must be responsive with @media max-width:600px
-5. Use {{PLACEHOLDER}} tokens — pick appropriate ones: {{NAME}}, {{PROJECT_NAME}}, {{DASHBOARD_URL}}, {{CLIENT_URL}}, {{EMAIL}}, {{MILESTONE_TITLE}}, {{FEEDBACK_URL}}, {{DUE_AMOUNT}} etc.
+5. Use {{PLACEHOLDER}} tokens â€” pick appropriate ones: {{NAME}}, {{PROJECT_NAME}}, {{DASHBOARD_URL}}, {{CLIENT_URL}}, {{EMAIL}}, {{MILESTONE_TITLE}}, {{FEEDBACK_URL}}, {{DUE_AMOUNT}} etc.
 6. Include a colored top accent bar (4px height gradient) matching the email's theme color
 7. Include an icon circle (emoji inside colored circle) matching the theme
-8. Footer: © 2025 CometBrew. All rights reserved.
+8. Footer: Â© 2025 CometBrew. All rights reserved.
 9. CTA button(s): bold, rounded (border-radius:10px), matches theme color
-10. Return ONLY the complete HTML — no markdown, no explanations`;
+10. Return ONLY the complete HTML â€” no markdown, no explanations`;
 
     const anthropic = new Anthropic({ apiKey });
     const message = await anthropic.messages.create({
