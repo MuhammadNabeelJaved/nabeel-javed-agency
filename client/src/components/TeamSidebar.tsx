@@ -93,7 +93,7 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
     return () => clearInterval(id);
   }, []);
 
-  const showText = !collapsed;
+  const showText = isOpen || !collapsed;
   const visibleLinks = DEFAULT_LINKS.filter(l => isVisible(l.path));
 
   /* â”€â”€ inline edit helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */

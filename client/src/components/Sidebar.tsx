@@ -105,7 +105,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
       .catch(() => {});
   }, []);
 
-  const showText = !collapsed;
+  const showText = isOpen || !collapsed;
 
   /* â”€â”€ inline edit helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const startEdit = (type: 'cat' | 'link', key: string, current: string, e: React.MouseEvent) => {

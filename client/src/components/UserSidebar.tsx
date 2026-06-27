@@ -85,7 +85,7 @@ export function UserSidebar({ isOpen = false, onClose, collapsed = false, onTogg
   const userPhoto = user?.photo || user?.avatar;
   const userName = user?.name?.trim() || 'User';
 
-  const showText     = !collapsed;
+  const showText     = isOpen || !collapsed;
   const visibleLinks = DEFAULT_LINKS.filter(l => isVisible(l.path));
 
   /* â”€â”€ inline edit helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
