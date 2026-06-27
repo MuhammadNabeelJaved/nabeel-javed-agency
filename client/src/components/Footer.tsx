@@ -141,23 +141,12 @@ export function Footer() {
           
           {/* Brand Column */}
           <div className="sm:col-span-2 md:col-span-4 space-y-6">
-            <Link to="/" className="flex items-center gap-3 group mb-2">
-              <div className="relative">
-                <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <img 
-                  src="/Comet Brew.svg"
-                  alt="CometBrew Logo"
-                  className="h-12 w-auto relative z-10 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3"
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-black text-3xl tracking-tighter leading-none text-foreground">
-                  COMET
-                </span>
-                <span className="text-xs font-bold tracking-[0.2em] uppercase text-primary group-hover:tracking-[0.3em] transition-all duration-300">
-                  Brew
-                </span>
-              </div>
+            <Link to="/" className="inline-block mb-2">
+              <img
+                src="/Comet Brew.svg"
+                alt="CometBrew Logo"
+                className="h-12 w-auto"
+              />
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">
               {t('footer.description')}
