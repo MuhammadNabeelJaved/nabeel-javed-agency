@@ -97,8 +97,8 @@ export function UserDashboardLayout() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            {/* Refresh data */}
-            <div className="relative group">
+            {/* Refresh data — hidden on mobile */}
+            <div className="relative group hidden sm:block">
               <motion.button
                 onClick={handleRefresh}
                 whileHover={{ scale: 1.08 }}
@@ -145,8 +145,8 @@ export function UserDashboardLayout() {
               <span className="text-sm font-medium">Support Chat</span>
             </motion.button>
 
-            {/* Go to Website */}
-            <div className="relative group">
+            {/* Go to Website — hidden on mobile */}
+            <div className="relative group hidden sm:block">
               <motion.button
                 onClick={() => navigate('/')}
                 whileHover={{ scale: 1.08 }}
