@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Team Dashboard Sidebar
  *
  * Features:
@@ -96,7 +96,7 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
   const showText = !collapsed;
   const visibleLinks = DEFAULT_LINKS.filter(l => isVisible(l.path));
 
-  /* ── inline edit helpers ─────────────────────────────────────────────── */
+  /* â”€â”€ inline edit helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const startEdit = (type: 'cat' | 'link', key: string, current: string, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     setEditing({ type, key, value: current });
@@ -109,7 +109,7 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
   };
   const cancelEdit = () => setEditing(null);
 
-  /* ── drag helpers ────────────────────────────────────────────────────── */
+  /* â”€â”€ drag helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const clearDrag = () => { dragSrc.current = null; setDragType(null); setItemDrop(null); setCatDrop(null); };
 
   const onItemDragStart  = (path: string)   => { dragSrc.current = { type: 'item', path };   setDragType('item'); };
@@ -138,7 +138,7 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
     clearDrag();
   };
 
-  /* ── render link ─────────────────────────────────────────────────────── */
+  /* â”€â”€ render link â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const renderLink = (link: SidebarLinkDef, catKey: string) => {
     const Icon        = link.icon;
     const isActive    = link.path === '/team'
@@ -226,7 +226,7 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
     );
   };
 
-  /* ── render category ─────────────────────────────────────────────────── */
+  /* â”€â”€ render category â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const renderCategory = (catKey: string) => {
     const catDef     = CATEGORIES.find(c => c.key === catKey);
     if (!catDef) return null;
@@ -348,7 +348,7 @@ export function TeamSidebar({ isOpen = false, onClose, collapsed = false, onTogg
         <motion.div layout className={cn('h-16 sm:h-20 flex items-center border-b border-border/50 shrink-0', showText ? 'px-3 lg:px-4 justify-between' : 'justify-center px-3')}>
           <motion.div key="logo-link" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} className={cn(!showText && 'lg:hidden')}>
             <Link to="/" className="min-w-0">
-              <img src="/Comet Brew.svg" alt="CometBrew Logo" className="h-12 w-auto" />
+              <img src="/Comet Brew Sidebar Logo.svg" alt="CometBrew Logo" className="h-12 w-auto" />
             </Link>
           </motion.div>
 

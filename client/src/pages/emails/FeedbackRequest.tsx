@@ -14,7 +14,7 @@ export default function FeedbackRequest() {
       >
         <div className="bg-neutral-50 dark:bg-neutral-900/50 p-6 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
            <img 
-            src="/Comet Brew.svg" 
+            src="/Comet Brew Sidebar Logo.svg" 
             alt="CometBrew Logo" 
             className="h-8 w-auto dark:invert" 
           />

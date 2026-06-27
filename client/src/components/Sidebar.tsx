@@ -1,5 +1,5 @@
-/**
- * Dashboard Sidebar — Admin
+﻿/**
+ * Dashboard Sidebar â€” Admin
  *
  * Features:
  *  - Sidebar collapse/expand (persisted)
@@ -107,7 +107,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
 
   const showText = !collapsed;
 
-  /* ── inline edit helpers ─────────────────────────────────────────────── */
+  /* â”€â”€ inline edit helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const startEdit = (type: 'cat' | 'link', key: string, current: string, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     setEditing({ type, key, value: current });
@@ -120,7 +120,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
   };
   const cancelEdit = () => setEditing(null);
 
-  /* ── drag helpers ────────────────────────────────────────────────────── */
+  /* â”€â”€ drag helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const clearDrag = () => {
     dragSrc.current = null;
     setDragType(null); setItemDrop(null); setCatDrop(null);
@@ -158,7 +158,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
     clearDrag();
   };
 
-  /* ── render a single nav link ────────────────────────────────────────── */
+  /* â”€â”€ render a single nav link â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const renderLink = (link: SidebarLinkDef, catKey: string) => {
     const Icon       = link.icon;
     const isActive   = link.path === '/admin'
@@ -190,7 +190,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
           </div>
         )}
 
-        {/* Editing mode — replace link with input */}
+        {/* Editing mode â€” replace link with input */}
         {isEditing ? (
           <div className="relative flex items-center gap-3 py-2 rounded-xl px-3 lg:pl-5 bg-accent/50 border border-primary/30">
             <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -284,7 +284,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
     );
   };
 
-  /* ── render a category section ───────────────────────────────────────── */
+  /* â”€â”€ render a category section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const renderCategory = (catKey: string) => {
     const catDef     = CATEGORIES.find(c => c.key === catKey);
     if (!catDef) return null;
@@ -297,7 +297,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
     const isEditCat  = editing?.type === 'cat' && editing.key === catKey;
     const isMain     = catKey === 'main';
 
-    // For 'main' category — no header, just items
+    // For 'main' category â€” no header, just items
     if (isMain) {
       return (
         <div key="main" className="space-y-0.5">
@@ -309,7 +309,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
     return (
       <div key={catKey} className="mt-2">
 
-        {/* Category header — expanded desktop only */}
+        {/* Category header â€” expanded desktop only */}
         <AnimatePresence initial={false}>
           {showText && (
             <motion.div
@@ -460,7 +460,7 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
             {(showText || true) && (
               <motion.div key="logo-link" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className={cn(!showText && 'lg:hidden')}>
                 <Link to="/" className="min-w-0">
-                  <img src="/Comet Brew.svg" alt="CometBrew Logo" className="h-12 w-auto" />
+                  <img src="/Comet Brew Sidebar Logo.svg" alt="CometBrew Logo" className="h-12 w-auto" />
                 </Link>
               </motion.div>
             )}
