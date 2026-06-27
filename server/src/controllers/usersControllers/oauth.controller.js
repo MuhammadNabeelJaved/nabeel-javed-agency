@@ -14,10 +14,10 @@ import { scheduleInactivityFollowup } from "../../utils/emailAutomationService.j
 const COOKIE_OPTIONS = {
     httpOnly: true,
     secure:   process.env.NODE_ENV === "production",
-    // 'Lax' is required for OAuth callbacks: the browser arrives at our callback
-    // URL via a cross-origin redirect from Google/GitHub, so 'Strict' cookies
-    // would be silently dropped.
-    sameSite: "Lax",
+    // Production: frontend (cometbrew.com) and backend (onrender.com) are cross-domain.
+    // SameSite: "None" + Secure: true is required so the browser sends cookies with
+    // cross-origin withCredentials Axios requests. Dev uses "Lax" (same-origin proxy).
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
 };
 
 /**

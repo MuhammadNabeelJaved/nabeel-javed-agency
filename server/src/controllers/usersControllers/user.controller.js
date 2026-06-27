@@ -39,16 +39,19 @@ import { fireAutomation, scheduleInactivityFollowup } from "../../utils/emailAut
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
     const secure = process.env.NODE_ENV === "production";
+    // Cross-domain production setup (cometbrew.com → onrender.com) requires
+    // SameSite: "None" + Secure so the browser sends cookies on withCredentials requests.
+    const sameSite = secure ? "None" : "Strict";
     res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure,
-        sameSite: "Strict",
+        sameSite,
         maxAge: 15 * 60 * 1000, // 15 minutes
     });
     res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure,
-        sameSite: "Strict",
+        sameSite,
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 };
@@ -277,7 +280,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "None" : "Strict",
         maxAge: 15 * 60 * 1000,
     });
 
