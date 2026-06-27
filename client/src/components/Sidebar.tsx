@@ -459,21 +459,8 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
           <AnimatePresence initial={false}>
             {(showText || true) && (
               <motion.div key="logo-link" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className={cn(!showText && 'lg:hidden')}>
-                <Link to="/" className="flex items-center gap-2.5 group min-w-0">
-                  <motion.img
-                    src="/Comet Brew.svg"
-                    alt="CometBrew Logo" className="h-9 w-auto shrink-0"
-                    whileHover={{ scale: 1.08, rotate: -3 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                  />
-                  <AnimatePresence initial={false}>
-                    {showText && (
-                      <motion.span key="logo-text" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
-                        transition={{ duration: 0.22, ease: 'easeInOut' }}
-                        className="hidden lg:block font-bold text-xl tracking-tight text-foreground group-hover:text-primary transition-colors duration-200 overflow-hidden whitespace-nowrap">
-                        CometBrew
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
+                <Link to="/" className="min-w-0">
+                  <img src="/Comet Brew.svg" alt="CometBrew Logo" className="h-12 w-auto" />
                 </Link>
               </motion.div>
             )}
