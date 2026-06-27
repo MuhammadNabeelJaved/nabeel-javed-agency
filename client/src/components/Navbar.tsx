@@ -128,7 +128,7 @@ export function Navbar() {
             {/* Logo */}
             <Link to="/" className="relative z-50">
               <img
-                src={logoUrl}
+                src="/Comet Brew.svg"
                 alt="CometBrew Logo"
                 className="h-4 sm:h-7 w-auto"
               />
