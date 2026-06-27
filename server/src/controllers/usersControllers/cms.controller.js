@@ -17,11 +17,14 @@ import asyncHandler from "../../middlewares/asyncHandler.js";
 import AppError from "../../utils/AppError.js";
 import { successResponse } from "../../utils/apiResponse.js";
 import CMS from "../../models/usersModels/CMS.model.js";
+import { invalidateCache } from "../../middlewares/redisCache.js";
 
-// Broadcast a CMS update event to all public subscribers
+// Broadcast a CMS update event and bust the Redis cache for all CMS GET routes
 const emitCmsUpdate = (req, section) => {
     const io = req.app.get("io");
     if (io) io.of("/public").emit("cms:updated", { section });
+    // Invalidate server-side Redis cache so the next GET /cms returns fresh data
+    invalidateCache('/api/v1/cms').catch(() => {});
 };
 
 // =========================
