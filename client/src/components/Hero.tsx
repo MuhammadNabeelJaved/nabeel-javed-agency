@@ -29,7 +29,7 @@ export function Hero() {
   }, []);
 
   return (
-    <div className="relative overflow-hidden min-h-screen flex items-center justify-center bg-background pb-24 sm:pb-32 md:pb-40">
+    <div className="relative overflow-hidden flex items-center justify-center bg-background pt-8 pb-16 sm:min-h-screen sm:pt-0 sm:pb-32 md:pb-40">
       {/* Background Effects */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-0 left-1/4 w-[200px] h-[200px] sm:w-[500px] sm:h-[500px] bg-primary/20 rounded-full blur-[80px] sm:blur-[120px] mix-blend-screen opacity-50 animate-pulse" />
@@ -39,7 +39,7 @@ export function Hero() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130px] h-[130px] sm:w-[400px] sm:h-[400px] border border-border/30 rounded-full" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-4 sm:pt-20">
         <div className="flex flex-col items-center text-center space-y-6 sm:space-y-8 md:space-y-10">
 
           {/* Badge */}
