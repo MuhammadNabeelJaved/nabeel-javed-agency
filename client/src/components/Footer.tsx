@@ -145,7 +145,7 @@ export function Footer() {
               <img
                 src="/Comet Brew.svg"
                 alt="CometBrew Logo"
-                className="h-10 sm:h-16 w-auto"
+                className="h-10 sm:h-16 w-auto dark:brightness-0 dark:invert"
               />
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">
