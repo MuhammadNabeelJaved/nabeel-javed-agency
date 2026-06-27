@@ -27,7 +27,7 @@ export function PublicLayout() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen overflow-x-hidden">
         {/* Render stacked announcement bars */}
         {activeBars.map((barGroup, idx) => (
           <AnnouncementBar key={barGroup.bar._id} barGroup={barGroup} topOffset={idx * 40} />

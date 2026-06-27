@@ -32,11 +32,11 @@ export function Hero() {
     <div className="relative overflow-hidden min-h-screen flex items-center justify-center bg-background pb-24 sm:pb-32 md:pb-40">
       {/* Background Effects */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[120px] mix-blend-screen opacity-50 animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-border/30 rounded-full" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-border/30 rounded-full" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-border/30 rounded-full" />
+        <div className="absolute top-0 left-1/4 w-[200px] h-[200px] sm:w-[500px] sm:h-[500px] bg-primary/20 rounded-full blur-[80px] sm:blur-[120px] mix-blend-screen opacity-50 animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-[200px] h-[200px] sm:w-[500px] sm:h-[500px] bg-secondary/20 rounded-full blur-[80px] sm:blur-[120px] mix-blend-screen opacity-50 animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] sm:w-[800px] sm:h-[800px] border border-border/30 rounded-full" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] sm:w-[600px] sm:h-[600px] border border-border/30 rounded-full" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[130px] h-[130px] sm:w-[400px] sm:h-[400px] border border-border/30 rounded-full" />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-20">

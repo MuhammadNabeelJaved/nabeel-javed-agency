@@ -96,7 +96,7 @@ export function Footer() {
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tighter leading-[0.9] mb-4 sm:mb-6 text-foreground">
+              <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl xl:text-8xl font-bold tracking-tighter leading-[0.95] mb-4 sm:mb-6 text-foreground">
                 {t('footer.letsBuild')} <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-300 to-primary animate-gradient bg-[length:200%_auto]">
                   {t('footer.theFuture')}
@@ -114,7 +114,7 @@ export function Footer() {
                transition={{ duration: 0.6, delay: 0.2 }}
             >
               <Link to="/contact">
-                <Button size="lg" className="h-16 px-8 rounded-full text-lg bg-foreground text-background hover:bg-foreground/90 hover:scale-105 transition-all duration-300">
+                <Button size="lg" className="h-12 sm:h-16 px-6 sm:px-8 rounded-full text-base sm:text-lg bg-foreground text-background hover:bg-foreground/90 hover:scale-105 transition-all duration-300">
                   {t('footer.startProject')}
                   <ArrowUpRight className="ml-2 w-5 h-5" />
                 </Button>
@@ -145,7 +145,7 @@ export function Footer() {
               <img
                 src="/Comet Brew.svg"
                 alt="CometBrew Logo"
-                className="h-16 w-auto"
+                className="h-10 sm:h-16 w-auto"
               />
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">
