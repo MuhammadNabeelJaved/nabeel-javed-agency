@@ -130,7 +130,7 @@ export function Navbar() {
               <img
                 src={logoUrl}
                 alt="CometBrew Logo"
-                className="h-14 w-auto"
+                className="h-9 w-auto"
               />
             </Link>
 
