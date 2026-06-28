@@ -20,6 +20,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'github' | 'google' | null>(null);
 
   // 2FA state
   const [twoFAPending, setTwoFAPending] = useState<TwoFAPending | null>(null);
@@ -234,9 +235,11 @@ export default function Login() {
                   type="button"
                   variant="outline"
                   className="w-full"
-                  onClick={() => authApi.initiateGitHubLogin()}
+                  isLoading={oauthLoading === 'github'}
+                  disabled={oauthLoading !== null}
+                  onClick={() => { setOauthLoading('github'); authApi.initiateGitHubLogin(); }}
                 >
-                  <Github className="mr-2 h-4 w-4" />
+                  {oauthLoading !== 'github' && <Github className="mr-2 h-4 w-4" />}
                   Github
                 </Button>
 
@@ -244,9 +247,11 @@ export default function Login() {
                   type="button"
                   variant="outline"
                   className="w-full"
-                  onClick={() => authApi.initiateGoogleLogin()}
+                  isLoading={oauthLoading === 'google'}
+                  disabled={oauthLoading !== null}
+                  onClick={() => { setOauthLoading('google'); authApi.initiateGoogleLogin(); }}
                 >
-                  <Mail className="mr-2 h-4 w-4" />
+                  {oauthLoading !== 'google' && <Mail className="mr-2 h-4 w-4" />}
                   Google
                 </Button>
               </div>

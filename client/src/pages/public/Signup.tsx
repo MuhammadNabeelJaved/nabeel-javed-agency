@@ -22,6 +22,7 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [oauthLoading, setOauthLoading] = useState<'github' | 'google' | null>(null);
 
   useEffect(() => {
     if (error || localError) {
@@ -223,12 +224,26 @@ export default function Signup() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGitHubSignup()}>
-              <Github className="mr-2 h-4 w-4" />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              isLoading={oauthLoading === 'github'}
+              disabled={oauthLoading !== null}
+              onClick={() => { setOauthLoading('github'); authApi.initiateGitHubSignup(); }}
+            >
+              {oauthLoading !== 'github' && <Github className="mr-2 h-4 w-4" />}
               Github
             </Button>
-            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGoogleSignup()}>
-              <Mail className="mr-2 h-4 w-4" />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              isLoading={oauthLoading === 'google'}
+              disabled={oauthLoading !== null}
+              onClick={() => { setOauthLoading('google'); authApi.initiateGoogleSignup(); }}
+            >
+              {oauthLoading !== 'google' && <Mail className="mr-2 h-4 w-4" />}
               Google
             </Button>
           </div>
