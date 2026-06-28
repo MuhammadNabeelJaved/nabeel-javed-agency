@@ -3,18 +3,18 @@
  * Registration page with split screen layout
  */
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Zap, ArrowLeft, Github, Mail, User, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authApi } from '../../api/auth.api';
-import { useOAuthPopup } from '../../hooks/useOAuthPopup';
 import { toast } from 'sonner';
 
 export default function Signup() {
   const navigate = useNavigate();
   const { register, error, clearError } = useAuth();
+  const location = useLocation();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -23,14 +23,31 @@ export default function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const { openPopup, isWaiting } = useOAuthPopup();
-
   useEffect(() => {
     if (error || localError) {
       toast.error('Registration Failed', { description: localError ?? error ?? undefined });
     }
   }, [error, localError]);
 
+  // Show error toast if redirected back from OAuth failure
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const oauthError = params.get('error');
+    if (!oauthError) return;
+    if (oauthError === 'account_exists') {
+      toast.error('Account already exists', {
+        description: 'An account with that email already exists. Please log in instead.',
+      });
+    } else if (oauthError === 'github_no_email') {
+      toast.error('OAuth sign-up failed', {
+        description: 'GitHub email is private. Please make your primary email public in GitHub settings.',
+      });
+    } else if (oauthError === 'account_deactivated') {
+      toast.error('Account deactivated', { description: 'This account has been deactivated.' });
+    } else {
+      toast.error('OAuth sign-up failed', { description: 'Could not sign up. Please try again.' });
+    }
+  }, [location.search]);
 
   const getDashboardPath = (role: string) => {
     if (role === 'admin') return '/admin';
@@ -206,25 +223,13 @@ export default function Signup() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              disabled={isWaiting}
-              onClick={() => openPopup(authApi.getGitHubSignupUrl())}
-            >
+            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGitHubSignup()}>
               <Github className="mr-2 h-4 w-4" />
-              {isWaiting ? 'Waiting…' : 'Github'}
+              Github
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              disabled={isWaiting}
-              onClick={() => openPopup(authApi.getGoogleSignupUrl())}
-            >
+            <Button type="button" variant="outline" className="w-full" onClick={() => authApi.initiateGoogleSignup()}>
               <Mail className="mr-2 h-4 w-4" />
-              {isWaiting ? 'Waiting…' : 'Google'}
+              Google
             </Button>
           </div>
           

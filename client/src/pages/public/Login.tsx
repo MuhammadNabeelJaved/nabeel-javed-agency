@@ -10,7 +10,6 @@ import { Zap, ArrowLeft, Github, Mail, Shield } from 'lucide-react';
 import { useAuth, TwoFAPending } from '../../contexts/AuthContext';
 import { authApi } from '../../api/auth.api';
 import { twoFactorApi } from '../../api/twoFactor.api';
-import { useOAuthPopup } from '../../hooks/useOAuthPopup';
 import { toast } from 'sonner';
 
 export default function Login() {
@@ -27,8 +26,6 @@ export default function Login() {
   const [totpCode, setTotpCode] = useState('');
   const [validating2FA, setValidating2FA] = useState(false);
 
-  const { openPopup, isWaiting } = useOAuthPopup();
-
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? null;
 
   useEffect(() => {
@@ -37,6 +34,27 @@ export default function Login() {
     }
   }, [error]);
 
+  // Show error toast if redirected back from OAuth failure
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const error = params.get('error');
+    if (!error) return;
+    if (error === 'account_not_found') {
+      toast.error('Account not found', {
+        description: "No account exists for that email. Please sign up first.",
+      });
+    } else if (error === 'github_no_email') {
+      toast.error('OAuth sign-in failed', {
+        description: 'GitHub email is private. Please make your primary email public in GitHub settings.',
+      });
+    } else if (error === 'account_deactivated') {
+      toast.error('Account deactivated', { description: 'This account has been deactivated.' });
+    } else {
+      toast.error('OAuth sign-in failed', {
+        description: 'Could not sign in. Please try again.',
+      });
+    }
+  }, [location.search]);
 
   const getDashboardPath = (role: string) => {
     if (role === 'admin') return '/admin';
@@ -216,22 +234,20 @@ export default function Login() {
                   type="button"
                   variant="outline"
                   className="w-full"
-                  disabled={isWaiting}
-                  onClick={() => openPopup(authApi.getGitHubLoginUrl())}
+                  onClick={() => authApi.initiateGitHubLogin()}
                 >
                   <Github className="mr-2 h-4 w-4" />
-                  {isWaiting ? 'Waiting…' : 'Github'}
+                  Github
                 </Button>
 
                 <Button
                   type="button"
                   variant="outline"
                   className="w-full"
-                  disabled={isWaiting}
-                  onClick={() => openPopup(authApi.getGoogleLoginUrl())}
+                  onClick={() => authApi.initiateGoogleLogin()}
                 >
                   <Mail className="mr-2 h-4 w-4" />
-                  {isWaiting ? 'Waiting…' : 'Google'}
+                  Google
                 </Button>
               </div>
 

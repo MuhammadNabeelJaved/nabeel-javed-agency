@@ -62,10 +62,4 @@ export const authApi = {
   initiateGitHubSignup: () => {
     window.location.href = `${API_BASE}/api/v1/users/auth/github?mode=signup`;
   },
-
-  // Popup-safe URL getters (return URL instead of navigating)
-  getGoogleLoginUrl:  () => `${API_BASE}/api/v1/users/auth/google?mode=login`,
-  getGoogleSignupUrl: () => `${API_BASE}/api/v1/users/auth/google?mode=signup`,
-  getGitHubLoginUrl:  () => `${API_BASE}/api/v1/users/auth/github?mode=login`,
-  getGitHubSignupUrl: () => `${API_BASE}/api/v1/users/auth/github?mode=signup`,
 };
