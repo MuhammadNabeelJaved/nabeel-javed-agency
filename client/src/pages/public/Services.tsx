@@ -3,6 +3,7 @@
  * Creative layout with premium glassmorphism effects
  */
 import React, { useState, useEffect } from 'react';
+import { useSeoMeta } from '../../hooks/useSeoMeta';
 import { motion } from 'framer-motion';
 import { Code, Palette, Rocket, Database, Smartphone, Globe, Shield, BarChart, Zap, Layout, Users, Loader2 } from 'lucide-react';
 import { ServiceCard } from '../../components/ServiceCard';
@@ -42,6 +43,7 @@ const processSteps = [
 ];
 
 export default function Services() {
+  useSeoMeta('/services');
   const [apiServices, setApiServices] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);

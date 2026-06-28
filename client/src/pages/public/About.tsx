@@ -4,6 +4,7 @@
  * All content driven by CMS (ContentContext.about).
  */
 import React from 'react';
+import { useSeoMeta } from '../../hooks/useSeoMeta';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
@@ -33,6 +34,7 @@ const fadeUp = (delay = 0) => ({
 });
 
 export default function About() {
+  useSeoMeta('/about');
   const { about, processSteps } = useContent();
 
   return (

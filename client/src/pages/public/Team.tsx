@@ -3,6 +3,7 @@
  * Public facing team directory - fetches from /users/team API
  */
 import React, { useState, useEffect } from 'react';
+import { useSeoMeta } from '../../hooks/useSeoMeta';
 import { motion } from 'framer-motion';
 import { Github, Twitter, Linkedin, Mail, ArrowUpRight, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -12,6 +13,7 @@ import { TransformCTA } from '../../components/TransformCTA';
 import apiClient from '../../api/apiClient';
 
 export default function Team() {
+  useSeoMeta('/our-team');
   const [team, setTeam] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

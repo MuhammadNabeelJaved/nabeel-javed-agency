@@ -3,6 +3,7 @@
  * Assembles all public sections with enhanced layouts
  */
 import React from 'react';
+import { useSeoMeta } from '../../hooks/useSeoMeta';
 import { Code, Palette, Rocket, CheckCircle, Zap, Shield, Clock, Users, ArrowRight } from 'lucide-react';
 import { Hero } from '../../components/Hero';
 import { ServiceCard } from '../../components/ServiceCard';
@@ -28,6 +29,7 @@ const getIcon = (name: string) => {
 };
 
 export default function Home() {
+  useSeoMeta('/');
   const { whyChooseUs } = useContent();
   const { t } = useLanguage();
 

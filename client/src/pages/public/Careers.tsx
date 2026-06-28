@@ -3,6 +3,7 @@
  * Hardcoded localStorage data is cleared on mount.
  */
 import React, { useState, useEffect } from 'react';
+import { useSeoMeta } from '../../hooks/useSeoMeta';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Briefcase, MapPin, Clock, ArrowRight, Search, Heart, Globe, Zap, Loader2, DollarSign } from 'lucide-react';
@@ -34,6 +35,7 @@ function formatSalary(sr?: SalaryRange) {
 }
 
 export default function Careers() {
+  useSeoMeta('/careers');
   const [jobs, setJobs]           = useState<Job[]>([]);
   const [loading, setLoading]     = useState(true);
   const [searchTerm, setSearchTerm]   = useState('');

@@ -3,6 +3,7 @@
  * Premium masonry grid of projects
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSeoMeta } from '../../hooks/useSeoMeta';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { ProjectCard } from '../../components/ProjectCard';
@@ -12,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { adminProjectsApi } from '../../api/adminProjects.api';
 
 export default function Portfolio() {
+  useSeoMeta('/portfolio');
   const [filter, setFilter] = useState("All");
   const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);

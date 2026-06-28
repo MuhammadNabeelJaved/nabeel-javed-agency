@@ -3,6 +3,7 @@
  * Contact info pulled from CMS, form submits to backend API
  */
 import React, { useState, useRef } from 'react';
+import { useSeoMeta } from '../../hooks/useSeoMeta';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -17,6 +18,7 @@ import { Map, MapMarker, MarkerContent, MarkerPopup, MapControls } from '../../c
 import { contactsApi } from '../../api/contacts.api';
 
 export default function Contact() {
+  useSeoMeta('/contact');
   const { contactInfo } = useContent();
   const { theme } = useTheme();
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);

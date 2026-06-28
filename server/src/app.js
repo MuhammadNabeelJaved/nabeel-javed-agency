@@ -113,6 +113,68 @@ app.use(preventHPP);
 app.use("/uploads", express.static(path.join(process.cwd(), "src/public/uploads")));
 
 
+// ─── Dynamic Sitemap ─────────────────────────────────────────────────────────
+import Services from "./models/usersModels/Services.model.js";
+import AdminProject from "./models/usersModels/AdminProject.model.js";
+
+app.get("/sitemap.xml", async (req, res) => {
+    const BASE = "https://www.cometbrew.com";
+    const today = new Date().toISOString().split("T")[0];
+
+    const staticUrls = [
+        { loc: "/",          priority: "1.0", changefreq: "weekly"  },
+        { loc: "/services",  priority: "0.9", changefreq: "weekly"  },
+        { loc: "/portfolio", priority: "0.9", changefreq: "weekly"  },
+        { loc: "/about",     priority: "0.8", changefreq: "monthly" },
+        { loc: "/contact",   priority: "0.8", changefreq: "monthly" },
+        { loc: "/careers",   priority: "0.7", changefreq: "weekly"  },
+        { loc: "/our-team",  priority: "0.7", changefreq: "monthly" },
+        { loc: "/privacy",   priority: "0.3", changefreq: "yearly"  },
+        { loc: "/terms",     priority: "0.3", changefreq: "yearly"  },
+        { loc: "/cookies",   priority: "0.2", changefreq: "yearly"  },
+    ];
+
+    let serviceUrls = [], projectUrls = [];
+    try {
+        const [services, projects] = await Promise.all([
+            Services.find({ isActive: true }, "slug updatedAt").lean(),
+            AdminProject.find({ isPublic: true }, "_id updatedAt").lean(),
+        ]);
+        serviceUrls = services.map(s => ({
+            loc: `/services/${s.slug}`,
+            lastmod: (s.updatedAt || new Date()).toISOString().split("T")[0],
+            priority: "0.7",
+            changefreq: "monthly",
+        }));
+        projectUrls = projects.map(p => ({
+            loc: `/portfolio/${p._id}`,
+            lastmod: (p.updatedAt || new Date()).toISOString().split("T")[0],
+            priority: "0.6",
+            changefreq: "monthly",
+        }));
+    } catch {/* DB unavailable — serve static only */}
+
+    const allUrls = [
+        ...staticUrls.map(u => ({ ...u, lastmod: today })),
+        ...serviceUrls,
+        ...projectUrls,
+    ];
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allUrls.map(u => `  <url>
+    <loc>${BASE}${u.loc}</loc>
+    <lastmod>${u.lastmod}</lastmod>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join("\n")}
+</urlset>`;
+
+    res.setHeader("Content-Type", "application/xml");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(xml);
+});
+
 // ─── Route Groups ───────────────────────────────────────────────────────────
 import User from "./models/usersModels/User.model.js";
 import userRoutes from "./routes/userRoutes/user.route.js"
