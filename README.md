@@ -1,6 +1,8 @@
-# Nabeel Javed Agency
+# CometBrew Agency
 
-A full-stack agency website and CMS platform — featuring client project management, team dashboards, job postings, an AI-powered chatbot (Nova AI), and a comprehensive admin panel.
+A full-stack agency website and CMS platform — featuring client project management, team dashboards, job postings, OAuth authentication, an AI-powered chatbot (Nova AI), SEO foundation, and a comprehensive admin panel.
+
+**Live:** [cometbrew.com](https://cometbrew.com) · **Contact:** hello@cometbrew.com
 
 ---
 
@@ -23,9 +25,11 @@ A full-stack agency website and CMS platform — featuring client project manage
 | Express 5 | REST API (port 8000, prefix `/api/v1/`) |
 | MongoDB Atlas + Mongoose | Database |
 | JWT | Auth (access + refresh tokens) |
+| Redis | CMS response caching |
 | Resend SDK | OTP & transactional emails |
 | Multer + Cloudinary | File uploads (images, PDFs, docs) |
 | Socket.IO | Real-time events across dashboards |
+| Passport.js | OAuth 2.0 (GitHub & Google) |
 
 ### AI & Search
 | Technology | Purpose |
@@ -45,6 +49,15 @@ A full-stack agency website and CMS platform — featuring client project manage
 - **Job listings & applications** — with resume upload and email notifications
 - **Cookie consent system** (GDPR) — granular controls with audit log
 - **Page status manager** — set any page to Active / Maintenance / Coming Soon
+- **SEO foundation** — per-page meta tags (`<title>`, `description`, `og:*`, `twitter:*`), static sitemap, dynamic `/sitemap.xml` endpoint, and canonical URLs pointing to `cometbrew.com`
+- **Dark mode** support across all pages
+
+### Authentication
+- JWT-based auth with access + refresh token rotation
+- OTP email verification via Resend
+- **OAuth 2.0** — GitHub and Google sign-in / sign-up (full-page redirect flow)
+- Loading state on OAuth buttons during provider redirect
+- Auto-login after OTP verification (OAuth signup flow)
 
 ### Nova AI Chatbot
 - Floating widget on public site + full-page assistants in user & team dashboards
@@ -106,6 +119,7 @@ A full-stack agency website and CMS platform — featuring client project manage
 │           └── public/
 │
 └── server/                  # Express 5 + MongoDB backend
+    ├── email-templates/     # Responsive HTML transactional emails
     └── src/
         ├── controllers/     # Route handlers
         ├── models/          # Mongoose schemas
@@ -125,7 +139,9 @@ A full-stack agency website and CMS platform — featuring client project manage
 - Cloudinary account
 - Resend account (email)
 - Anthropic API key
+- Redis instance (local or cloud)
 - (Optional) OpenAI API key + Supabase project (for RAG/semantic search)
+- (Optional) GitHub & Google OAuth app credentials
 
 ### Environment Variables
 
@@ -141,9 +157,14 @@ CLOUDINARY_API_KEY=your_cloudinary_key
 CLOUDINARY_API_SECRET=your_cloudinary_secret
 ANTHROPIC_API_KEY=your_anthropic_key
 ENCRYPTION_KEY=64_char_hex_string
-OPENAI_API_KEY=your_openai_key        # optional, for RAG
-SUPABASE_URL=your_supabase_url        # optional, for RAG
-SUPABASE_SERVICE_KEY=your_supabase_key # optional, for RAG
+REDIS_URL=redis://localhost:6379
+OPENAI_API_KEY=your_openai_key          # optional, for RAG
+SUPABASE_URL=your_supabase_url          # optional, for RAG
+SUPABASE_SERVICE_KEY=your_supabase_key  # optional, for RAG
+GITHUB_CLIENT_ID=your_github_client_id  # optional, for OAuth
+GITHUB_CLIENT_SECRET=your_github_secret # optional, for OAuth
+GOOGLE_CLIENT_ID=your_google_client_id  # optional, for OAuth
+GOOGLE_CLIENT_SECRET=your_google_secret # optional, for OAuth
 CLIENT_URL=http://localhost:5173
 ADMIN_EMAIL=your_admin_email
 ```
@@ -192,4 +213,4 @@ Backend API: http://localhost:8000/api/v1
 
 ## License
 
-This project is proprietary. All rights reserved © Nabeel Javed.
+This project is proprietary. All rights reserved © CometBrew.
