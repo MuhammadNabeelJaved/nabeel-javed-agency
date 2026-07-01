@@ -42,6 +42,7 @@ interface ProjectForm {
   durationValue: string;
   durationUnit: string;
   completionPercentage: number;
+  projectLink: string;
 }
 
 const DURATION_UNITS = ['days', 'weeks', 'months', 'years'] as const;
@@ -63,6 +64,7 @@ const emptyForm: ProjectForm = {
   durationValue: '1',
   durationUnit: 'months',
   completionPercentage: 100,
+  projectLink: '',
 };
 
 function formToPayload(form: ProjectForm, userId: string) {
@@ -74,6 +76,7 @@ function formToPayload(form: ProjectForm, userId: string) {
     priority: form.priority,
     yourRole: form.yourRole.trim(),
     projectDescription: form.projectDescription.trim(),
+    projectLink: form.projectLink.trim() || undefined,
     techStack: form.techStack.split(',').map(t => t.trim()).filter(Boolean),
     tags: form.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
     isPublic: form.isPublic,
@@ -96,6 +99,7 @@ function projectToForm(p: any): ProjectForm {
     priority: p.priority || 'High',
     yourRole: p.yourRole || '',
     projectDescription: p.projectDescription || '',
+    projectLink: p.projectLink || '',
     techStack: (p.techStack || []).join(', '),
     tags: (p.tags || []).join(', '),
     isPublic: p.isPublic ?? true,
@@ -138,6 +142,7 @@ export default function Projects() {
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isDeletingImageId, setIsDeletingImageId] = useState<string | null>(null);
+  const [modalImages, setModalImages] = useState<File[]>([]);
 
   const showNotif = (type: 'success' | 'error', title: string, message?: string) => {
     if (type === 'success') toast.success(title, message ? { description: message } : undefined);
@@ -163,12 +168,14 @@ export default function Projects() {
   const openAdd = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setModalImages([]);
     setModalOpen(true);
   };
 
   const openEdit = (project: any) => {
     setEditingId(project._id);
     setForm(projectToForm(project));
+    setModalImages([]);
     setModalOpen(true);
   };
 
@@ -177,18 +184,38 @@ export default function Projects() {
       showNotif('error', 'Required fields missing', 'Title, client name, description, and duration are required.');
       return;
     }
+    const existingImageCount = editingId ? (projects.find(p => p._id === editingId)?.projectGallery?.length || 0) : 0;
+    if (!editingId && modalImages.length === 0) {
+      showNotif('error', 'Image required', 'Please add at least one project image.');
+      return;
+    }
+    if (editingId && existingImageCount === 0 && modalImages.length === 0) {
+      showNotif('error', 'Image required', 'Please add at least one project image.');
+      return;
+    }
     if (!user?._id) { showNotif('error', 'Not authenticated'); return; }
 
     setIsSaving(true);
     try {
       const payload = formToPayload(form, user._id);
+      let projectId = editingId;
       if (editingId) {
         await adminProjectsApi.update(editingId, payload);
-        showNotif('success', 'Project updated');
       } else {
-        await adminProjectsApi.create(payload);
-        showNotif('success', 'Project created');
+        const res = await adminProjectsApi.create(payload);
+        projectId = res.data.data._id;
       }
+
+      if (modalImages.length > 0 && projectId) {
+        try {
+          await adminProjectsApi.uploadImages(projectId, modalImages);
+        } catch (imgErr: any) {
+          showNotif('error', 'Project saved, but image upload failed', imgErr?.response?.data?.message);
+        }
+      }
+
+      showNotif('success', editingId ? 'Project updated' : 'Project created');
+      setModalImages([]);
       setModalOpen(false);
       loadProjects();
     } catch (err: any) {
@@ -550,12 +577,61 @@ export default function Projects() {
                 <Input value={form.tags} onChange={e => setField('tags', e.target.value)} placeholder="fintech, dashboard, analytics" />
               </div>
 
-              {editingId && (
-                <div className="p-3 rounded-lg bg-muted/30 border border-border text-sm text-muted-foreground flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 shrink-0" />
-                  To upload or manage gallery images, save this project then open it with the <strong className="text-foreground">View (eye)</strong> button.
+              <div className="space-y-2">
+                <Label>Project Link <span className="text-muted-foreground text-xs">(live site or demo URL)</span></Label>
+                <Input type="url" value={form.projectLink} onChange={e => setField('projectLink', e.target.value)} placeholder="https://example.com" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Project Images {!editingId && '*'} <span className="text-muted-foreground text-xs">(at least 1 required)</span></Label>
+
+                {editingId && (() => {
+                  const existing = projects.find(p => p._id === editingId)?.projectGallery || [];
+                  return existing.length > 0 ? (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2">
+                      {existing.map((g: any) => (
+                        <div key={g._id} className="relative rounded-lg overflow-hidden border border-border aspect-video bg-muted">
+                          <img src={g.url} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
+                <div className="border-2 border-dashed border-border rounded-xl p-4 space-y-3">
+                  <input
+                    type="file"
+                    id="gallery-upload-modal"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => setModalImages(Array.from(e.target.files || []))}
+                  />
+                  <label htmlFor="gallery-upload-modal" className="flex flex-col items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                    <Upload className="h-6 w-6" />
+                    <span className="text-sm">Click to select images</span>
+                  </label>
+                  {modalImages.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {modalImages.map((f, i) => (
+                        <div key={i} className="relative h-14 w-20 rounded-md overflow-hidden border border-border bg-muted">
+                          <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
+                          <button
+                            onClick={() => setModalImages(fs => fs.filter((_, idx) => idx !== i))}
+                            className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/70 text-white flex items-center justify-center"
+                          ><X className="h-2.5 w-2.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+                {editingId && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                    To remove existing images, open this project with the <strong className="text-foreground">View (eye)</strong> button.
+                  </p>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <Label>Completion %</Label>

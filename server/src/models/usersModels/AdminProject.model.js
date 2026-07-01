@@ -117,6 +117,12 @@ const projectSchema = new mongoose.Schema({
         maxlength: [5000, 'Description cannot exceed 5000 characters']
     },
 
+    // Live/demo URL for the project, shown on the public case-study page
+    projectLink: {
+        type: String,
+        trim: true,
+        maxlength: [500, 'Project link cannot exceed 500 characters']
+    },
 
     // Project Gallery – Cloudinary image entries
     projectGallery: [{
@@ -376,7 +382,7 @@ projectSchema.statics.getProjectStats = async function (userId) {
 /** Returns publicly visible, non-archived projects for the portfolio page. */
 projectSchema.statics.getPublicPortfolio = function (filter = {}) {
     return this.find({ isPublic: true, isArchived: false, ...filter })
-        .select('projectTitle clientName category status techStack projectGallery projectDescription completionPercentage tags startDate endDate clientFeedback featuredOnHome')
+        .select('projectTitle clientName category status techStack projectGallery projectDescription projectLink completionPercentage tags startDate endDate clientFeedback featuredOnHome')
         .sort({ createdAt: -1 });
 };
 

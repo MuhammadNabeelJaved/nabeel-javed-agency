@@ -39,6 +39,7 @@ export const createProject = asyncHandler(async (req, res, next) => {
             teamMembers,
             projectLead,
             projectDescription,
+            projectLink,
             projectGallery,
             clientFeedback,
             budget,
@@ -65,6 +66,7 @@ export const createProject = asyncHandler(async (req, res, next) => {
             teamMembers,
             projectLead,
             projectDescription,
+            projectLink,
             projectGallery,
             clientFeedback,
             budget,
@@ -279,7 +281,7 @@ export const getPublicPortfolio = asyncHandler(async (req, res) => {
 // Returns featuredOnHome projects; falls back to 3 newest public if none set.
 // =========================
 export const getHomeFeatured = asyncHandler(async (req, res) => {
-    const FIELDS = 'projectTitle clientName category status techStack projectGallery projectDescription completionPercentage tags startDate endDate clientFeedback featuredOnHome';
+    const FIELDS = 'projectTitle clientName category status techStack projectGallery projectDescription projectLink completionPercentage tags startDate endDate clientFeedback featuredOnHome';
 
     let projects = await adminProject
         .find({ isPublic: true, isArchived: { $ne: true }, featuredOnHome: true })
