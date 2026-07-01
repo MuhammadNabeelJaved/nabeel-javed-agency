@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
+import { liveChatApi } from '../api/liveChat.api';
 import {
   useSidebarPreferences,
   SidebarLinkDef,
@@ -99,9 +100,8 @@ export function Sidebar({ isOpen = false, onClose, collapsed = false, onToggleCo
   const [dragType, setDragType]         = useState<'item' | 'cat' | null>(null);
 
   useEffect(() => {
-    fetch('/api/v1/live-chat/stats', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => { if (d.success) setWaitingCount(d.data.waiting); })
+    liveChatApi.getStats()
+      .then(stats => setWaitingCount(stats.waiting))
       .catch(() => {});
   }, []);
 

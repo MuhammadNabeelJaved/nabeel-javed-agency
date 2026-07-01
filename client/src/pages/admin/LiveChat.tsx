@@ -16,6 +16,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { liveChatApi, LiveChatSessionDoc, LiveChatMessageDoc, CannedResponseDoc } from '../../api/liveChat.api';
+import { usersApi } from '../../api/users.api';
 import { cn } from '../../lib/utils';
 
 const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL as string) || window.location.origin;
@@ -175,10 +176,9 @@ export default function LiveChat() {
 
   // ── Load team members ─────────────────────────────────────────────────────
   useEffect(() => {
-    fetch('/api/v1/users', { credentials: 'include' })
-      .then(r => r.json())
-      .then(json => {
-        const all: TeamMember[] = Array.isArray(json.data) ? json.data : [];
+    usersApi.getAll()
+      .then(res => {
+        const all: TeamMember[] = Array.isArray(res.data?.data) ? res.data.data : [];
         setTeamMembers(all.filter(u => u.role === 'team'));
       })
       .catch(() => {});

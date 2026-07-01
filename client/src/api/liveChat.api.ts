@@ -1,4 +1,4 @@
-const BASE = '/api/v1/live-chat';
+const BASE = `${(import.meta.env.VITE_API_URL as string) ?? ''}/api/v1/live-chat`;
 
 export interface LiveChatSessionDoc {
   _id: string;

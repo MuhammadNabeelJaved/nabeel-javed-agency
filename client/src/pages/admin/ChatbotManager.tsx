@@ -1679,7 +1679,8 @@ function DashboardBotTab({ mode }: { mode: 'user' | 'team' }) {
     setTestError('');
     testAbortRef.current = new AbortController();
 
-    const endpoint = isUser ? '/api/v1/chatbot/user-chat' : '/api/v1/chatbot/team-chat';
+    const apiBase = (import.meta.env.VITE_API_URL as string) ?? '';
+    const endpoint = `${apiBase}${isUser ? '/api/v1/chatbot/user-chat' : '/api/v1/chatbot/team-chat'}`;
     const sessionId = `admin-test-${Date.now()}`;
 
     try {
