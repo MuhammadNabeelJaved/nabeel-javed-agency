@@ -39,8 +39,12 @@ interface ProjectForm {
   startDate: string;
   endDate: string;
   budget: string;
+  durationValue: string;
+  durationUnit: string;
   completionPercentage: number;
 }
+
+const DURATION_UNITS = ['days', 'weeks', 'months', 'years'] as const;
 
 const emptyForm: ProjectForm = {
   projectTitle: '',
@@ -56,6 +60,8 @@ const emptyForm: ProjectForm = {
   startDate: '',
   endDate: '',
   budget: '',
+  durationValue: '1',
+  durationUnit: 'months',
   completionPercentage: 100,
 };
 
@@ -74,6 +80,7 @@ function formToPayload(form: ProjectForm, userId: string) {
     startDate: form.startDate || new Date().toISOString(),
     endDate: form.endDate || undefined,
     budget: form.budget ? { amount: parseFloat(form.budget), currency: 'USD' } : undefined,
+    duration: { value: Number(form.durationValue) || 1, unit: form.durationUnit },
     completionPercentage: form.completionPercentage,
     projectLead: userId,
     teamMembers: [{ memberId: userId, role: 'Lead', isLead: true }],
@@ -95,6 +102,8 @@ function projectToForm(p: any): ProjectForm {
     startDate: p.startDate ? p.startDate.substring(0, 10) : '',
     endDate: p.endDate ? p.endDate.substring(0, 10) : '',
     budget: p.budget?.amount ? String(p.budget.amount) : '',
+    durationValue: p.duration?.value ? String(p.duration.value) : '1',
+    durationUnit: p.duration?.unit || 'months',
     completionPercentage: p.completionPercentage ?? 100,
   };
 }
@@ -164,8 +173,8 @@ export default function Projects() {
   };
 
   const handleSave = async () => {
-    if (!form.projectTitle.trim() || !form.projectDescription.trim() || !form.clientName.trim()) {
-      showNotif('error', 'Required fields missing', 'Title, client name, and description are required.');
+    if (!form.projectTitle.trim() || !form.projectDescription.trim() || !form.clientName.trim() || !form.durationValue.trim()) {
+      showNotif('error', 'Required fields missing', 'Title, client name, description, and duration are required.');
       return;
     }
     if (!user?._id) { showNotif('error', 'Not authenticated'); return; }
@@ -504,6 +513,19 @@ export default function Projects() {
                 <div className="space-y-2">
                   <Label>Budget (USD)</Label>
                   <Input type="number" value={form.budget} onChange={e => setField('budget', e.target.value)} placeholder="15000" />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Duration *</Label>
+                  <Input type="number" min={1} max={999} value={form.durationValue} onChange={e => setField('durationValue', e.target.value)} placeholder="3" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Duration Unit</Label>
+                  <select value={form.durationUnit} onChange={e => setField('durationUnit', e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    {DURATION_UNITS.map(u => <option key={u}>{u}</option>)}
+                  </select>
                 </div>
               </div>
 
