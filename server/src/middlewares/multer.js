@@ -5,7 +5,7 @@
  *  - Destination: `src/public/uploads/` (created automatically if absent)
  *  - Filename:    `<timestamp>-<originalname>` to avoid collisions
  *  - Allowed types: JPEG, JPG, PNG, GIF, WEBP (images only)
- *  - Max file size: 5 MB
+ *  - Max file size: 15 MB
  *
  * Usage in routes:
  *   import upload from '../middlewares/multer.js';
@@ -57,7 +57,7 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
     fileFilter,
 });
 

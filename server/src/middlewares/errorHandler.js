@@ -21,6 +21,12 @@ const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || "Internal Server Error";
 
+  // Multer upload errors (file too large, too many files, etc.) – client's fault, not a server error
+  if (err.name === "MulterError") {
+    message = err.code === "LIMIT_FILE_SIZE" ? "File is too large. Maximum size is 15MB." : err.message;
+    statusCode = 400;
+  }
+
   // MongoDB Cast Error – e.g. an invalid ObjectId in a URL param
   if (err.name === "CastError") {
     message = "Invalid ID format";

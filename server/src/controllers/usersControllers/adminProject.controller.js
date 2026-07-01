@@ -49,7 +49,9 @@ export const createProject = asyncHandler(async (req, res, next) => {
             priority,
             tags,
             isArchived,
-            completionPercentage
+            completionPercentage,
+            techStack,
+            isPublic
         } = req.body;
 
         if (!projectTitle || !projectDescription || !clientName || !projectLead || !teamMembers || !startDate || !category || !status || !duration || !yourRole) {
@@ -77,6 +79,8 @@ export const createProject = asyncHandler(async (req, res, next) => {
             tags,
             isArchived,
             completionPercentage,
+            techStack,
+            isPublic,
             createdBy: req.user._id,
         });
 
